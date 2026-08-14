@@ -1,0 +1,85 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/favicon.ico",
+      "destination": "/favicon.svg",
+      "permanent": false
+    },
+    {
+      "source": "/favicon.png",
+      "destination": "/favicon.svg",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/((?!api|assets|favicon|.*\\.[a-z0-9]+$).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "functions": {
+    "api/maintenance-chat.js": {
+      "maxDuration": 30
+    },
+    "api/voice/maintenance-bot.js": {
+      "maxDuration": 60
+    },
+    "api/documents/extract-form-values.js": {
+      "maxDuration": 300,
+      "includeFiles": "node_modules/tesseract.js-core/**"
+    },
+    "api/documents/convert-pdf-to-json.js": {
+      "maxDuration": 300
+    },
+    "api/documents/measure-field-positions.js": {
+      "maxDuration": 120
+    },
+    "api/cron/call-vendors.js": {
+      "maxDuration": 300
+    },
+    "api/cron/close-resolved-requests.js": {
+      "maxDuration": 300
+    },
+    "api/cron/process-digest-notifications.js": {
+      "maxDuration": 300
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/call-vendors",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/process-digest-notifications?frequency=daily_digest",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/process-digest-notifications?frequency=weekly_digest",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/close-resolved-requests",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

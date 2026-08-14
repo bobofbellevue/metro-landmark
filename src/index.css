@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@import "react-datepicker/dist/react-datepicker.css";
+
+/* FIX: These rules ensure that the root containers for the React app
+  take up the full available space in the browser window. This is what
+  allows the flexbox centering on the LoginPage to work correctly.
+*/
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}

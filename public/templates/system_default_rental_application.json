@@ -1,0 +1,623 @@
+{
+  "General_Information": {
+    "Date_of_Application": {
+      "type": "string",
+      "required": true,
+      "description": "Date of application"
+    },
+    "Property_Address": {
+      "type": "string",
+      "required": true,
+      "description": "Address of the property being applied for"
+    },
+    "Unit_Number": {
+      "type": "string",
+      "required": false,
+      "description": "Unit number of the property"
+    },
+    "City_State_Zip": {
+      "type": "string",
+      "required": true,
+      "description": "City, state, and zip code of the property"
+    }
+  },
+  "Applicants": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "First_Name": {
+          "type": "string",
+          "required": true,
+          "description": "Applicant's first name"
+        },
+        "Middle_Initial": {
+          "type": "string",
+          "required": false,
+          "description": "Applicant's middle initial"
+        },
+        "Last_Name": {
+          "type": "string",
+          "required": true,
+          "description": "Applicant's last name"
+        },
+        "Date_of_Birth": {
+          "type": "string",
+          "required": true,
+          "description": "Applicant's date of birth"
+        },
+        "Social_Security_Number": {
+          "type": "string",
+          "required": true,
+          "description": "Applicant's social security number"
+        },
+        "Phone_Number": {
+          "type": "string",
+          "required": true,
+          "description": "Applicant's phone number"
+        },
+        "Email_Address": {
+          "type": "string",
+          "required": true,
+          "description": "Applicant's email address"
+        },
+        "Driver_License_Number": {
+          "type": "string",
+          "required": true,
+          "description": "Applicant's driver's license number"
+        },
+        "Driver_License_State_of_Issue": {
+          "type": "string",
+          "required": true,
+          "description": "State of issue for the applicant's driver's license"
+        }
+      }
+    }
+  },
+  "Residence_History": {
+    "Years_of_History": {
+      "type": "number",
+      "required": true,
+      "description": "Number of years of residence history to be provided"
+    },
+    "Current_Residence": {
+      "Address": {
+        "type": "string",
+        "required": true,
+        "description": "Current residence address"
+      },
+      "City_State_Zip": {
+        "type": "string",
+        "required": true,
+        "description": "City, state, and zip code of current residence"
+      },
+      "Unit_Number": {
+        "type": "string",
+        "required": false,
+        "description": "Unit number of current residence"
+      },
+      "Dates_of_Residence": {
+        "From": {
+          "type": "string",
+          "required": true,
+          "description": "Start date of current residence"
+        },
+        "To": {
+          "type": "string",
+          "required": true,
+          "description": "End date of current residence"
+        }
+      },
+      "Monthly_Rent": {
+        "type": "number",
+        "required": true,
+        "description": "Monthly rent amount of current residence"
+      },
+      "Reason_for_Moving": {
+        "type": "string",
+        "required": true,
+        "description": "Reason for moving from current residence"
+      },
+      "Ownership_Status": {
+        "type": "string",
+        "required": true,
+        "enum": [
+          "Own",
+          "Rent",
+          "Other"
+        ],
+        "description": "Housing status at current residence (own, rent, or other)"
+      },
+      "Landlord_Name": {
+        "type": "string",
+        "required": false,
+        "description": "Name of landlord if renting"
+      },
+      "Landlord_Phone_Number": {
+        "type": "string",
+        "required": false,
+        "description": "Phone number of landlord if renting"
+      }
+    },
+    "Previous_Residences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Address": {
+            "type": "string",
+            "required": true,
+            "description": "Previous residence address"
+          },
+          "City_State_Zip": {
+            "type": "string",
+            "required": true,
+            "description": "City, state, and zip code of previous residence"
+          },
+          "Unit_Number": {
+            "type": "string",
+            "required": false,
+            "description": "Unit number of previous residence"
+          },
+          "Dates_of_Residence": {
+            "From": {
+              "type": "string",
+              "required": true,
+              "description": "Start date of previous residence"
+            },
+            "To": {
+              "type": "string",
+              "required": true,
+              "description": "End date of previous residence"
+            }
+          },
+          "Monthly_Rent": {
+            "type": "number",
+            "required": true,
+            "description": "Monthly rent amount of previous residence"
+          },
+          "Reason_for_Moving": {
+            "type": "string",
+            "required": true,
+            "description": "Reason for moving from previous residence"
+          },
+          "Ownership_Status": {
+            "type": "string",
+            "required": true,
+            "enum": [
+              "Own",
+              "Rent",
+              "Other"
+            ],
+            "description": "Housing status at previous residence (own, rent, or other)"
+          },
+          "Landlord_Name": {
+            "type": "string",
+            "required": false,
+            "description": "Name of landlord if renting"
+          },
+          "Landlord_Phone_Number": {
+            "type": "string",
+            "required": false,
+            "description": "Phone number of landlord if renting"
+          }
+        }
+      }
+    }
+  },
+  "Eviction_History": {
+    "Ever_Been_Evicted": {
+      "type": "boolean",
+      "required": true,
+      "description": "Has the applicant ever been evicted?"
+    },
+    "Eviction_Explanation": {
+      "type": "string",
+      "required": false,
+      "description": "Explanation for any eviction history"
+    },
+    "Ever_Broken_Lease": {
+      "type": "boolean",
+      "required": true,
+      "description": "Has the applicant ever broken a lease?"
+    },
+    "Lease_Break_Explanation": {
+      "type": "string",
+      "required": false,
+      "description": "Explanation for any broken lease"
+    }
+  },
+  "Employment_History": {
+    "Years_of_History": {
+      "type": "number",
+      "required": true,
+      "description": "Number of years of employment history to be provided"
+    },
+    "Current_Employment": {
+      "Employer_Name": {
+        "type": "string",
+        "required": true,
+        "description": "Name of current employer"
+      },
+      "Position": {
+        "type": "string",
+        "required": true,
+        "description": "Current job title or position"
+      },
+      "Employer_Address": {
+        "type": "string",
+        "required": true,
+        "description": "Address of current employer"
+      },
+      "City_State_Zip_Employer": {
+        "type": "string",
+        "required": true,
+        "description": "City, state, and zip code of employer's address"
+      },
+      "Employment_Dates": {
+        "From": {
+          "type": "string",
+          "required": true,
+          "description": "Start date of current employment"
+        },
+        "To": {
+          "type": "string",
+          "required": true,
+          "description": "End date of current employment or present"
+        }
+      },
+      "Monthly_Income": {
+        "type": "number",
+        "required": true,
+        "description": "Current monthly income"
+      },
+      "Supervisor_Name": {
+        "type": "string",
+        "required": true,
+        "description": "Name of the applicant's supervisor"
+      },
+      "Supervisor_Phone_Number": {
+        "type": "string",
+        "required": true,
+        "description": "Phone number of the applicant's supervisor"
+      }
+    },
+    "Previous_Employment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Employer_Name": {
+            "type": "string",
+            "required": true,
+            "description": "Name of previous employer"
+          },
+          "Position": {
+            "type": "string",
+            "required": true,
+            "description": "Previous job title or position"
+          },
+          "Employer_Address": {
+            "type": "string",
+            "required": true,
+            "description": "Address of previous employer"
+          },
+          "City_State_Zip_Employer": {
+            "type": "string",
+            "required": true,
+            "description": "City, state, and zip code of previous employer's address"
+          },
+          "Employment_Dates": {
+            "From": {
+              "type": "string",
+              "required": true,
+              "description": "Start date of previous employment"
+            },
+            "To": {
+              "type": "string",
+              "required": true,
+              "description": "End date of previous employment"
+            }
+          },
+          "Monthly_Income": {
+            "type": "number",
+            "required": true,
+            "description": "Monthly income from previous employment"
+          },
+          "Supervisor_Name": {
+            "type": "string",
+            "required": true,
+            "description": "Name of the supervisor at previous employment"
+          },
+          "Supervisor_Phone_Number": {
+            "type": "string",
+            "required": true,
+            "description": "Phone number of the supervisor at previous employment"
+          }
+        }
+      }
+    }
+  },
+  "Additional_Income_Sources": {
+    "Sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Source_Name": {
+            "type": "string",
+            "required": true,
+            "description": "Name of other income source"
+          },
+          "Income": {
+            "type": "number",
+            "required": true,
+            "description": "Amount of additional income"
+          }
+        }
+      }
+    }
+  },
+  "Financial_Accounts": {
+    "Accounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Account_Name": {
+            "type": "string",
+            "required": true,
+            "description": "Name associated with the financial account"
+          },
+          "Account_Type": {
+            "type": "string",
+            "required": true,
+            "description": "Type of financial account (e.g., Savings, Checking, Credit)"
+          },
+          "Account_Number": {
+            "type": "string",
+            "required": true,
+            "description": "Account number"
+          }
+        }
+      }
+    }
+  },
+  "Additional_Details": {
+    "Occupants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Occupant_Name": {
+            "type": "string",
+            "required": true,
+            "description": "Name of additional occupant"
+          },
+          "Occupant_Age": {
+            "type": "number",
+            "required": true,
+            "description": "Age of additional occupant"
+          },
+          "Occupant_Relationship": {
+            "type": "string",
+            "required": true,
+            "description": "Relationship of additional occupant to applicant"
+          }
+        }
+      }
+    },
+    "Vehicles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Vehicle_Make": {
+            "type": "string",
+            "required": true,
+            "description": "Make of vehicle"
+          },
+          "Vehicle_Model": {
+            "type": "string",
+            "required": true,
+            "description": "Model of vehicle"
+          },
+          "Vehicle_Year": {
+            "type": "string",
+            "required": true,
+            "description": "Year of vehicle"
+          },
+          "Vehicle_Color": {
+            "type": "string",
+            "required": true,
+            "description": "Color of vehicle"
+          },
+          "Vehicle_License_Plate_Number": {
+            "type": "string",
+            "required": true,
+            "description": "License plate number of vehicle"
+          },
+          "Vehicle_State": {
+            "type": "string",
+            "required": true,
+            "description": "State where the vehicle is registered"
+          }
+        }
+      }
+    },
+    "Pets": {
+      "Has_Pets": {
+        "type": "boolean",
+        "required": true,
+        "description": "Does the applicant have pets?"
+      },
+      "Pet_Details": {
+        "type": "string",
+        "required": false,
+        "description": "Details about the pets (type and breed)"
+      }
+    },
+    "Smoking": {
+      "Household_Smokes": {
+        "type": "boolean",
+        "required": true,
+        "description": "Do any household members smoke?"
+      }
+    },
+    "Criminal_History": {
+      "Convicted_of_Crime": {
+        "type": "boolean",
+        "required": true,
+        "description": "Has the applicant or any occupants been convicted of a crime?"
+      },
+      "Crime_Explanation": {
+        "type": "string",
+        "required": false,
+        "description": "Explanation of any criminal convictions"
+      }
+    },
+    "Bankruptcy_History": {
+      "Declared_Bankruptcy": {
+        "type": "boolean",
+        "required": true,
+        "description": "Has the applicant ever declared bankruptcy?"
+      },
+      "Bankruptcy_Explanation": {
+        "type": "string",
+        "required": false,
+        "description": "Explanation of any bankruptcies declared"
+      }
+    }
+  },
+  "Emergency_Contacts": {
+    "Contacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Contact_First_Name": {
+            "type": "string",
+            "required": true,
+            "description": "First name of emergency contact"
+          },
+          "Contact_Middle_Initial": {
+            "type": "string",
+            "required": false,
+            "description": "Middle initial of emergency contact"
+          },
+          "Contact_Last_Name": {
+            "type": "string",
+            "required": true,
+            "description": "Last name of emergency contact"
+          },
+          "Contact_Address": {
+            "type": "string",
+            "required": true,
+            "description": "Address of emergency contact"
+          },
+          "Contact_City_State_Zip": {
+            "type": "string",
+            "required": true,
+            "description": "City, state, and zip code of emergency contact's address"
+          },
+          "Emergency_Relationship": {
+            "type": "string",
+            "required": true,
+            "description": "Relationship of emergency contact to the applicant"
+          },
+          "Emergency_Phone_Number": {
+            "type": "string",
+            "required": true,
+            "description": "Phone number of emergency contact"
+          }
+        }
+      }
+    }
+  },
+  "Personal_References": {
+    "References": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Reference_First_Name": {
+            "type": "string",
+            "required": true,
+            "description": "First name of personal reference"
+          },
+          "Reference_Middle_Initial": {
+            "type": "string",
+            "required": false,
+            "description": "Middle initial of personal reference"
+          },
+          "Reference_Last_Name": {
+            "type": "string",
+            "required": true,
+            "description": "Last name of personal reference"
+          },
+          "Reference_Address": {
+            "type": "string",
+            "required": true,
+            "description": "Address of personal reference"
+          },
+          "Reference_City_State_Zip": {
+            "type": "string",
+            "required": true,
+            "description": "City, state, and zip code of personal reference's address"
+          },
+          "Reference_Relationship": {
+            "type": "string",
+            "required": true,
+            "description": "Relationship of personal reference to the applicant"
+          },
+          "Reference_Phone_Number": {
+            "type": "string",
+            "required": true,
+            "description": "Phone number of personal reference"
+          }
+        }
+      }
+    }
+  },
+  "Application_Confirmation_and_Signature": {
+    "Application_Fee_Option": {
+      "type": "string",
+      "required": true,
+      "enum": [
+        "No fee",
+        "Will pay a non-refundable fee"
+      ],
+      "description": "Applicant's choice regarding the application fee"
+    },
+    "Fee_Amount": {
+      "type": "number",
+      "required": false,
+      "description": "Amount of non-refundable application fee, if applicable"
+    },
+    "Applicant_Acknowledgement": {
+      "type": "string",
+      "required": true,
+      "description": "Applicant's acknowledgement that all provided statements are true"
+    },
+    "Applicant_Signature": {
+      "type": "string",
+      "required": true,
+      "description": "Signature of the applicant"
+    },
+    "Signature_Date": {
+      "type": "string",
+      "required": true,
+      "description": "Date of applicant's signature"
+    },
+    "Landlord_Signature": {
+      "type": "string",
+      "required": false,
+      "description": "Signature of the landlord"
+    },
+    "Landlord_Signature_Date": {
+      "type": "string",
+      "required": false,
+      "description": "Date of landlord's signature"
+    }
+  }
+}

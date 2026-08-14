@@ -1,0 +1,200 @@
+import { useState, useRef } from 'react';
+import { supabase } from '../lib/supabase';
+
+/**
+ * DocumentUpload component for uploading documents to Supabase Storage
+ * 
+ * Props:
+ * - leaseId: Integer (optional, ID of the lease this document belongs to)
+ * - tenantUserId: Integer (optional, user_id from clients table for application documents)
+ * - noticeId: Integer (optional, ID of the legal notice)
+ * - propertyId: Integer (optional, ID of the property)
+ * - unitId: Integer (optional, ID of the unit)
+ * - documentType: String (optional, e.g., 'filled_application', 'signed_lease')
+ * - onUploadSuccess: Function (callback when upload succeeds)
+ * - onUploadError: Function (callback when upload fails)
+ * - maxSize: Number (max file size in MB, default 10)
+ * - acceptedTypes: Array (accepted MIME types, default ['application/pdf', 'image/png', 'image/jpeg'])
+ */
+export default function DocumentUpload({
+  leaseId,
+  tenantUserId,
+  noticeId,
+  propertyId,
+  unitId,
+  documentType,
+  onUploadSuccess,
+  onUploadError,
+  maxSize = 10,
+  acceptedTypes = ['application/pdf', 'image/png', 'image/jpeg']
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+
+    // Validate file type
+    if (!acceptedTypes.includes(file.type)) {
+      onUploadError?.(new Error(`File type ${file.type} not allowed. Accepted types: ${acceptedTypes.join(', ')}`));
+      return;
+    }
+
+    // Validate file size
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > maxSize) {
+      onUploadError?.(new Error(`File size ${fileSizeMB.toFixed(2)}MB exceeds maximum of ${maxSize}MB`));
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64Data = reader.result;
+
+          // Get current user
+          const { data: { user } } = await supabase.auth.getUser();
+
+          // Build upload body with entity-specific fields
+          const uploadBody = {
+            file: base64Data,
+            file_name: file.name,
+            file_type: file.type,
+            mime_type: file.type,
+            document_type: documentType,
+            user_id: user?.id || null
+          };
+          
+          // Add entity-specific foreign keys if provided
+          if (leaseId) uploadBody.lease_id = leaseId;
+          if (tenantUserId) uploadBody.tenant_user_id = tenantUserId;
+          if (noticeId) uploadBody.notice_id = noticeId;
+          if (propertyId) uploadBody.property_id = propertyId;
+          if (unitId) uploadBody.unit_id = unitId;
+
+          // Upload via API
+          const response = await fetch('/api/documents/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(uploadBody)
+          });
+
+          const result = await response.json();
+
+          if (!result.success) {
+            throw new Error(result.error || 'Upload failed');
+          }
+
+          onUploadSuccess?.(result);
+        } catch (error) {
+          console.error('Upload error:', error);
+          onUploadError?.(error);
+        } finally {
+          setUploading(false);
+        }
+      };
+
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('File read error:', error);
+      onUploadError?.(error);
+      setUploading(false);
+    }
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleChange = (e) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      handleFile(e.target.files[0]);
+    }
+  };
+
+  return (
+    <div className="w-full">
+      <div
+        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+          dragActive
+            ? 'border-blue-500 bg-blue-50'
+            : 'border-gray-300 hover:border-gray-400'
+        } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept={acceptedTypes.join(',')}
+          onChange={handleChange}
+          disabled={uploading}
+        />
+
+        {uploading ? (
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+            <p className="text-gray-600">Uploading...</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center">
+            <svg
+              className="w-12 h-12 text-gray-400 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <p className="text-gray-600 mb-2">
+              Drag and drop a file here, or{' '}
+              <button
+                type="button"
+                className="text-blue-600 hover:text-blue-800 underline"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                browse
+              </button>
+            </p>
+            <p className="text-sm text-gray-500">
+              Accepted: {acceptedTypes.join(', ')} (max {maxSize}MB)
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+

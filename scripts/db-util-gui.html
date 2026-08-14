@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salish Landmark Database Utility</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .ssl-checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ssl-checkbox-group label {
+            display: inline;
+            margin-bottom: 0;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .ssl-checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        .form-actions button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .form-actions button[type="submit"] {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+        }
+        
+        .form-actions button[type="button"] {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        /* Statistics Section */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-card h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            margin: 0;
+        }
+        
+        .admin-list {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .admin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .admin-item:last-child {
+            border-bottom: none;
+        }
+        
+        .admin-name {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .admin-email {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        .no-database {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        .connection-status {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .connection-status.connected {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        
+        .connection-status.disconnected {
+            border-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        
+        .connection-status.testing {
+            border-color: #ffc107;
+            background-color: #fff3cd;
+        }
+        
+        .status-icon {
+            font-size: 18px;
+        }
+        
+        .status-text {
+            font-weight: 600;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+
+        .environment-list {
+            margin-bottom: 20px;
+        }
+
+        .selected-environment {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(108, 117, 125, 0.3);
+            position: relative;
+            overflow: hidden;
+            transition: background 0.3s ease;
+        }
+        
+        .selected-environment.connection-success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            box-shadow: 0 10px 30px rgba(39, 174, 96, 0.3);
+        }
+        
+        .selected-environment.connection-failed {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+            box-shadow: 0 10px 30px rgba(231, 76, 60, 0.3);
+        }
+
+        .selected-environment::before {
+            content: '?';
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .selected-environment.connection-success::before {
+            content: '✓';
+        }
+        
+        .selected-environment.connection-failed::before {
+            content: '✗';
+        }
+
+        .selected-environment h3 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .selected-environment p {
+            opacity: 0.9;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .selected-environment .status-indicator {
+            background: white;
+            width: 15px;
+            height: 15px;
+            margin-right: 10px;
+        }
+
+        .unselected-environments {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding: 10px 0;
+            margin-bottom: 20px;
+        }
+
+        .unselected-environments::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .unselected-environments::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .unselected-environments::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        .unselected-environments::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        .environment-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+            min-width: 250px;
+            flex-shrink: 0;
+        }
+
+        .environment-card:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .environment-card.active {
+            border-color: #27ae60;
+            background: #f8fff8;
+        }
+        
+        .environment-card.connection-success {
+            border-color: #27ae60;
+            background: #f8fff8;
+        }
+        
+        .environment-card.connection-failed {
+            border-color: #e74c3c;
+            background: #ffeaea;
+        }
+
+        .environment-card.unselected {
+            opacity: 0.6;
+            transform: scale(0.95);
+            background: #f8f9fa;
+            border-color: #dee2e6;
+        }
+        
+        .environment-card.unselected.connection-failed {
+            background: #ffeaea;
+            border-color: #e74c3c;
+            opacity: 0.9;
+        }
+
+        .environment-card.unselected:hover {
+            opacity: 0.8;
+            transform: scale(0.98);
+        }
+
+        .environment-card h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .environment-card.unselected h3 {
+            color: #6c757d;
+            font-size: 1em;
+        }
+
+        .environment-card p {
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .environment-card.unselected p {
+            color: #adb5bd;
+            font-size: 0.8em;
+        }
+
+        .environment-card.unselected .btn {
+            display: inline-block;
+            font-size: 0.75em;
+            padding: 5px 10px;
+            margin: 2px;
+        }
+
+        .environment-card.unselected .btn:first-of-type {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        }
+
+        .environment-card.unselected .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+
+        .environment-card.unselected .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background: #27ae60;
+        }
+
+        .status-disconnected {
+            background: #e74c3c;
+        }
+
+        .status-unknown {
+            background: #f39c12;
+        }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .action-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .action-card:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .action-card h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .action-card p {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #2c3e50;
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        /* Structured modal layout (header, body, footer) */
+        .modal-structured {
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            max-height: 90vh;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5em;
+            color: #2c3e50;
+        }
+
+        .modal-header .close {
+            position: static;
+            font-size: 28px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .modal-header .close:hover {
+            color: #000;
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 16px 24px;
+            border-top: 1px solid #e0e0e0;
+            flex-shrink: 0;
+            background: #f8f9fa;
+        }
+
+        .structured-modal {
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+            overflow: hidden;
+        }
+
+        .structured-modal form {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+
+        .structured-modal .modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .structured-modal .modal-header h3 {
+            margin: 0;
+            font-size: 1.4em;
+            color: #2c3e50;
+        }
+
+        .structured-modal .modal-header .close {
+            float: none;
+            position: static;
+            font-size: 28px;
+            margin-left: 15px;
+        }
+
+        .structured-modal .modal-body {
+            padding: 20px 30px;
+            overflow-y: auto;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+
+        .structured-modal .modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            background: #fafafa;
+            flex-shrink: 0;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .log-output {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 Salish Landmark Database Utility</h1>
+            <p>Manage your database environments with ease</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Environment Management Section -->
+            <div class="section">
+                <h2>🌍 Environment Management</h2>
+                <div id="environmentList" class="environment-list">
+                    <!-- Environments will be loaded here -->
+                </div>
+                <div style="margin-top: 20px;">
+                    <button class="btn" onclick="showAddEnvironmentModal()">Add New Environment</button>
+                    <button class="btn btn-warning" onclick="refreshEnvironments()">Refresh</button>
+                </div>
+            </div>
+
+            <!-- Database Actions Section -->
+            <div class="section" id="actionsSection" style="display: none;">
+                <h2>🔧 Database Actions</h2>
+                <div class="actions-grid">
+                    <div class="action-card" onclick="executeAction('initialize')">
+                        <h4>🚀 Initialize Database</h4>
+                        <p>Create tables and Global Admin</p>
+                    </div>
+                    <div class="action-card" onclick="executeAction('createAdmin')">
+                        <h4>👤 Create Additional Global Admin</h4>
+                        <p>Add new admin user</p>
+                    </div>
+                    <div class="action-card" onclick="executeAction('migrate')">
+                        <h4>🔄 Run Migrations</h4>
+                        <p>Apply schema changes</p>
+                    </div>
+                    <div class="action-card" onclick="executeAction('drop')">
+                        <h4>🗑️ Drop Database</h4>
+                        <p>Remove database</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Section -->
+            <div class="section" id="statsSection">
+                <h3>📊 Database Statistics</h3>
+                <div id="statsContent">
+                    <p>Loading statistics...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Environment Modal -->
+    <div id="addEnvironmentModal" class="modal">
+        <div class="modal-content modal-structured">
+            <!-- Fixed Header -->
+            <div class="modal-header">
+                <h2>Add New Environment</h2>
+                <span class="close" onclick="closeModal('addEnvironmentModal')">&times;</span>
+            </div>
+            
+            <!-- Scrollable Body -->
+            <div class="modal-body">
+                <form id="environmentForm">
+                    <div class="form-group">
+                        <label for="envType">Type:</label>
+                        <select id="envType" onchange="toggleConnectionFields()">
+                            <option value="supabase">Supabase</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="envName">Environment Name:</label>
+                        <input type="text" id="envName" required>
+                    </div>
+                    <div id="supabaseFields" style="display: none;">
+                        <div class="form-group">
+                            <label>Supabase Setup:</label>
+                            <div style="margin-bottom: 15px;">
+                                <button type="button" class="btn btn-info" onclick="openSupabaseDashboard()" style="margin-right: 10px;">
+                                    🚀 Create New Supabase Project
+                                </button>
+                                <button type="button" class="btn" onclick="showSupabaseKeyHelp()">
+                                    📋 How to Get API Keys
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="supabaseUrl">Supabase Project URL:</label>
+                            <input type="text" id="supabaseUrl" placeholder="https://your-project-ref.supabase.co">
+                            <small style="color: #6c757d; font-size: 0.9em; margin-top: 5px; display: block;">
+                                Get this from your Supabase project → Settings → API
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label for="supabasePublishableKey">Supabase Publishable Key:</label>
+                            <input type="text" id="supabasePublishableKey" placeholder="sb_publishable_...">
+                            <small style="color: #6c757d; font-size: 0.9em; margin-top: 5px; display: block;">
+                                Get this from your Supabase project → Settings → API → Project API keys
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label for="supabaseSecretKey">Supabase Secret Key:</label>
+                            <input type="password" id="supabaseSecretKey" placeholder="sb_secret_...">
+                            <small style="color: #6c757d; font-size: 0.9em; margin-top: 5px; display: block;">
+                                Get this from your Supabase project → Settings → API → Project API keys
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label for="supabaseDatabasePassword">Database Password:</label>
+                            <input type="password" id="supabaseDatabasePassword" placeholder="Your database password">
+                            <small style="color: #6c757d; font-size: 0.9em; margin-top: 5px; display: block;">
+                                This is your actual database password (not the API keys). Get this from Supabase → Settings → Database
+                            </small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Fixed Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="closeModal('addEnvironmentModal')">Cancel</button>
+                <button type="submit" form="environmentForm" class="btn btn-success">Add Environment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Environment Modal -->
+    <div id="editEnvironmentModal" class="modal">
+        <div class="modal-content modal-structured">
+            <!-- Fixed Header -->
+            <div class="modal-header">
+                <h2>Edit Environment</h2>
+                <span class="close" onclick="closeModal('editEnvironmentModal')">&times;</span>
+            </div>
+            
+            <!-- Scrollable Body -->
+            <div class="modal-body">
+                <form id="editEnvironmentForm">
+                    <div class="form-group">
+                        <label for="editEnvName">Environment Name:</label>
+                        <input type="text" id="editEnvName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editEnvType">Type:</label>
+                        <select id="editEnvType" onchange="toggleEditConnectionFields()">
+                            <option value="supabase">Supabase</option>
+                        </select>
+                    </div>
+                    <div id="editSupabaseFields" style="display: none;">
+                        <div class="form-group">
+                            <label for="editSupabaseUrl">Supabase Project URL:</label>
+                            <input type="text" id="editSupabaseUrl" placeholder="https://your-project-ref.supabase.co">
+                            <small style="color: #6c757d; font-size: 0.9em; margin-top: 5px; display: block;">
+                                Get this from your Supabase project → Settings → API
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label for="editSupabasePublishableKey">Supabase Publishable Key:</label>
+                            <input type="text" id="editSupabasePublishableKey" placeholder="sb_publishable_...">
+                            <small style="color: #6c757d; font-size: 0.9em; margin-top: 5px; display: block;">
+                                Get this from your Supabase project → Settings → API → Project API keys
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label for="editSupabaseSecretKey">Supabase Secret Key:</label>
+                            <input type="password" id="editSupabaseSecretKey" placeholder="sb_secret_...">
+                            <small style="color: #6c757d; font-size: 0.9em; margin-top: 5px; display: block;">
+                                Get this from your Supabase project → Settings → API → Project API keys
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label for="editSupabaseDatabasePassword">Database Password:</label>
+                            <input type="password" id="editSupabaseDatabasePassword" placeholder="Your database password">
+                            <small style="color: #6c757d; font-size: 0.9em; margin-top: 5px; display: block;">
+                                This is your actual database password (not the API keys). Get this from Supabase → Settings → Database
+                            </small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Fixed Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="closeModal('editEnvironmentModal')">Cancel</button>
+                <button type="submit" form="editEnvironmentForm" class="btn btn-success">Update Environment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Modal -->
+    <div id="logModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('logModal')">&times;</span>
+            <h2>Operations Log</h2>
+            <div id="logOutput" class="log-output"></div>
+            <button class="btn" onclick="closeModal('logModal')">Close</button>
+        </div>
+    </div>
+
+    <script>
+        let environments = [];
+        let currentEnvironment = null;
+        let editingEnvironmentIndex = null;
+        // Store connection status for each environment to preserve it during re-renders
+        let environmentConnectionStatus = {}; // { envName: 'success' | 'failed' | null }
+
+        // Load environments on page load
+        window.onload = async function() {
+            // Note: We don't show a loading alert here because updateStatistics(true) 
+            // will call testConnectionWithUI which shows its own connection testing alert
+            await loadEnvironments();
+            
+            // Prevent modals from closing when clicking inside them
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+            });
+        };
+
+        // Load environments from server JSON file ONLY
+        async function loadEnvironments() {
+            // Load from server JSON file (ONLY source)
+            try {
+                const response = await fetch('/api/environments');
+                if (response.ok) {
+                    const serverData = await response.json();
+                    environments = serverData.environments || [];
+                    console.log('✅ Loaded environments from server JSON file:', environments.length);
+                } else {
+                    console.log('⚠️ Server returned error, using empty array');
+                    environments = [];
+                }
+            } catch (error) {
+                console.log('❌ Could not load from server:', error);
+                environments = [];
+            }
+            
+            // Load selected environment from server ONLY
+            let selectedEnvName = null;
+            
+            // Get from server ONLY
+            try {
+                const response = await fetch('/api/selected-environment');
+                if (response.ok) {
+                    const serverData = await response.json();
+                    selectedEnvName = serverData.selectedEnvironment;
+                    console.log('✅ Loaded selected environment from server:', selectedEnvName);
+                }
+            } catch (error) {
+                console.log('⚠️ Could not load selected environment from server');
+            }
+            
+            if (selectedEnvName && environments.length > 0) {
+                const selectedEnv = environments.find(env => env.name === selectedEnvName);
+                if (selectedEnv) {
+                    currentEnvironment = selectedEnv;
+                    document.getElementById('actionsSection').style.display = 'block';
+                    renderEnvironments();
+                    // Auto-test connection and update statistics for selected environment
+                    // Show UI alerts on initial load so user sees connection status
+                    await updateStatistics(true); // Pass true to show UI alerts on initial load
+                } else {
+                    renderEnvironments();
+                }
+            } else if (environments.length === 0) {
+                // No environments available, show message
+                const statsContent = document.getElementById('statsContent');
+                if (statsContent) {
+                    statsContent.innerHTML = '<p class="no-database">No environments configured. Add an environment to get started.</p>';
+                }
+                renderEnvironments();
+            } else {
+                renderEnvironments();
+            }
+        }
+
+        // Save environments to server JSON file ONLY
+        async function saveEnvironments() {
+            // Save to server JSON file (ONLY)
+            try {
+                const response = await fetch('/api/environments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(environments)
+                });
+                if (response.ok) {
+                    console.log('✅ Environments saved to server JSON file');
+                } else {
+                    console.log('❌ Failed to save environments to server');
+                }
+            } catch (error) {
+                console.log('❌ Could not save to server:', error);
+            }
+        }
+        
+        // Sync environments to server
+        async function syncEnvironmentsToServer() {
+            try {
+                await fetch('/api/environments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(environments)
+                });
+            } catch (error) {
+                console.log('Could not sync to server');
+            }
+        }
+
+        // Save selected environment to server ONLY
+        async function saveSelectedEnvironment() {
+            try {
+                const environmentName = currentEnvironment ? currentEnvironment.name : null;
+                const response = await fetch('/api/selected-environment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ environmentName: environmentName })
+                });
+                if (response.ok) {
+                    console.log('✅ Selected environment saved to server:', environmentName);
+                } else {
+                    console.log('❌ Failed to save selected environment to server');
+                }
+            } catch (error) {
+                console.log('❌ Could not save selected environment to server:', error);
+            }
+        }
+
+        // Render environments list
+        function renderEnvironments() {
+            const container = document.getElementById('environmentList');
+            container.innerHTML = '';
+
+            if (environments.length === 0) {
+                container.innerHTML = '<p>No environments configured. Add one to get started!</p>';
+                return;
+            }
+
+            // Restore connection status class if it exists
+            const connectionStatus = currentEnvironment ? environmentConnectionStatus[currentEnvironment.name] : null;
+            const statusClass = connectionStatus === 'success' ? 'connection-success' : 
+                               connectionStatus === 'failed' ? 'connection-failed' : '';
+            
+            // Create selected environment display
+            if (currentEnvironment) {
+                const selectedDiv = document.createElement('div');
+                selectedDiv.className = `selected-environment ${statusClass}`.trim();
+                // Get display information based on environment type
+                let displayInfo = {
+                    type: currentEnvironment.type,
+                    database: currentEnvironment.database || 'N/A',
+                    host: currentEnvironment.host || 'N/A'
+                };
+                
+                if (currentEnvironment.type === 'supabase' && currentEnvironment.supabaseUrl) {
+                    displayInfo.database = 'postgres';
+                    displayInfo.host = currentEnvironment.supabaseUrl.replace('https://', '').replace('.supabase.co', '');
+                }
+                
+                selectedDiv.innerHTML = `
+                    <h3>${currentEnvironment.name} <span class="status-indicator status-unknown"></span></h3>
+                    <p><strong>Type:</strong> ${displayInfo.type.charAt(0).toUpperCase() + displayInfo.type.slice(1)}</p>
+                    <p><strong>Database:</strong> ${displayInfo.database}</p>
+                    <p><strong>Host:</strong> ${displayInfo.host}</p>
+                    <div style="margin-top: 15px;">
+                        <button class="btn" onclick="testConnectionFromButton(${environments.findIndex(e => e.name === currentEnvironment.name)})" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); color: #2c3e50; border: 2px solid #27ae60;">Test Connection</button>
+                        <button class="btn btn-info" onclick="editEnvironment(${environments.findIndex(e => e.name === currentEnvironment.name)})" style="margin-left: 10px;">Edit</button>
+                    </div>
+                `;
+                container.appendChild(selectedDiv);
+            }
+
+            // Create unselected environments horizontal scroll
+            const unselectedEnvs = environments.filter(env => !currentEnvironment || env.name !== currentEnvironment.name);
+            if (unselectedEnvs.length > 0) {
+                const unselectedDiv = document.createElement('div');
+                unselectedDiv.className = 'unselected-environments';
+                
+                unselectedEnvs.forEach((env, index) => {
+                    const originalIndex = environments.findIndex(e => e.name === env.name);
+                    const envStatus = environmentConnectionStatus[env.name];
+                    const envStatusClass = envStatus === 'success' ? 'connection-success' : 
+                                          envStatus === 'failed' ? 'connection-failed' : '';
+                    const card = document.createElement('div');
+                    card.className = `environment-card unselected ${envStatusClass}`.trim();
+                    // Get display information based on environment type
+                    let displayInfo = {
+                        type: env.type,
+                        database: env.database || 'N/A',
+                        host: env.host || 'N/A'
+                    };
+                    
+                    if (env.type === 'supabase' && env.supabaseUrl) {
+                        displayInfo.database = 'postgres';
+                        displayInfo.host = env.supabaseUrl.replace('https://', '').replace('.supabase.co', '');
+                    }
+                    
+                    card.innerHTML = `
+                        <h3>${env.name} <span class="status-indicator status-unknown"></span></h3>
+                        <p><strong>Type:</strong> ${displayInfo.type.charAt(0).toUpperCase() + displayInfo.type.slice(1)}</p>
+                        <p><strong>Database:</strong> ${displayInfo.database}</p>
+                        <p><strong>Host:</strong> ${displayInfo.host}</p>
+                        <div style="margin-top: 15px;">
+                            <button class="btn" onclick="selectEnvironment(${originalIndex})">Select</button>
+                            <button class="btn btn-info" onclick="editEnvironment(${originalIndex})" style="margin-left: 4px; font-size: 0.8em; padding: 6px 12px;">Edit</button>
+                            <button class="btn btn-danger" onclick="deleteEnvironment(${originalIndex})" style="margin-left: 4px; font-size: 0.8em; padding: 6px 12px;">Delete</button>
+                        </div>
+                    `;
+                    unselectedDiv.appendChild(card);
+                });
+                
+                container.appendChild(unselectedDiv);
+            }
+        }
+
+        // Select environment
+        function selectEnvironment(index) {
+            currentEnvironment = environments[index];
+            document.getElementById('actionsSection').style.display = 'block';
+            updateStatistics();
+            saveSelectedEnvironment();
+            renderEnvironments();
+            showAlert('Environment selected: ' + currentEnvironment.name, 'success');
+        }
+
+        // Deselect environment
+        function deselectEnvironment() {
+            currentEnvironment = null;
+            document.getElementById('actionsSection').style.display = 'none';
+            document.getElementById('statsSection').style.display = 'none';
+            saveSelectedEnvironment();
+            renderEnvironments();
+            showAlert('Environment deselected', 'info');
+        }
+
+        // Delete environment
+        function deleteEnvironment(index) {
+            if (confirm('Are you sure you want to delete this environment?')) {
+                const envToDelete = environments[index];
+                environments.splice(index, 1);
+                
+                if (currentEnvironment && currentEnvironment.name === envToDelete.name) {
+                    currentEnvironment = null;
+                    document.getElementById('actionsSection').style.display = 'none';
+                    document.getElementById('statsSection').style.display = 'none';
+                    saveSelectedEnvironment();
+                }
+                
+                saveEnvironments();
+                renderEnvironments();
+                showAlert('Environment deleted', 'success');
+            }
+        }
+
+        // Test connection (called from button click with index)
+        async function testConnectionFromButton(index) {
+            const env = environments[index];
+            await testConnectionWithUI(env, true);
+            // Update statistics after connection test to refresh the database stats area
+            await updateStatistics(false); // Don't show UI alerts again, we already showed them
+        }
+        
+        // Test connection with UI updates
+        async function testConnectionWithUI(env, showUI = true) {
+            if (!env) {
+                if (currentEnvironment) {
+                    env = currentEnvironment;
+                } else {
+                    showAlert('No environment selected', 'warning');
+                    return { success: false, message: 'No environment selected' };
+                }
+            }
+            
+            // Show persistent testing message
+            let testingAlert = null;
+            if (showUI) {
+                testingAlert = document.createElement('div');
+                testingAlert.id = 'testing-connection-alert';
+                testingAlert.className = 'alert alert-info';
+                testingAlert.style.position = 'relative';
+                testingAlert.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="loading" style="width: 16px; height: 16px; border-width: 2px;"></div>
+                        <span>Testing connection to <strong>${env.name}</strong>... This may take a moment.</span>
+                    </div>
+                `;
+                const container = document.querySelector('.main-content');
+                if (container) {
+                    container.insertBefore(testingAlert, container.firstChild);
+                }
+            }
+            
+            // Helper function to update environment card background
+            const updateEnvironmentCardBackground = (success) => {
+                // Find selected environment div (query again in case DOM changed)
+                const selectedEnvDiv = document.querySelector('.selected-environment');
+                if (selectedEnvDiv) {
+                    // Check if this is the right environment - if currentEnvironment matches or h3 contains the name
+                    const h3Element = selectedEnvDiv.querySelector('h3');
+                    const h3Text = h3Element?.textContent?.trim() || '';
+                    const isCurrentEnv = currentEnvironment && currentEnvironment.name === env.name;
+                    const h3Matches = h3Text && env.name && h3Text.includes(env.name);
+                    
+                    if (isCurrentEnv || h3Matches) {
+                        if (success) {
+                            selectedEnvDiv.classList.add('connection-success');
+                            selectedEnvDiv.classList.remove('connection-failed');
+                            environmentConnectionStatus[env.name] = 'success';
+                        } else {
+                            selectedEnvDiv.classList.add('connection-failed');
+                            selectedEnvDiv.classList.remove('connection-success');
+                            environmentConnectionStatus[env.name] = 'failed';
+                        }
+                    }
+                }
+                
+                // Also update unselected environment cards
+                const envCards = document.querySelectorAll('.environment-card');
+                envCards.forEach(card => {
+                    const cardName = card.querySelector('h3')?.textContent?.trim().split(' ')[0];
+                    if (cardName === env.name) {
+                        if (success) {
+                            card.classList.add('connection-success');
+                            card.classList.remove('connection-failed');
+                            environmentConnectionStatus[env.name] = 'success';
+                        } else {
+                            card.classList.add('connection-failed');
+                            card.classList.remove('connection-success');
+                            environmentConnectionStatus[env.name] = 'failed';
+                        }
+                    }
+                });
+            };
+            
+            // Don't clear status classes here - we want to preserve them until we know the new result
+            // The status will be updated below based on the actual connection result
+            
+            try {
+                const response = await fetch('/api/test-connection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ environment: env })
+                });
+                
+                // Remove testing message
+                if (testingAlert) {
+                    testingAlert.remove();
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (showUI) {
+                        showAlert('Connection successful!', 'success');
+                    }
+                    updateEnvironmentCardBackground(true);
+                    return result;
+                } else {
+                    if (showUI) {
+                        showAlert('Connection failed: ' + result.message, 'danger', 8000);
+                        // Check if this is a network/DNS error and ask about VPN
+                        if (result.vpnCheck || result.details?.code === 'ENOTFOUND' || result.details?.code === 'ETIMEDOUT' || result.details?.code === 'ECONNREFUSED') {
+                            setTimeout(() => {
+                                const hasVPN = confirm('Connection failed due to a network/DNS issue.\n\nDo you have a VPN turned on?\n\nVPNs can interfere with database connections. If you have a VPN active, try:\n1. Disconnecting from the VPN\n2. Testing the connection again\n\nClick OK if you have a VPN, Cancel if not.');
+                                if (hasVPN) {
+                                    showAlert('Please disconnect from your VPN and try connecting again.', 'warning', 10000);
+                                }
+                            }, 1000);
+                        }
+                    }
+                    updateEnvironmentCardBackground(false);
+                    return result;
+                }
+            } catch (error) {
+                // Remove testing message
+                if (testingAlert) {
+                    testingAlert.remove();
+                }
+                
+                if (showUI) {
+                    showAlert('Connection failed: ' + error.message, 'danger', 8000);
+                    // Check if this is a network/DNS error and ask about VPN
+                    if (error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED' || error.message?.includes('getaddrinfo')) {
+                        setTimeout(() => {
+                            const hasVPN = confirm('Connection failed due to a network/DNS issue.\n\nDo you have a VPN turned on?\n\nVPNs can interfere with database connections. If you have a VPN active, try:\n1. Disconnecting from the VPN\n2. Testing the connection again\n\nClick OK if you have a VPN, Cancel if not.');
+                            if (hasVPN) {
+                                showAlert('Please disconnect from your VPN and try connecting again.', 'warning', 10000);
+                            }
+                        }, 1000);
+                    }
+                }
+                updateEnvironmentCardBackground(false);
+                
+                return { success: false, message: error.message };
+            } finally {
+                // Don't call updateStatistics here - it causes an infinite loop
+                // Statistics will be updated when needed (e.g., after initialization)
+                
+                if (showUI) {
+                    // Scroll to top to show the result
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+        }
+
+        // Show add environment modal
+        function showAddEnvironmentModal() {
+            // Clear all form fields
+            document.getElementById('envName').value = '';
+            document.getElementById('envType').value = 'supabase';
+            document.getElementById('supabaseUrl').value = '';
+            document.getElementById('supabasePublishableKey').value = '';
+            document.getElementById('supabaseSecretKey').value = '';
+            document.getElementById('supabaseDatabasePassword').value = '';
+            
+            // Reset field visibility
+            toggleConnectionFields();
+            
+            document.getElementById('addEnvironmentModal').style.display = 'block';
+        }
+
+        // Edit environment
+        function editEnvironment(index) {
+            const env = environments[index];
+            if (!env) {
+                console.error('Environment not found at index:', index);
+                return;
+            }
+            
+            editingEnvironmentIndex = index;
+            
+            // Helper function to safely set value
+            function safeSetValue(elementId, value) {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.value = value || '';
+                } else {
+                    console.warn(`Element not found: ${elementId}`);
+                }
+            }
+            
+            // Helper function to safely set placeholder
+            function safeSetPlaceholder(elementId, placeholder) {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.placeholder = placeholder || '';
+                }
+            }
+            
+            // Clear form first to ensure clean state
+            safeSetValue('editEnvName', '');
+            safeSetValue('editEnvType', 'supabase'); // Default to supabase since that's the only option
+            
+            // Only clear local fields if they exist (they won't for supabase-only modal)
+            const editHost = document.getElementById('editHost');
+            const editPort = document.getElementById('editPort');
+            const editDatabase = document.getElementById('editDatabase');
+            const editUsername = document.getElementById('editUsername');
+            const editPassword = document.getElementById('editPassword');
+            
+            if (editHost) safeSetValue('editHost', 'localhost');
+            if (editPort) safeSetValue('editPort', '5432');
+            if (editDatabase) safeSetValue('editDatabase', '');
+            if (editUsername) safeSetValue('editUsername', 'postgres');
+            if (editPassword) safeSetValue('editPassword', '');
+            
+            safeSetValue('editSupabaseUrl', '');
+            safeSetValue('editSupabasePublishableKey', '');
+            safeSetValue('editSupabaseSecretKey', '');
+            safeSetValue('editSupabaseDatabasePassword', '');
+            
+            // Populate form with existing data
+            safeSetValue('editEnvName', env.name);
+            safeSetValue('editEnvType', env.type || 'supabase');
+            
+            if (env.type === 'local') {
+                if (editHost) safeSetValue('editHost', env.host || 'localhost');
+                if (editPort) safeSetValue('editPort', env.port || 5432);
+                if (editDatabase) safeSetValue('editDatabase', env.database || '');
+                if (editUsername) safeSetValue('editUsername', env.username || 'postgres');
+                if (editPassword) safeSetValue('editPassword', ''); // Don't show password
+            } else {
+                // Supabase environment
+                safeSetValue('editSupabaseUrl', env.supabaseUrl || '');
+                safeSetValue('editSupabasePublishableKey', env.supabasePublishableKey || '');
+                safeSetValue('editSupabaseSecretKey', ''); // Don't show secret key for security
+                safeSetPlaceholder('editSupabaseSecretKey', env.supabaseSecretKey ? 'Secret key is set (hidden for security)' : 'Enter secret key');
+                safeSetValue('editSupabaseDatabasePassword', ''); // Don't show database password for security
+                safeSetPlaceholder('editSupabaseDatabasePassword', env.supabaseDatabasePassword ? 'Database password is set (hidden for security)' : 'Enter database password');
+            }
+            
+            toggleEditConnectionFields();
+            
+            document.getElementById('editEnvironmentModal').style.display = 'block';
+            
+            // Reset modal scroll position after modal is displayed
+            setTimeout(() => {
+                const modal = document.getElementById('editEnvironmentModal');
+                const modalBody = modal.querySelector('.modal-body');
+                if (modalBody) {
+                    modalBody.scrollTop = 0;
+                }
+            }, 10);
+        }
+
+        // Close modal
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.style.display = 'none';
+            
+            // Clear add environment form when closing
+            if (modalId === 'addEnvironmentModal') {
+                document.getElementById('envName').value = '';
+                document.getElementById('envType').value = 'supabase';
+                document.getElementById('supabaseUrl').value = '';
+                document.getElementById('supabasePublishableKey').value = '';
+                document.getElementById('supabaseSecretKey').value = '';
+                document.getElementById('supabaseDatabasePassword').value = '';
+                toggleConnectionFields();
+            }
+            
+            // Clear edit environment form when closing
+            if (modalId === 'editEnvironmentModal') {
+                const editEnvName = document.getElementById('editEnvName');
+                const editEnvType = document.getElementById('editEnvType');
+                const editSupabaseUrl = document.getElementById('editSupabaseUrl');
+                const editSupabasePublishableKey = document.getElementById('editSupabasePublishableKey');
+                const editSupabaseSecretKey = document.getElementById('editSupabaseSecretKey');
+                const editSupabaseDatabasePassword = document.getElementById('editSupabaseDatabasePassword');
+                
+                if (editEnvName) editEnvName.value = '';
+                if (editEnvType) editEnvType.value = 'supabase';
+                if (editSupabaseUrl) editSupabaseUrl.value = '';
+                if (editSupabasePublishableKey) editSupabasePublishableKey.value = '';
+                if (editSupabaseSecretKey) {
+                    editSupabaseSecretKey.value = '';
+                    editSupabaseSecretKey.placeholder = '';
+                }
+                if (editSupabaseDatabasePassword) {
+                    editSupabaseDatabasePassword.value = '';
+                    editSupabaseDatabasePassword.placeholder = '';
+                }
+                toggleEditConnectionFields();
+                
+                // Reset modal scroll position
+                const modal = document.getElementById('editEnvironmentModal');
+                const modalBody = modal?.querySelector('.modal-body');
+                if (modalBody) {
+                    modalBody.scrollTop = 0;
+                }
+            }
+        }
+
+        // Toggle connection fields based on type
+        function toggleConnectionFields() {
+            const type = document.getElementById('envType').value;
+            const supabaseFields = document.getElementById('supabaseFields');
+            
+            if (type === 'supabase') {
+                supabaseFields.style.display = 'block';
+            } else {
+                supabaseFields.style.display = 'none';
+            }
+        }
+
+        // Toggle edit connection fields based on type
+        function toggleEditConnectionFields() {
+            const type = document.getElementById('editEnvType').value;
+            const supabaseFields = document.getElementById('editSupabaseFields');
+            
+            if (type === 'supabase') {
+                supabaseFields.style.display = 'block';
+            } else {
+                supabaseFields.style.display = 'none';
+            }
+        }
+
+        // Handle environment form submission
+        document.getElementById('environmentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const envType = document.getElementById('envType').value;
+            
+            // Validate Supabase environment
+            if (envType === 'supabase') {
+                const supabaseUrl = document.getElementById('supabaseUrl').value;
+                const publishableKey = document.getElementById('supabasePublishableKey').value;
+                const secretKey = document.getElementById('supabaseSecretKey').value;
+                const databasePassword = document.getElementById('supabaseDatabasePassword').value;
+                
+                if (!supabaseUrl.trim()) {
+                    showAlert('Supabase Project URL is required!', 'danger');
+                    document.getElementById('supabaseUrl').focus();
+                    return;
+                }
+                
+                if (!publishableKey.trim()) {
+                    showAlert('Supabase Publishable Key is required!', 'danger');
+                    document.getElementById('supabasePublishableKey').focus();
+                    return;
+                }
+                
+                if (!secretKey.trim()) {
+                    showAlert('Supabase Secret Key is required!', 'danger');
+                    document.getElementById('supabaseSecretKey').focus();
+                    return;
+                }
+                
+                if (!databasePassword.trim()) {
+                    showAlert('Database Password is required!', 'danger');
+                    document.getElementById('supabaseDatabasePassword').focus();
+                    return;
+                }
+                
+                if (!publishableKey.startsWith('sb_publishable_')) {
+                    showAlert('Publishable key should start with "sb_publishable_"', 'warning');
+                    return;
+                }
+                
+                if (!secretKey.startsWith('sb_secret_')) {
+                    showAlert('Secret key should start with "sb_secret_"', 'warning');
+                    return;
+                }
+            }
+            
+            let newEnv = {
+                name: document.getElementById('envName').value,
+                type: envType
+            };
+            
+            newEnv.supabaseUrl = document.getElementById('supabaseUrl').value;
+            newEnv.supabasePublishableKey = document.getElementById('supabasePublishableKey').value;
+            newEnv.supabaseSecretKey = document.getElementById('supabaseSecretKey').value;
+            newEnv.supabaseDatabasePassword = document.getElementById('supabaseDatabasePassword').value;
+            
+            environments.push(newEnv);
+            saveEnvironments();
+            renderEnvironments();
+            closeModal('addEnvironmentModal');
+            showAlert('Environment added successfully!', 'success');
+        });
+
+        // Handle edit environment form submission
+        document.getElementById('editEnvironmentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const envType = document.getElementById('editEnvType').value;
+            
+            let updatedEnv = {
+                name: document.getElementById('editEnvName').value,
+                type: envType
+            };
+            
+            updatedEnv.supabaseUrl = document.getElementById('editSupabaseUrl').value;
+            updatedEnv.supabasePublishableKey = document.getElementById('editSupabasePublishableKey').value;
+            updatedEnv.supabaseSecretKey = document.getElementById('editSupabaseSecretKey').value;
+            updatedEnv.supabaseDatabasePassword = document.getElementById('editSupabaseDatabasePassword').value;
+            
+            // Update the environment
+            environments[editingEnvironmentIndex] = updatedEnv;
+            
+            // If this was the current environment, update it
+            if (currentEnvironment && currentEnvironment.name === environments[editingEnvironmentIndex].name) {
+                currentEnvironment = updatedEnv;
+            }
+            
+            saveEnvironments();
+            renderEnvironments();
+            closeModal('editEnvironmentModal');
+            showAlert('Environment updated successfully!', 'success');
+            
+            // Automatically test connection and update statistics
+            if (currentEnvironment && currentEnvironment.name === updatedEnv.name) {
+                showAlert('Testing connection...', 'info');
+                try {
+                    const response = await fetch('/api/test-connection', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatedEnv)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showAlert('Connection successful!', 'success');
+                    } else {
+                        showAlert('Connection failed: ' + result.message, 'danger');
+                    }
+                    
+                    // Update statistics with the new environment
+                    updateStatistics();
+                } catch (error) {
+                    showAlert('Connection test failed: ' + error.message, 'danger');
+                    updateStatistics();
+                }
+            }
+        });
+
+        // Execute database action
+        async function executeAction(action) {
+            if (!currentEnvironment) {
+                showAlert('Please select an environment first', 'warning');
+                return;
+            }
+            
+            showLogModal();
+            addLog(`Starting ${action} operation on ${currentEnvironment.name}...`);
+            
+            try {
+                let response;
+                
+                switch (action) {
+                    case 'initialize':
+                        addLog('Starting database initialization...');
+                        
+                        // Collect user data for Global Admin
+                        addLog('Opening user data collection modal...');
+                        const userData = await collectUserData('initialize');
+                        addLog('User data collection completed');
+                        if (!userData) {
+                            addLog('❌ User data collection cancelled');
+                            closeLogModal();
+                            return;
+                        }
+                        addLog('User data collected successfully');
+                        
+                        addLog('Sending request to server...');
+                        response = await fetch('/api/initialize', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ environment: currentEnvironment, userData })
+                        });
+                        break;
+                        
+                    case 'migrate':
+                        addLog('Starting migration process...');
+                        response = await fetch('/api/migrate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ environment: currentEnvironment })
+                        });
+                        break;
+                        
+                    case 'createAdmin':
+                        const adminData = await collectUserData('createAdmin');
+                        if (!adminData) {
+                            addLog('❌ User data collection cancelled');
+                            closeLogModal();
+                            return;
+                        }
+                        
+                        addLog('Sending request to server...');
+                        response = await fetch('/api/create-admin', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ environment: currentEnvironment, userData: adminData })
+                        });
+                        break;
+                        
+                    case 'drop':
+                        addLog('⚠️ WARNING: This will permanently delete ALL tables and data!');
+                        addLog('Requesting confirmation...');
+                        
+                        // Show confirmation dialog
+                        const confirmed = confirm(
+                            '⚠️ DANGER: Drop Database\n\n' +
+                            'This action will PERMANENTLY DELETE all tables and data in:\n' +
+                            `• Environment: ${currentEnvironment.name}\n` +
+                            `• Type: ${currentEnvironment.type}\n\n` +
+                            'This action CANNOT be undone!\n\n' +
+                            'Are you absolutely sure you want to continue?'
+                        );
+                        
+                        if (!confirmed) {
+                            addLog('❌ Database drop cancelled by user');
+                            closeLogModal();
+                            showAlert('Database drop cancelled', 'info');
+                            return;
+                        }
+                        
+                        addLog('✅ User confirmed database drop');
+                        addLog('Starting database drop...');
+                        response = await fetch('/api/drop', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ environment: currentEnvironment })
+                        });
+                        break;
+                        
+                    default:
+                        addLog(`❌ Unsupported action: ${action}`);
+                        closeLogModal();
+                        return;
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    addLog('✅ Operation completed successfully!');
+                    
+                    // Show storage cleanup result if available
+                    if (result.storageCleanup) {
+                        if (result.storageCleanup.success) {
+                            if (result.storageCleanup.deleted_count > 0) {
+                                addLog(`🗑️  Storage cleanup: Deleted ${result.storageCleanup.deleted_count} file(s) from Supabase Storage.`);
+                            } else {
+                                addLog(`🗑️  Storage cleanup: ${result.storageCleanup.message}`);
+                            }
+                        } else {
+                            addLog(`⚠️  Storage cleanup warning: ${result.storageCleanup.message}`);
+                        }
+                    }
+                    
+                    // Update statistics display after successful operations
+                    updateStatistics();
+                    
+                    // Re-enable close button and show success message
+                    const closeButton = document.querySelector('#logModal .close');
+                    if (closeButton) {
+                        closeButton.style.pointerEvents = 'auto';
+                        closeButton.style.opacity = '1';
+                        closeButton.title = '';
+                    }
+                    
+                    addLog('🎉 Operation finished successfully!');
+                } else {
+                    throw new Error(result.error || 'Operation failed');
+                }
+                
+            } catch (error) {
+                addLog('❌ Error: ' + error.message);
+                
+                // Re-enable close button and show failure message
+                const closeButton = document.querySelector('#logModal .close');
+                if (closeButton) {
+                    closeButton.style.pointerEvents = 'auto';
+                    closeButton.style.opacity = '1';
+                    closeButton.title = '';
+                }
+                
+                addLog('💥 Operation failed! Click Close to dismiss this log.');
+            }
+        }
+
+        // Show custom confirmation modal
+        function showConfirmationModal(title, message, confirmText = 'Confirm', cancelText = 'Cancel', isDanger = false) {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.style.display = 'block';
+                modal.innerHTML = `
+                    <div class="modal-content structured-modal" style="max-width: 500px;">
+                        <div class="modal-header" style="background: ${isDanger ? '#fee' : '#fff3cd'}; border-bottom-color: ${isDanger ? '#f5c6cb' : '#ffc107'};">
+                            <h3 style="color: ${isDanger ? '#721c24' : '#856404'}; display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 1.2em;">⚠️</span>
+                                <span>${title}</span>
+                            </h3>
+                            <span class="close close-confirm-modal" aria-label="Close" style="color: ${isDanger ? '#721c24' : '#856404'};">&times;</span>
+                        </div>
+                        <div class="modal-body" style="padding: 30px;">
+                            <p style="font-size: 16px; line-height: 1.6; color: #2c3e50; margin: 0;">
+                                ${message}
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn" id="cancelConfirmBtn">${cancelText}</button>
+                            <button type="button" class="btn ${isDanger ? 'btn-danger' : 'btn-warning'}" id="confirmBtn">${confirmText}</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                const modalContent = modal.querySelector('.modal-content');
+                modalContent.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+                
+                const closeModal = () => {
+                    if (document.body.contains(modal)) {
+                        document.body.removeChild(modal);
+                    }
+                };
+                
+                // Prevent closing when clicking backdrop
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        e.stopPropagation();
+                    }
+                });
+                
+                // Handle confirm button
+                modal.querySelector('#confirmBtn').addEventListener('click', () => {
+                    closeModal();
+                    resolve(true);
+                });
+                
+                // Handle cancel button and close button
+                const cancelHandler = () => {
+                    closeModal();
+                    resolve(false);
+                };
+                
+                modal.querySelector('#cancelConfirmBtn').addEventListener('click', cancelHandler);
+                modal.querySelector('.close-confirm-modal').addEventListener('click', cancelHandler);
+            });
+        }
+
+        // Collect user data for Global Admin creation
+        async function collectUserData(actionType = 'createAdmin') {
+            return new Promise((resolve) => {
+                const isInitialize = actionType === 'initialize';
+                const buttonText = isInitialize ? 'Initialize Database and Create Admin' : 'Create Admin';
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.dataset.persistent = 'true';
+                modal.innerHTML = `
+                    <div class="modal-content structured-modal">
+                        <div class="modal-header">
+                            <h3>Create Global Admin User</h3>
+                            <span class="close close-modal-btn" aria-label="Close">&times;</span>
+                        </div>
+                        <form id="userDataForm">
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="firstName">First Name *</label>
+                                    <input type="text" id="firstName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="middleName">Middle Name</label>
+                                    <input type="text" id="middleName">
+                                </div>
+                                <div class="form-group">
+                                    <label for="lastName">Last Name *</label>
+                                    <input type="text" id="lastName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="email">Email Address *</label>
+                                    <input type="email" id="email" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="userPassword">Password *</label>
+                                    <input type="password" id="userPassword" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="userConfirmPassword">Confirm Password *</label>
+                                    <input type="password" id="userConfirmPassword" required>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn" id="cancelUserDataBtn">Cancel</button>
+                                <button type="submit" class="btn btn-success" id="userDataSubmitBtn">${buttonText}</button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                modal.style.display = 'block';
+                
+                // Store actionType for use in form submission
+                modal.dataset.actionType = actionType;
+                
+                // Focus on the first input field
+                setTimeout(() => {
+                    const firstNameField = document.getElementById('firstName');
+                    if (firstNameField) {
+                        firstNameField.focus();
+                    }
+                }, 100);
+                
+                let isDragging = false;
+                
+                const modalContent = modal.querySelector('.modal-content');
+                modalContent.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+                
+                // Prevent closing when clicking inside modal content
+                modalContent.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    isDragging = false;
+                });
+                
+                modalContent.addEventListener('mousemove', (e) => {
+                    if (e.buttons === 1) { // Left mouse button is pressed
+                        isDragging = true;
+                    }
+                });
+                
+                modalContent.addEventListener('mouseup', (e) => {
+                    e.stopPropagation();
+                    // Reset dragging state after a short delay to allow click events to process
+                    setTimeout(() => { isDragging = false; }, 100);
+                });
+                
+                const closeModal = () => {
+                    if (document.body.contains(modal)) {
+                        document.body.removeChild(modal);
+                    }
+                };
+                
+                // Handle backdrop clicks - prevent closing when clicking outside
+                modal.addEventListener('click', (e) => {
+                    // Always stop propagation to prevent global click handler from closing modal
+                    e.stopPropagation();
+                    // Modal should only close via Cancel or Close buttons
+                });
+                
+                document.getElementById('userDataForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const password = document.getElementById('userPassword').value;
+                    const confirmPassword = document.getElementById('userConfirmPassword').value;
+                    const modalActionType = modal.dataset.actionType || actionType;
+                    const isInit = modalActionType === 'initialize';
+                    
+                    const userData = {
+                        firstName: document.getElementById('firstName').value,
+                        middleName: document.getElementById('middleName').value,
+                        lastName: document.getElementById('lastName').value,
+                        email: document.getElementById('email').value,
+                        password: password,
+                        confirmPassword: confirmPassword
+                    };
+                    
+                    if (userData.password !== userData.confirmPassword) {
+                        alert('Passwords do not match!');
+                        return;
+                    }
+                    
+                    // Show warning about database initialization only for initialize action
+                    if (isInit) {
+                        const confirmed = await showConfirmationModal(
+                            'Database Initialization Warning',
+                            'This will initialize the database and <strong>DESTROY all existing data</strong>.<br><br>This action cannot be undone. Are you sure you want to continue?',
+                            'Initialize Database',
+                            'Cancel',
+                            true
+                        );
+                        
+                        if (!confirmed) {
+                            return;
+                        }
+                    }
+                    
+                    closeModal();
+                    resolve(userData);
+                });
+                
+                const cancelHandler = () => {
+                    closeModal();
+                    resolve(null);
+                };
+
+                modal.querySelector('.close-modal-btn').addEventListener('click', cancelHandler);
+                modal.querySelector('#cancelUserDataBtn').addEventListener('click', cancelHandler);
+
+                window.closeUserDataModal = cancelHandler;
+            });
+        }
+
+        // Show log modal
+        function showLogModal() {
+            document.getElementById('logModal').style.display = 'block';
+            document.getElementById('logOutput').innerHTML = '';
+            
+            // Disable the close button during operation
+            const closeButton = document.querySelector('#logModal .close');
+            if (closeButton) {
+                closeButton.style.pointerEvents = 'none';
+                closeButton.style.opacity = '0.5';
+                closeButton.title = 'Operation in progress...';
+            }
+        }
+        
+        // Close log modal
+        function closeLogModal() {
+            document.getElementById('logModal').style.display = 'none';
+            
+            // Re-enable the close button
+            const closeButton = document.querySelector('#logModal .close');
+            if (closeButton) {
+                closeButton.style.pointerEvents = 'auto';
+                closeButton.style.opacity = '1';
+                closeButton.title = '';
+            }
+        }
+
+        // Add log entry
+        function addLog(message) {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            logOutput.innerHTML += `[${timestamp}] ${message}\n`;
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+
+        // Show statistics
+        function showStats() {
+            const statsContent = document.getElementById('statsContent');
+            statsContent.innerHTML = `
+                <div class="stat-card">
+                    <h3>5</h3>
+                    <p>Users</p>
+                </div>
+                <div class="stat-card">
+                    <h3>3</h3>
+                    <p>Landlords</p>
+                </div>
+                <div class="stat-card">
+                    <h3>12</h3>
+                    <p>Tenants</p>
+                </div>
+                <div class="stat-card">
+                    <h3>8</h3>
+                    <p>Properties</p>
+                </div>
+                <div class="stat-card">
+                    <h3>24</h3>
+                    <p>Units</p>
+                </div>
+                <div class="stat-card">
+                    <h3>15</h3>
+                    <p>Leases</p>
+                </div>
+            `;
+            document.getElementById('statsSection').style.display = 'block';
+        }
+
+        // Refresh environments
+        function refreshEnvironments() {
+            loadEnvironments();
+            showAlert('Environments refreshed', 'success');
+        }
+
+        // Show alert
+        function showAlert(message, type, timeout = 3000) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            const container = document.querySelector('.main-content');
+            container.insertBefore(alert, container.firstChild);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, timeout);
+        }
+
+        // Show persistent alert that doesn't auto-dismiss (for error messages)
+        function showPersistentAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.style.position = 'relative';
+            alert.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            style="background: none; border: none; font-size: 18px; cursor: pointer; color: inherit; opacity: 0.7; margin-left: 10px;">
+                        ×
+                    </button>
+                </div>
+            `;
+            
+            const container = document.querySelector('.main-content');
+            container.insertBefore(alert, container.firstChild);
+        }
+
+        // Open Supabase dashboard
+        function openSupabaseDashboard() {
+            window.open('https://supabase.com/dashboard', '_blank');
+            showAlert('Opening Supabase Dashboard. Create a new project and come back here!', 'info');
+        }
+
+        // Show Supabase key help
+        function showSupabaseKeyHelp() {
+            const helpText = `
+📋 How to Get Your Supabase API Keys:
+
+1. Go to https://supabase.com/dashboard
+2. Create a new project (or select existing)
+3. Go to Settings → API
+4. Copy the following values:
+   - Project URL (e.g., https://your-project-ref.supabase.co)
+   - Publishable key (starts with sb_publishable_...)
+   - Secret key (starts with sb_secret_...)
+
+The new Supabase security system uses API keys instead of direct database connections.
+This provides better security and easier management.
+
+💡 Tip: Keep your secret key secure - it has full access to your project!
+            `;
+            
+            alert(helpText);
+        }
+
+
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal && modal.dataset.persistent !== 'true') {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+
+        // Test connection for current environment (used by updateStatistics, no UI)
+        async function testConnection(environmentIndex = null) {
+            let environment = currentEnvironment;
+            
+            // If index provided, use that environment instead
+            if (environmentIndex !== null && environments[environmentIndex]) {
+                environment = environments[environmentIndex];
+            }
+            
+            if (!environment) {
+                return { success: false, message: 'No environment selected' };
+            }
+
+            // Use the UI version but without showing UI (for statistics updates)
+            return await testConnectionWithUI(environment, false);
+        }
+
+        // Update statistics display
+        async function updateStatistics(showUIAlerts = false) {
+            const statsContent = document.getElementById('statsContent');
+            if (!statsContent) return;
+
+
+            if (!currentEnvironment) {
+                statsContent.innerHTML = '<p class="no-database">No environment selected</p>';
+                return;
+            }
+
+            // Show testing status
+            statsContent.innerHTML = '<div class="connection-status testing"><span class="status-icon">🔄</span><span class="status-text">Testing connection...</span></div>';
+
+            // Test connection first - use testConnectionWithUI if we want to show alerts
+            let connectionResult;
+            if (showUIAlerts) {
+                // Show UI alerts (for initial load)
+                connectionResult = await testConnectionWithUI(currentEnvironment, true);
+            } else {
+                // No UI alerts (for background updates)
+                connectionResult = await testConnection();
+            }
+            
+            let html = '';
+            
+            // Connection status - update the environment card background
+            if (connectionResult.success) {
+                environmentConnectionStatus[currentEnvironment.name] = 'success';
+                // Update the card background
+                const selectedEnvDiv = document.querySelector('.selected-environment');
+                if (selectedEnvDiv) {
+                    selectedEnvDiv.classList.add('connection-success');
+                    selectedEnvDiv.classList.remove('connection-failed');
+                }
+                html += '<div class="connection-status connected"><span class="status-icon">✅</span><span class="status-text">Connected to ' + currentEnvironment.name + '</span></div>';
+            } else {
+                environmentConnectionStatus[currentEnvironment.name] = 'failed';
+                // Update the card background
+                const selectedEnvDiv = document.querySelector('.selected-environment');
+                if (selectedEnvDiv) {
+                    selectedEnvDiv.classList.add('connection-failed');
+                    selectedEnvDiv.classList.remove('connection-success');
+                }
+                html += '<div class="connection-status disconnected"><span class="status-icon">❌</span><span class="status-text">Connection failed: ' + connectionResult.message + '</span></div>';
+                
+                // For local environments, show a helpful message
+                if (currentEnvironment.type === 'local') {
+                    html += '<div class="no-database" style="margin-top: 10px; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px;">';
+                    html += '<strong>Local Database Note:</strong> Make sure PostgreSQL is running and the database exists. ';
+                    html += 'You can use the "Initialize Database" action to create the database structure.';
+                    html += '</div>';
+                }
+                
+                statsContent.innerHTML = html;
+                return;
+            }
+
+            // If connection successful, get statistics
+            try {
+                const response = await fetch('/api/statistics', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ environment: currentEnvironment })
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.statistics) {
+                    const stats = result.statistics;
+                    html += '<div class="stats-grid">';
+                    
+                    // Table counts
+                    html += '<div class="stat-card"><h4>Users</h4><p class="stat-value">' + stats.users + '</p></div>';
+                    html += '<div class="stat-card"><h4>Landlords</h4><p class="stat-value">' + stats.landlords + '</p></div>';
+                    html += '<div class="stat-card"><h4>Properties</h4><p class="stat-value">' + stats.properties + '</p></div>';
+                    html += '<div class="stat-card"><h4>Tenants</h4><p class="stat-value">' + stats.tenants + '</p></div>';
+                    html += '<div class="stat-card"><h4>Units</h4><p class="stat-value">' + stats.units + '</p></div>';
+                    html += '<div class="stat-card"><h4>Leases</h4><p class="stat-value">' + stats.leases + '</p></div>';
+                    
+                    html += '</div>';
+
+                    // Global Admins
+                    if (stats.global_admins && stats.global_admins.length > 0) {
+                        html += '<div class="admin-list">';
+                        html += '<h4>👑 Global Admins</h4>';
+                        stats.global_admins.forEach(admin => {
+                            const fullName = [admin.first_name, admin.middle_name, admin.last_name]
+                                .filter(name => name && name.trim())
+                                .join(' ');
+                            html += '<div class="admin-item">';
+                            html += '<span class="admin-name">' + (fullName || 'Unknown') + '</span>';
+                            html += '<span class="admin-email">' + admin.email + '</span>';
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                    }
+
+                    statsContent.innerHTML = html;
+                } else {
+                    html += '<p class="no-database">No database found or statistics unavailable</p>';
+                    statsContent.innerHTML = html;
+                }
+            } catch (error) {
+                html += '<p class="no-database">Error loading statistics: ' + error.message + '</p>';
+                statsContent.innerHTML = html;
+            }
+        }
+    </script>
+</body>
+</html>

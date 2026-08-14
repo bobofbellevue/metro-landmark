@@ -1,0 +1,27 @@
+name: Integration Safety Check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  safety-harness:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify integration safety harness usage
+        run: npm run check:test-safety

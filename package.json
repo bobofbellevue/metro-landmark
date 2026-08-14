@@ -1,0 +1,71 @@
+{
+	"name": "metro-landmark",
+	"private": true,
+	"version": "0.0.1",
+	"license": "MIT",
+	"type": "module",
+	"engines": {
+		"node": "22.x"
+	},
+	"scripts": {
+		"dev": "node scripts/select-environment.js && vite",
+		"dev:select": "node scripts/select-environment.js --force && vite",
+		"dev:api": "node dev-server.js",
+		"dev:full": "concurrently \"npm run dev:api\" \"npm run dev\"",
+		"build": "vite build",
+		"lint": "eslint .",
+		"preview": "vite preview",
+		"test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand",
+		"check:test-safety": "node scripts/check-integration-safety-harness.js",
+		"db:util": "node scripts/db-util-server.js",
+		"db:migrate": "node scripts/db-util-server.js --migrate",
+		"db:migrate:supabase": "node scripts/db-util-server.js --migrate --env supabase",
+		"env:select": "node scripts/select-environment.js --force",
+		"export:metro": "node scripts/export-metro-landmark.js"
+	},
+	"dependencies": {
+		"@sendgrid/mail": "^8.1.6",
+		"@supabase/supabase-js": "^2.75.0",
+		"@tailwindcss/vite": "^4.1.12",
+		"bcryptjs": "^3.0.2",
+		"canvas": "^3.2.0",
+		"concurrently": "^9.2.1",
+		"cors": "^2.8.5",
+		"dotenv": "^17.2.3",
+		"express": "^5.1.0",
+		"html2canvas": "^1.4.1",
+		"lucide-react": "^0.542.0",
+		"mammoth": "^1.6.0",
+		"openai": "^6.8.1",
+		"pdf-lib": "^1.17.1",
+		"pdfjs-dist": "^5.4.394",
+		"postgres": "^3.4.7",
+		"react": "^19.1.2",
+		"react-datepicker": "^8.9.0",
+		"react-dom": "^19.1.2",
+		"signature_pad": "^5.1.2",
+		"stemmer": "^2.0.1",
+		"synonyms": "^1.0.1",
+		"tesseract.js": "^5.0.4",
+		"twilio": "^5.11.1"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.33.0",
+		"@types/react": "^19.1.10",
+		"@types/react-dom": "^19.1.7",
+		"@vitejs/plugin-react": "^5.0.0",
+		"autoprefixer": "^10.4.21",
+		"eslint": "^9.33.0",
+		"eslint-plugin-react-hooks": "^5.2.0",
+		"eslint-plugin-react-refresh": "^0.4.20",
+		"globals": "^16.3.0",
+		"jest": "^29.6.4",
+		"postcss": "^8.5.6",
+		"tailwindcss": "^4.1.12",
+		"vite": "^7.1.2"
+	},
+	"overrides": {
+		"inflight": "npm:@isaacs/inflight@^1.0.6",
+		"glob": "^10.0.0"
+	}
+}
