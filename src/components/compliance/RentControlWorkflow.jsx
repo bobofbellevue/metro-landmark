@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import {
   getJurisdictionDisplayName,
+  getMaxRentIncreasePercent,
   isRentControlEnabled,
 } from '../../jurisdictions/index.js';
 
@@ -59,14 +60,15 @@ export default function RentControlWorkflow({ initialData = {}, workflowId = nul
         fields: [
           { id: 'current_rent', label: 'Current Rent', type: 'number', required: true },
           { id: 'proposed_rent', label: 'Proposed Rent', type: 'number', required: true },
-          { id: 'cpi_adjustment', label: 'CPI Adjustment (%)', type: 'number' }
         ],
         render: ({ workflowData }) => {
           const currentRent = workflowData.current_rent || 0;
           const proposedRent = workflowData.proposed_rent || 0;
           const increase = currentRent > 0 ? ((proposedRent - currentRent) / currentRent) * 100 : 0;
-          const maxIncrease = 7 + (workflowData.cpi_adjustment || 0);
-          const isCompliant = increase <= maxIncrease;
+          const maxIncrease = packId
+            ? getMaxRentIncreasePercent(packId)
+            : null;
+          const isCompliant = maxIncrease == null || increase <= maxIncrease;
 
           return (
             <div className="space-y-4">
@@ -78,7 +80,9 @@ export default function RentControlWorkflow({ initialData = {}, workflowId = nul
                       : '⚠ Exceeds Rent Control Limits'}
                   </p>
                   <p className="text-xs mt-1 text-gray-600">
-                    Proposed increase: {increase.toFixed(1)}% | Max allowed: {maxIncrease.toFixed(1)}%
+                    Proposed increase: {increase.toFixed(1)}%
+                    {maxIncrease != null ? ` | Pack cap: ${maxIncrease}%` : ''}
+                    {' '}(RCW 59.18.700; Commerce annual figure)
                   </p>
                 </div>
               ) : (

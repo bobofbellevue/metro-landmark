@@ -118,12 +118,20 @@ export default function NoticePeriodCalculator({
     return null;
   }
 
-  const { noticePeriodDays, requiredNoticeDate, effectiveDate, jurisdiction: calcJurisdiction } = calculation;
+  const {
+    noticePeriodDays,
+    requiredNoticeDate,
+    effectiveDate,
+    jurisdiction: calcJurisdiction,
+    citations = [],
+    evaluation,
+  } = calculation;
   const today = new Date();
   const noticeDate = requiredNoticeDate ? new Date(requiredNoticeDate) : null;
   const effective = effectiveDate ? new Date(effectiveDate) : null;
   const isNoticeDatePast = noticeDate && noticeDate < today;
   const daysUntilNotice = noticeDate ? Math.ceil((noticeDate - today) / (1000 * 60 * 60 * 24)) : null;
+  const unitLabel = workflowType === 'entry' || workflowType === 'entry_notice' ? 'hours' : 'days';
 
   return (
     <div className="space-y-4">
@@ -135,11 +143,11 @@ export default function NoticePeriodCalculator({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-blue-700">Required Notice Period:</span>
-                <span className="font-semibold text-blue-900">{noticePeriodDays} days</span>
+                <span className="font-semibold text-blue-900">{noticePeriodDays} {unitLabel}</span>
               </div>
               {calcJurisdiction && (
                 <div className="flex justify-between">
-                  <span className="text-blue-700">Jurisdiction:</span>
+                  <span className="text-blue-700">Jurisdiction pack:</span>
                   <span className="font-semibold text-blue-900">
                     {getJurisdictionDisplayName(calcJurisdiction)}
                   </span>
@@ -153,10 +161,49 @@ export default function NoticePeriodCalculator({
                   </span>
                 </div>
               )}
+              {citations.length > 0 && (
+                <div className="pt-1">
+                  <span className="text-blue-700">Citations: </span>
+                  <span className="text-blue-900">
+                    {citations.map((cite, index) => (
+                      <span key={cite.id}>
+                        {index > 0 && ', '}
+                        {cite.href ? (
+                          <a
+                            href={cite.href}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline"
+                          >
+                            {cite.id}
+                          </a>
+                        ) : (
+                          cite.id
+                        )}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              )}
+              <p className="text-xs text-blue-800 pt-1">
+                Pack-dependent reference math — not a substitute for legal counsel.
+              </p>
             </div>
           </div>
         </div>
       </div>
+
+      {evaluation?.exceedsCap && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+          Proposed increase {evaluation.percentIncrease?.toFixed(1)}% exceeds the{' '}
+          {evaluation.maxIncreasePercent}% pack cap for this year (RCW 59.18.700).
+        </div>
+      )}
+      {evaluation?.firstTwelveMonthsBlocked && (
+        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-900">
+          Pack rule: no rent increase during the first 12 months of the tenancy.
+        </div>
+      )}
 
       {requiredNoticeDate && (
         <div className={`p-4 border rounded-lg ${

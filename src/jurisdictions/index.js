@@ -7,6 +7,10 @@
  */
 import { washingtonStatePack } from './packs/washington_state.js';
 import { seattlePack } from './packs/seattle.js';
+import {
+  mergeStatuteRefIds,
+  resolveStatuteRefs,
+} from './statute-catalog.js';
 
 const PACKS = Object.freeze({
   [washingtonStatePack.id]: washingtonStatePack,
@@ -52,15 +56,24 @@ export function detectJurisdictionPackId(property) {
   return DEFAULT_JURISDICTION_PACK_ID;
 }
 
+function mergeRuleSection(parentSection, childSection) {
+  if (!parentSection && !childSection) return undefined;
+  return { ...(parentSection || {}), ...(childSection || {}) };
+}
+
 /**
  * Deep-ish merge of parent pack rules under a child pack (child wins).
  * @param {string} packId
- * @returns {object} pack with resolvedRules
+ * @returns {object} pack with resolvedRules and resolvedStatuteRefs
  */
 export function getResolvedJurisdictionPack(packId) {
   const pack = getJurisdictionPack(packId);
   if (!pack.parentPackId) {
-    return { ...pack, resolvedRules: { ...pack.rules } };
+    return {
+      ...pack,
+      resolvedRules: { ...pack.rules },
+      resolvedStatuteRefs: resolveStatuteRefs(pack.statuteRefIds),
+    };
   }
   const parent = getResolvedJurisdictionPack(pack.parentPackId);
   return {
@@ -68,14 +81,30 @@ export function getResolvedJurisdictionPack(packId) {
     resolvedRules: {
       ...parent.resolvedRules,
       ...pack.rules,
-      rentIncrease: { ...parent.resolvedRules.rentIncrease, ...pack.rules.rentIncrease },
-      termination: { ...parent.resolvedRules.termination, ...pack.rules.termination },
-      evictionNoticeDays: {
-        ...parent.resolvedRules.evictionNoticeDays,
-        ...pack.rules.evictionNoticeDays,
-      },
-      rentControl: { ...parent.resolvedRules.rentControl, ...pack.rules.rentControl },
+      rentIncrease: mergeRuleSection(
+        parent.resolvedRules.rentIncrease,
+        pack.rules.rentIncrease
+      ),
+      termination: mergeRuleSection(
+        parent.resolvedRules.termination,
+        pack.rules.termination
+      ),
+      evictionNoticeDays: mergeRuleSection(
+        parent.resolvedRules.evictionNoticeDays,
+        pack.rules.evictionNoticeDays
+      ),
+      rentControl: mergeRuleSection(
+        parent.resolvedRules.rentControl,
+        pack.rules.rentControl
+      ),
+      screening: mergeRuleSection(
+        parent.resolvedRules.screening,
+        pack.rules.screening
+      ),
     },
+    resolvedStatuteRefs: resolveStatuteRefs(
+      mergeStatuteRefIds(parent.statuteRefIds, pack.statuteRefIds)
+    ),
   };
 }
 
@@ -83,7 +112,7 @@ export function getJurisdictionDisplayName(packId) {
   return getJurisdictionPack(packId).displayName;
 }
 
-/** Whether the resolved pack enables rent-control overlays. */
+/** Whether the resolved pack enables rent-control / rent-cap overlays. */
 export function isRentControlEnabled(packId) {
   return !!getResolvedJurisdictionPack(packId).resolvedRules.rentControl?.enabled;
 }
@@ -93,3 +122,50 @@ export function requiresJustCauseForNoCauseTermination(packId) {
   return !!getResolvedJurisdictionPack(packId).resolvedRules.termination
     ?.requiresJustCauseForNoCauseMonthToMonth;
 }
+
+/** Seattle-style overlay: must offer renewal unless just cause for non-renewal. */
+export function requiresRenewalOffer(packId) {
+  return !!getResolvedJurisdictionPack(packId).resolvedRules.termination
+    ?.requiresRenewalOffer;
+}
+
+/**
+ * Commerce-published (or pack default) max annual rent-increase percent.
+ * @param {string} packId
+ * @param {number} [year]
+ * @returns {number|null}
+ */
+export function getMaxRentIncreasePercent(packId, year = new Date().getFullYear()) {
+  const rentControl = getResolvedJurisdictionPack(packId).resolvedRules.rentControl;
+  if (!rentControl?.enabled) return null;
+  const byYear = rentControl.annualMaxIncreasePercentByYear || {};
+  const keyed = byYear[year] ?? byYear[String(year)];
+  if (keyed != null) return Number(keyed);
+  if (rentControl.defaultMaxIncreasePercent != null) {
+    return Number(rentControl.defaultMaxIncreasePercent);
+  }
+  return null;
+}
+
+/**
+ * Resolve citation objects for a rule section (falls back to pack statute list).
+ * @param {string} packId
+ * @param {string} [section] rentIncrease | termination | eviction | deposit | entry | rentControl | screening
+ */
+export function getRuleCitations(packId, section) {
+  const resolved = getResolvedJurisdictionPack(packId);
+  const rules = resolved.resolvedRules || {};
+  const sectionIds = {
+    rentIncrease: rules.rentIncrease?.citationIds,
+    termination: rules.termination?.citationIds,
+    eviction: rules.evictionCitationIds,
+    deposit: rules.depositCitationIds,
+    entry: rules.entryCitationIds,
+    rentControl: rules.rentControl?.citationIds,
+    screening: rules.screening?.citationIds,
+  }[section];
+  if (sectionIds?.length) return resolveStatuteRefs(sectionIds);
+  return resolved.resolvedStatuteRefs || [];
+}
+
+export { resolveStatuteRefs } from './statute-catalog.js';

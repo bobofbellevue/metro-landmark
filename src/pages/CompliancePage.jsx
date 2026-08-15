@@ -61,7 +61,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'security_deposit',
     title: 'Security Deposit Return',
-    description: 'Calculate deductions and generate deposit return statement within 14 days.',
+    description: 'Calculate deductions and generate a deposit return statement within the pack timeline (30 days under WA/Seattle).',
     icon: <Banknote className="w-8 h-8 text-green-500" />,
     priority: 'high',
     category: 'core'
@@ -109,7 +109,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'entry_notice',
     title: 'Entry Notices',
-    description: 'Track 24-hour notice requirements and entry documentation.',
+    description: 'Track two-day entry notice (one day for showings) and document exceptions.',
     icon: <Lock className="w-8 h-8 text-indigo-500" />,
     priority: 'low',
     category: 'additional'
@@ -124,8 +124,8 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'rent_control',
-    title: 'Rent Control Compliance (Seattle)',
-    description: 'Rent increase caps, just cause tracking, and registration requirements.',
+    title: 'Rent Control / Rent-Cap Compliance',
+    description: 'Statewide rent-increase cap plus Seattle just-cause and renewal-offer overlay.',
     icon: <Ban className="w-8 h-8 text-pink-500" />,
     priority: 'low',
     category: 'additional'
@@ -466,8 +466,9 @@ export default function CompliancePage() {
       <Card title="About Compliance Center" className="mt-8">
         <div className="space-y-4 text-sm text-gray-600">
           <p>
-            The Compliance Center ensures all landlord-tenant procedures comply with Washington State and City of Seattle regulations.
-            Each workflow guides you through the required steps, calculates notice periods, and generates compliant documents.
+            The Compliance Center uses the Washington State and City of Seattle jurisdiction packs to
+            calculate notice periods and guide workflows. Those numbers are pack-dependent reference
+            math (RCW 59.18 / SMC overlays), not a substitute for legal counsel.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
