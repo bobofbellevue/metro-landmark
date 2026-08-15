@@ -8,6 +8,7 @@ import {
 import { AuthContext, SidebarContext } from '../contexts';
 import { Card, ConfirmationModal } from '../components/ui';
 import { supabase } from '../lib/supabase';
+import { readResponseJson } from '../utils/read-response-json.js';
 
 // Import workflow components
 import RentIncreaseWorkflow from '../components/compliance/RentIncreaseWorkflow';
@@ -211,7 +212,11 @@ export default function CompliancePage() {
         `/api/compliance/workflows?id=${workflowPendingDelete.workflow_id}`,
         { method: 'DELETE' }
       );
-      const result = await response.json();
+      const parsed = await readResponseJson(response);
+      if (!parsed.ok) {
+        throw new Error(parsed.error || 'Failed to delete workflow');
+      }
+      const result = parsed.data || {};
       if (!result.success) {
         throw new Error(result.error || 'Failed to delete workflow');
       }

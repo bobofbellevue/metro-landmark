@@ -1,19 +1,10 @@
 /* eslint-env node */
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '../utils/supabase-client.js';
 import {
   LEASE_SCOPED_WORKFLOW_TYPES,
   resolveWorkflowPostAction,
   workflowProgressStatus,
 } from '../../src/utils/compliance-workflow-persistence.js';
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -23,6 +14,16 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  let supabase;
+  try {
+    supabase = createSupabaseClient();
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Database configuration error',
+    });
   }
 
   try {

@@ -8,6 +8,7 @@ import {
   shouldIgnoreWorkflowCancel,
   shouldIgnoreWorkflowNext,
 } from '../utils/workflow-action-guard.js';
+import { readResponseJson } from '../utils/read-response-json.js';
 
 /**
  * ComplianceWorkflow - Guided workflow component for compliance processes
@@ -56,8 +57,9 @@ export default function ComplianceWorkflow({
     try {
       if (workflowId) {
         const response = await fetch(`/api/compliance/workflows?id=${workflowId}`);
-        const result = await response.json();
-        if (result.success && result.workflow) {
+        const parsed = await readResponseJson(response);
+        const result = parsed.data;
+        if (parsed.ok && result?.success && result.workflow) {
           setWorkflowRecord(result.workflow);
           setCurrentStep(result.workflow.current_step || 1);
           setWorkflowData({
@@ -90,8 +92,9 @@ export default function ComplianceWorkflow({
       const response = await fetch(
         `/api/compliance/policies?type=${workflowType}&property_id=${propertyId}`
       );
-      const result = await response.json();
-      if (result.success && result.policy) {
+      const parsed = await readResponseJson(response);
+      const result = parsed.data;
+      if (parsed.ok && result?.success && result.policy) {
         setPolicy(result.policy);
       }
     } catch (error) {
@@ -199,7 +202,11 @@ export default function ComplianceWorkflow({
         });
       }
 
-      const result = await response.json();
+      const parsed = await readResponseJson(response);
+      if (!parsed.ok) {
+        throw new Error(parsed.error || 'Failed to save workflow');
+      }
+      const result = parsed.data || {};
       if (!result.success) {
         throw new Error(result.error || 'Failed to save workflow');
       }
@@ -277,7 +284,11 @@ export default function ComplianceWorkflow({
           })
         });
 
-        const result = await response.json();
+        const parsed = await readResponseJson(response);
+        if (!parsed.ok) {
+          throw new Error(parsed.error || 'Failed to complete workflow');
+        }
+        const result = parsed.data || {};
         if (!result.success) {
           throw new Error(result.error || 'Failed to complete workflow');
         }
