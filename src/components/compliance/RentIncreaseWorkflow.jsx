@@ -191,7 +191,9 @@ export default function RentIncreaseWorkflow({
                     currentRent,
                     newRent,
                     effectiveDate: workflowData.effective_date,
-                    percent_increase: percentIncrease
+                    percent_increase: percentIncrease,
+                    tenancyStartDate: lease?.start_date || lease?.lease_start_date || null,
+                    subsidized: !!lease?.is_subsidized || !!lease?.income_based_rent,
                   }}
                   onCalculationChange={setNoticeCalculation}
                 />

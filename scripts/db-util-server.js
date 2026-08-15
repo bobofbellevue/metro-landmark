@@ -2676,48 +2676,59 @@ async function initializeComplianceRules(sql) {
     // Washington State rules
     const waStateRules = [
       {
-        rule_name: 'Rent Increase Notice - Month-to-Month (30 days)',
+        rule_name: 'Rent Increase Notice - 90 Days (RCW 59.18.140)',
         rule_type: 'notice_period',
         jurisdiction: 'washington_state',
         applies_to: 'rent_increase',
-        rule_condition: { lease_type: 'month_to_month', percent_increase: { operator: 'lte', value: 10 } },
-        rule_action: '30 days notice required for rent increases on month-to-month leases (10% or less)',
+        rule_condition: { subsidized: false },
+        rule_action: '90 days prior written notice required for ordinary rent increases (RCW 59.18.140(3)(a))',
+        notice_period_days: 90,
+        prohibited: false,
+        source: 'RCW 59.18.140'
+      },
+      {
+        rule_name: 'Rent Increase Notice - Subsidized 30 Days (RCW 59.18.140)',
+        rule_type: 'notice_period',
+        jurisdiction: 'washington_state',
+        applies_to: 'rent_increase',
+        rule_condition: { subsidized: true },
+        rule_action: '30 days prior written notice for income-based subsidized tenancies (RCW 59.18.140(3)(b))',
         notice_period_days: 30,
         prohibited: false,
         source: 'RCW 59.18.140'
       },
       {
-        rule_name: 'Rent Increase Notice - Month-to-Month (60 days)',
-        rule_type: 'notice_period',
-        jurisdiction: 'washington_state',
-        applies_to: 'rent_increase',
-        rule_condition: { lease_type: 'month_to_month', percent_increase: { operator: 'gt', value: 10 } },
-        rule_action: '60 days notice required for rent increases over 10% on month-to-month leases',
-        notice_period_days: 60,
-        prohibited: false,
-        source: 'RCW 59.18.140'
-      },
-      {
-        rule_name: 'Security Deposit Return - 14 Days',
+        rule_name: 'Security Deposit Return - 30 Days',
         rule_type: 'notice_period',
         jurisdiction: 'washington_state',
         applies_to: 'security_deposit',
         rule_condition: {},
-        rule_action: 'Landlord must return security deposit or provide itemized deductions within 14 days',
-        notice_period_days: 14,
+        rule_action: 'Landlord must return security deposit or provide itemized deductions within 30 days',
+        notice_period_days: 30,
         prohibited: false,
         source: 'RCW 59.18.280'
       },
       {
-        rule_name: 'Entry Notice - 24 Hours',
+        rule_name: 'Entry Notice - Two Days',
         rule_type: 'notice_period',
         jurisdiction: 'washington_state',
         applies_to: 'entry',
         rule_condition: { is_emergency: false },
-        rule_action: '24 hours notice required for non-emergency entry',
-        notice_period_days: null, // Hours, not days
+        rule_action: 'At least two days written notice required for non-emergency entry (RCW 59.18.150)',
+        notice_period_days: null, // Hours, not days — see jurisdiction pack (48)
         prohibited: false,
         source: 'RCW 59.18.150'
+      },
+      {
+        rule_name: 'Just Cause Required to End Tenancy (RCW 59.18.650)',
+        rule_type: 'prohibited_action',
+        jurisdiction: 'washington_state',
+        applies_to: 'lease_termination',
+        rule_condition: { has_just_cause: false },
+        rule_action: 'Statewide just cause required to end a periodic tenancy except limited statutory paths',
+        notice_period_days: null,
+        prohibited: true,
+        source: 'RCW 59.18.650'
       }
     ];
 

@@ -11,12 +11,13 @@ This list is intentionally short. Finish or cut items before expanding it.
 | Core PMS ops | Properties, units, leases, tenants, applicants, landlords, PMCs, maintenance |
 | Config seams | Brand, locale display, WA/Seattle jurisdiction packs, shared VAPI/maintenance phone |
 | Operator hygiene | Example DB env file, documented secrets handling, no silent hardcoded client Supabase fallbacks |
+| E1 WA/Seattle pack + calculator tests | 2025/2026 RCW 59.18 notice math, statute citations, pack-driven calculator coverage |
 
 ## Partial
 
 | Item | Notes |
 |------|--------|
-| Compliance Center | Workflows and notice math for WA/Seattle; more tests and UI labeling still needed |
+| Compliance Center | Workflows use pack notice math and citations; more workflow UI still needed |
 | Documents | Staff registry + type catalog exist; contextual panels incomplete across landlord/maintenance/portals |
 | Voice / chat maintenance | Works with Vapi/OpenAI when configured; single shared number model |
 | Auth | Login exists; API authorization is not hardened for hostile multi-tenant internet deploy (E7) |
@@ -25,7 +26,6 @@ This list is intentionally short. Finish or cut items before expanding it.
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| E1 | Deepen WA/Seattle pack + calculator tests | Strengthen the reference jurisdiction story |
 | E2 | Brand / white-label polish | Per-org themes beyond env overrides |
 | E3 | Phone number resources + IVR purposes | Multi-number / purpose model |
 | E4 | Payments | e.g. Stripe — rent, deposits, fees |

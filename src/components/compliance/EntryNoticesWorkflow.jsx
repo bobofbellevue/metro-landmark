@@ -31,7 +31,7 @@ export default function EntryNoticesWorkflow({ initialData = {}, workflowId = nu
           { value: 'emergency', label: 'Emergency' },
           { value: 'other', label: 'Other' }
         ]},
-        { id: 'notice_given_date', label: 'Date 24-Hour Notice Given', type: 'date', required: true },
+        { id: 'notice_given_date', label: 'Date Written Notice Given (2 days; 1 day for showings)', type: 'date', required: true },
         { id: 'tenant_consent', label: 'Tenant Consent', type: 'select', options: [
           { value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'pending', label: 'Pending' }
         ]}

@@ -1,27 +1,103 @@
 /**
  * Compliance Calculator Utility
  * Calculates notice periods and validates compliance requirements
- * using jurisdiction pack resolvedRules (Workstream 2).
+ * using jurisdiction pack resolvedRules (Workstream 2 / E1).
+ *
+ * Pack numbers are the source of truth for notice math. Database
+ * compliance_rules rows are returned as supplemental context only.
  */
 
 import { detectJurisdictionFromPropertyId } from './jurisdiction-detector.js';
 import {
   DEFAULT_JURISDICTION_PACK_ID,
+  getMaxRentIncreasePercent,
   getResolvedJurisdictionPack,
+  getRuleCitations,
 } from '../jurisdictions/index.js';
 
 function resolvedRules(jurisdiction) {
   return getResolvedJurisdictionPack(jurisdiction || DEFAULT_JURISDICTION_PACK_ID).resolvedRules;
 }
 
+function resolvedPackId(jurisdiction) {
+  return getResolvedJurisdictionPack(jurisdiction || DEFAULT_JURISDICTION_PACK_ID).id;
+}
+
+/**
+ * @param {number|string|null|undefined} percentIncrease
+ * @param {number|string|null|undefined} currentRent
+ * @param {number|string|null|undefined} newRent
+ * @returns {number|null}
+ */
+export function resolvePercentIncrease(percentIncrease, currentRent, newRent) {
+  if (percentIncrease != null && percentIncrease !== '') {
+    const parsed = Number(percentIncrease);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  const current = Number(currentRent);
+  const next = Number(newRent);
+  if (Number.isFinite(current) && current > 0 && Number.isFinite(next)) {
+    return ((next - current) / current) * 100;
+  }
+  return null;
+}
+
+function monthsBetween(start, end) {
+  const a = new Date(start);
+  const b = new Date(end);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
+  return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth())
+    + (b.getDate() < a.getDate() ? -1 : 0);
+}
+
+/**
+ * Full rent-increase evaluation against the resolved pack.
+ * @returns {object}
+ */
+export function evaluateRentIncrease({
+  leaseType,
+  jurisdiction,
+  currentRent,
+  newRent,
+  percentIncrease,
+  subsidized = false,
+  tenancyStartDate = null,
+  effectiveDate = null,
+  asOfYear = null,
+} = {}) {
+  const packId = resolvedPackId(jurisdiction);
+  const rules = resolvedRules(packId).rentIncrease;
+  const increase = resolvePercentIncrease(percentIncrease, currentRent, newRent);
+  const noticePeriodDays = subsidized
+    ? (rules.subsidizedNoticeDays ?? 30)
+    : (rules.defaultNoticeDays ?? rules.monthToMonthNoticeDays ?? 90);
+
+  const year = asOfYear
+    ?? (effectiveDate ? new Date(effectiveDate).getFullYear() : new Date().getFullYear());
+  const maxIncreasePercent = getMaxRentIncreasePercent(packId, year);
+  const exceedsCap = maxIncreasePercent != null && increase != null && increase > maxIncreasePercent;
+
+  let firstTwelveMonthsBlocked = false;
+  if (rules.firstTwelveMonthsNoIncrease && tenancyStartDate && effectiveDate) {
+    const elapsedMonths = monthsBetween(tenancyStartDate, effectiveDate);
+    firstTwelveMonthsBlocked = elapsedMonths != null && elapsedMonths < 12;
+  }
+
+  return {
+    noticePeriodDays,
+    percentIncrease: increase,
+    maxIncreasePercent,
+    exceedsCap,
+    firstTwelveMonthsBlocked,
+    subsidized: !!subsidized,
+    leaseType: leaseType || null,
+    jurisdiction: packId,
+    citations: getRuleCitations(packId, 'rentIncrease'),
+  };
+}
+
 /**
  * Calculate required notice period for rent increase
- * @param {Object} params - Calculation parameters
- * @param {string} params.leaseType - 'month_to_month' or 'fixed_term'
- * @param {string} params.jurisdiction - Jurisdiction pack id
- * @param {number} params.currentRent - Current monthly rent
- * @param {number} params.newRent - New monthly rent
- * @param {number} params.percentIncrease - Percentage increase (optional, calculated if not provided)
  * @returns {number} - Required notice period in days
  */
 export function calculateRentIncreaseNoticePeriod({
@@ -29,36 +105,29 @@ export function calculateRentIncreaseNoticePeriod({
   jurisdiction,
   currentRent,
   newRent,
-  percentIncrease
-}) {
-  const rules = resolvedRules(jurisdiction).rentIncrease;
-  const increase = percentIncrease ?? ((newRent - currentRent) / currentRent) * 100;
-
-  if (leaseType === 'month_to_month') {
-    if (increase > rules.highIncreasePercentThreshold) {
-      return rules.monthToMonthHighIncreaseNoticeDays;
-    }
-    return rules.monthToMonthNoticeDays;
-  }
-
-  return rules.fixedTermNoticeDays;
+  percentIncrease,
+  subsidized = false,
+} = {}) {
+  return evaluateRentIncrease({
+    leaseType,
+    jurisdiction,
+    currentRent,
+    newRent,
+    percentIncrease,
+    subsidized,
+  }).noticePeriodDays;
 }
 
 /**
  * Calculate required notice period for lease termination
- * @param {Object} params - Calculation parameters
- * @param {string} params.leaseType - 'month_to_month' or 'fixed_term'
- * @param {string} params.jurisdiction - Jurisdiction pack id
- * @param {string} params.initiatedBy - 'landlord' or 'tenant'
- * @param {boolean} params.hasCause - Whether termination is for cause
  * @returns {number} - Required notice period in days
  */
 export function calculateTerminationNoticePeriod({
   leaseType,
   jurisdiction,
   initiatedBy,
-  hasCause = false
-}) {
+  hasCause = false,
+} = {}) {
   const rules = resolvedRules(jurisdiction).termination;
 
   if (initiatedBy === 'tenant') {
@@ -73,11 +142,12 @@ export function calculateTerminationNoticePeriod({
     }
 
     if (leaseType === 'month_to_month') {
-      // Packs like Seattle require just cause for no-cause MTM; notice days still apply.
+      // Just-cause packs still return the encoded notice days for permitted paths.
       return rules.landlordNoCauseMonthToMonthNoticeDays;
     }
 
-    return rules.landlordNoCauseFixedTermNoticeDays;
+    return rules.landlordNoCauseFixedTermNoticeDays
+      ?? rules.landlordEndOfInitialTermNoticeDays;
   }
 
   return rules.landlordNoCauseMonthToMonthNoticeDays;
@@ -85,19 +155,15 @@ export function calculateTerminationNoticePeriod({
 
 /**
  * Calculate required notice period for eviction notices
- * @param {Object} params - Calculation parameters
- * @param {string} params.noticeType - '3_day_pay_or_vacate', '10_day_compliance', '14_day_unconditional', '20_day_violation'
- * @param {string} params.jurisdiction - Jurisdiction pack id
  * @returns {number} - Required notice period in days
  */
-export function calculateEvictionNoticePeriod({ noticeType, jurisdiction }) {
+export function calculateEvictionNoticePeriod({ noticeType, jurisdiction } = {}) {
   const periods = resolvedRules(jurisdiction).evictionNoticeDays;
   return periods[noticeType] ?? periods['3_day_pay_or_vacate'] ?? 3;
 }
 
 /**
  * Calculate required notice period for security deposit return
- * @param {string} jurisdiction - Jurisdiction pack id
  * @returns {number} - Required return period in days
  */
 export function calculateDepositReturnPeriod(jurisdiction) {
@@ -106,22 +172,90 @@ export function calculateDepositReturnPeriod(jurisdiction) {
 
 /**
  * Calculate required notice period for entry
- * @param {string} jurisdiction - Jurisdiction pack id
- * @param {boolean} isEmergency - Whether entry is for emergency
- * @returns {number} - Required notice period in hours (0 for emergency)
+ * @param {string} jurisdiction
+ * @param {boolean|object} isEmergencyOrOptions
+ * @param {string} [purpose] 'general' | 'showing' (when second arg is boolean)
+ * @returns {number} hours (0 for emergency)
  */
-export function calculateEntryNoticePeriod(jurisdiction, isEmergency = false) {
-  if (isEmergency) {
+export function calculateEntryNoticePeriod(
+  jurisdiction,
+  isEmergencyOrOptions = false,
+  purpose = 'general'
+) {
+  const options = typeof isEmergencyOrOptions === 'object' && isEmergencyOrOptions != null
+    ? isEmergencyOrOptions
+    : { isEmergency: !!isEmergencyOrOptions, purpose };
+  if (options.isEmergency) {
     return 0;
   }
-  return resolvedRules(jurisdiction).entryNoticeHours;
+  const rules = resolvedRules(jurisdiction);
+  if (options.purpose === 'showing') {
+    return rules.entryShowingNoticeHours ?? 24;
+  }
+  return rules.entryNoticeHours;
+}
+
+/**
+ * Pack-driven notice days for a workflow type (used by calculateNoticePeriod).
+ */
+export function noticePeriodDaysFromPack({
+  workflowType,
+  leaseType,
+  jurisdiction,
+  context = {},
+} = {}) {
+  const packId = resolvedPackId(jurisdiction);
+  if (workflowType === 'rent_increase') {
+    return calculateRentIncreaseNoticePeriod({
+      leaseType,
+      jurisdiction: packId,
+      currentRent: context.currentRent,
+      newRent: context.newRent,
+      percentIncrease: context.percent_increase ?? context.percentIncrease,
+      subsidized: context.subsidized || context.incomeBasedRent || false,
+    });
+  }
+  if (workflowType === 'lease_termination') {
+    return calculateTerminationNoticePeriod({
+      leaseType,
+      jurisdiction: packId,
+      initiatedBy: context.initiatedBy || 'landlord',
+      hasCause: context.hasCause || false,
+    });
+  }
+  if (workflowType === 'eviction') {
+    return calculateEvictionNoticePeriod({
+      noticeType: context.noticeType || '3_day_pay_or_vacate',
+      jurisdiction: packId,
+    });
+  }
+  if (workflowType === 'security_deposit') {
+    return calculateDepositReturnPeriod(packId);
+  }
+  if (workflowType === 'entry' || workflowType === 'entry_notice') {
+    return calculateEntryNoticePeriod(packId, {
+      isEmergency: !!context.isEmergency,
+      purpose: context.entryPurpose || context.purpose || 'general',
+    });
+  }
+  return 30;
+}
+
+function citationsForWorkflow(jurisdiction, workflowType) {
+  const section = {
+    rent_increase: 'rentIncrease',
+    lease_termination: 'termination',
+    eviction: 'eviction',
+    security_deposit: 'deposit',
+    entry: 'entry',
+    entry_notice: 'entry',
+  }[workflowType];
+  return getRuleCitations(jurisdiction, section);
 }
 
 /**
  * Calculate effective date from notice date and notice period
- * @param {Date|string} noticeDate - Date notice is served
- * @param {number} noticePeriodDays - Required notice period in days
- * @returns {Date} - Effective date
+ * @returns {Date}
  */
 export function calculateEffectiveDate(noticeDate, noticePeriodDays) {
   const date = new Date(noticeDate);
@@ -131,9 +265,7 @@ export function calculateEffectiveDate(noticeDate, noticePeriodDays) {
 
 /**
  * Calculate required notice date from effective date and notice period
- * @param {Date|string} effectiveDate - Desired effective date
- * @param {number} noticePeriodDays - Required notice period in days
- * @returns {Date} - Latest date notice must be served
+ * @returns {Date}
  */
 export function calculateRequiredNoticeDate(effectiveDate, noticePeriodDays) {
   const date = new Date(effectiveDate);
@@ -143,9 +275,6 @@ export function calculateRequiredNoticeDate(effectiveDate, noticePeriodDays) {
 
 /**
  * Check if a date meets the required notice period
- * @param {Date|string} noticeDate - Date notice is/will be served
- * @param {Date|string} effectiveDate - Desired effective date
- * @param {number} requiredDays - Required notice period in days
  * @returns {Object} - { valid: boolean, daysDifference: number, message: string }
  */
 export function validateNoticePeriod(noticeDate, effectiveDate, requiredDays) {
@@ -159,7 +288,7 @@ export function validateNoticePeriod(noticeDate, effectiveDate, requiredDays) {
       valid: false,
       daysDifference: diffDays,
       requiredDays,
-      message: `Notice period of ${requiredDays} days required. Only ${diffDays} days between notice and effective date.`
+      message: `Notice period of ${requiredDays} days required. Only ${diffDays} days between notice and effective date.`,
     };
   }
 
@@ -167,20 +296,13 @@ export function validateNoticePeriod(noticeDate, effectiveDate, requiredDays) {
     valid: true,
     daysDifference: diffDays,
     requiredDays,
-    message: `Notice period satisfied (${diffDays} days)`
+    message: `Notice period satisfied (${diffDays} days)`,
   };
 }
 
 /**
- * Calculate notice period using compliance rules from database
- * @param {Object} params - Calculation parameters
- * @param {string} params.workflowType - Type of workflow ('rent_increase', 'eviction', 'lease_termination', etc.)
- * @param {string} params.leaseType - 'month_to_month' or 'fixed_term'
- * @param {string|number} params.propertyId - Property ID (optional, for jurisdiction detection)
- * @param {string} params.jurisdiction - Pack id (optional, will detect from property if not provided)
- * @param {Object} params.context - Additional context for rule matching (e.g., { percent_increase: 15 })
- * @param {Object} params.supabase - Optional Supabase client
- * @returns {Promise<Object>} - { noticePeriodDays: number, requiredNoticeDate: Date, rules: Array }
+ * Calculate notice period using the jurisdiction pack, with optional DB rules
+ * attached for display. Pack math wins so stale seed rows cannot override RCW values.
  */
 export async function calculateNoticePeriod({
   workflowType,
@@ -188,125 +310,91 @@ export async function calculateNoticePeriod({
   propertyId = null,
   jurisdiction = null,
   context = {},
-  supabase = null
-}) {
+  supabase = null,
+} = {}) {
+  let detectedJurisdiction = jurisdiction;
   try {
-    // Detect jurisdiction if not provided
-    let detectedJurisdiction = jurisdiction;
     if (!detectedJurisdiction && propertyId) {
       detectedJurisdiction = await detectJurisdictionFromPropertyId(propertyId, supabase);
     }
-    if (!detectedJurisdiction) {
-      detectedJurisdiction = DEFAULT_JURISDICTION_PACK_ID;
-    }
+  } catch (error) {
+    console.error('Error detecting jurisdiction:', error);
+  }
+  if (!detectedJurisdiction) {
+    detectedJurisdiction = DEFAULT_JURISDICTION_PACK_ID;
+  }
 
-    // Fetch applicable rules from API
+  const noticePeriodDays = noticePeriodDaysFromPack({
+    workflowType,
+    leaseType,
+    jurisdiction: detectedJurisdiction,
+    context,
+  });
+
+  let applicableRules = [];
+  let fetchError = null;
+  try {
     const rulesUrl = `/api/compliance/rules?jurisdiction=${detectedJurisdiction}&applies_to=${workflowType}&is_active=true`;
     const response = await fetch(rulesUrl);
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch compliance rules');
-    }
-
-    const { rules = [] } = await response.json();
-
-    // Filter and match rules based on conditions
-    let applicableRules = rules.filter(rule => {
-      if (!rule.rule_condition || Object.keys(rule.rule_condition).length === 0) {
-        return true; // Rule applies to all cases
-      }
-
-      // Check lease_type condition
-      if (rule.rule_condition.lease_type && rule.rule_condition.lease_type !== leaseType) {
-        return false;
-      }
-
-      // Check percent_increase condition
-      if (rule.rule_condition.percent_increase && context.percent_increase !== undefined) {
-        const condition = rule.rule_condition.percent_increase;
-        if (condition.operator === 'lte' && context.percent_increase > condition.value) {
+    if (response.ok) {
+      const payload = await response.json();
+      const rules = payload.rules || [];
+      applicableRules = rules.filter((rule) => {
+        if (!rule.rule_condition || Object.keys(rule.rule_condition).length === 0) {
+          return true;
+        }
+        if (rule.rule_condition.lease_type && rule.rule_condition.lease_type !== leaseType) {
           return false;
         }
-        if (condition.operator === 'gt' && context.percent_increase <= condition.value) {
-          return false;
+        if (rule.rule_condition.percent_increase && context.percent_increase !== undefined) {
+          const condition = rule.rule_condition.percent_increase;
+          if (condition.operator === 'lte' && context.percent_increase > condition.value) {
+            return false;
+          }
+          if (condition.operator === 'gt' && context.percent_increase <= condition.value) {
+            return false;
+          }
         }
-      }
-
-      // Add more condition checks as needed
-      return true;
-    });
-
-    // Find the rule with notice_period_days
-    const noticePeriodRule = applicableRules.find(r => r.notice_period_days !== null && r.notice_period_days !== undefined);
-
-    let noticePeriodDays = null;
-    if (noticePeriodRule) {
-      noticePeriodDays = noticePeriodRule.notice_period_days;
+        return true;
+      });
     } else {
-      // Fallback to pack-based calculations if no rule found
-      if (workflowType === 'rent_increase') {
-        noticePeriodDays = calculateRentIncreaseNoticePeriod({
-          leaseType,
-          jurisdiction: detectedJurisdiction,
-          currentRent: context.currentRent,
-          newRent: context.newRent,
-          percentIncrease: context.percent_increase
-        });
-      } else if (workflowType === 'lease_termination') {
-        noticePeriodDays = calculateTerminationNoticePeriod({
-          leaseType,
-          jurisdiction: detectedJurisdiction,
-          initiatedBy: context.initiatedBy || 'landlord',
-          hasCause: context.hasCause || false
-        });
-      } else if (workflowType === 'eviction') {
-        noticePeriodDays = calculateEvictionNoticePeriod({
-          noticeType: context.noticeType || '3_day_pay_or_vacate',
-          jurisdiction: detectedJurisdiction
-        });
-      } else if (workflowType === 'security_deposit') {
-        noticePeriodDays = calculateDepositReturnPeriod(detectedJurisdiction);
-      } else {
-        // Default to 30 days
-        noticePeriodDays = 30;
-      }
+      fetchError = 'Failed to fetch compliance rules';
     }
-
-    // Calculate required notice date (if effective date is provided)
-    let requiredNoticeDate = null;
-    if (context.effectiveDate) {
-      requiredNoticeDate = calculateRequiredNoticeDate(context.effectiveDate, noticePeriodDays);
-    }
-
-    return {
-      noticePeriodDays,
-      requiredNoticeDate,
-      jurisdiction: detectedJurisdiction,
-      rules: applicableRules,
-      effectiveDate: context.effectiveDate || null
-    };
   } catch (error) {
-    console.error('Error calculating notice period:', error);
-    // Fallback to pack-based calculation
-    const fallbackJurisdiction = jurisdiction || DEFAULT_JURISDICTION_PACK_ID;
-    const fallbackDays = workflowType === 'rent_increase' 
-      ? calculateRentIncreaseNoticePeriod({
-          leaseType,
-          jurisdiction: fallbackJurisdiction,
-          currentRent: context.currentRent,
-          newRent: context.newRent,
-          percentIncrease: context.percent_increase
-        })
-      : 30;
-
-    return {
-      noticePeriodDays: fallbackDays,
-      requiredNoticeDate: context.effectiveDate 
-        ? calculateRequiredNoticeDate(context.effectiveDate, fallbackDays)
-        : null,
-      jurisdiction: fallbackJurisdiction,
-      rules: [],
-      error: error.message
-    };
+    fetchError = error.message;
   }
+
+  let requiredNoticeDate = null;
+  if (context.effectiveDate) {
+    requiredNoticeDate = calculateRequiredNoticeDate(context.effectiveDate, noticePeriodDays);
+  }
+
+  const result = {
+    noticePeriodDays,
+    requiredNoticeDate,
+    jurisdiction: detectedJurisdiction,
+    citations: citationsForWorkflow(detectedJurisdiction, workflowType),
+    rules: applicableRules,
+    effectiveDate: context.effectiveDate || null,
+    source: 'jurisdiction_pack',
+  };
+
+  if (workflowType === 'rent_increase') {
+    result.evaluation = evaluateRentIncrease({
+      leaseType,
+      jurisdiction: detectedJurisdiction,
+      currentRent: context.currentRent,
+      newRent: context.newRent,
+      percentIncrease: context.percent_increase ?? context.percentIncrease,
+      subsidized: context.subsidized || context.incomeBasedRent || false,
+      tenancyStartDate: context.tenancyStartDate || context.leaseStartDate || null,
+      effectiveDate: context.effectiveDate || null,
+    });
+  }
+
+  if (fetchError) {
+    result.rulesError = fetchError;
+  }
+
+  return result;
 }

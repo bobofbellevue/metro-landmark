@@ -56,7 +56,7 @@ export default function SecurityDepositReturnWorkflow({ initialData = {}, workfl
           { id: 'original_deposit', label: 'Original Deposit Amount', type: 'number', required: true },
           { id: 'total_deductions', label: 'Total Deductions', type: 'number', required: true },
           { id: 'deduction_details', label: 'Itemized Deductions', type: 'textarea', required: true },
-          { id: 'return_date', label: 'Return Date (must be within 14 days)', type: 'date', required: true }
+          { id: 'return_date', label: 'Return Date (must be within 30 days under the WA/Seattle pack)', type: 'date', required: true }
         ],
         render: ({ workflowData }) => {
           const returnAmount = (workflowData.original_deposit || 0) - (workflowData.total_deductions || 0);
