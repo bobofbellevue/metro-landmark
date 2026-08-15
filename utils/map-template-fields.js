@@ -447,5 +447,27 @@ export function mapLeaseLikeDataToTemplate(templateData, values = {}) {
     values.questions_contact_name || values.pmc_name
   );
 
+  assign(
+    [
+      'Questions Phone',
+      'Contact Phone',
+      'Manager Phone',
+      'Office Phone',
+    ],
+    values.questions_phone,
+    { exactOnly: true }
+  );
+
+  assign(
+    [
+      'Questions Email',
+      'Contact Email',
+      'Manager Email',
+      'Office Email',
+    ],
+    values.questions_email,
+    { exactOnly: true }
+  );
+
   return mapped;
 }

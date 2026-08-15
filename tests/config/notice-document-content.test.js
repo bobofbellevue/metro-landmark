@@ -1,27 +1,4 @@
-import {
-  buildSimpleNoticeContentLines,
-  formatLandlordFormattedName,
-} from '../../utils/document-generator.js';
-
-describe('formatLandlordFormattedName', () => {
-  test('uses contact first+last when landlord_name is null', () => {
-    expect(
-      formatLandlordFormattedName(
-        { landlord_name: null },
-        { first_name: 'Bob', middle_name: 'Q', last_name: 'Owner' }
-      )
-    ).toBe('Bob Q. Owner');
-  });
-
-  test('falls back to landlord_name when contact names are missing', () => {
-    expect(
-      formatLandlordFormattedName(
-        { landlord_name: 'Acme Holdings' },
-        { first_name: '', last_name: '' }
-      )
-    ).toBe('Acme Holdings');
-  });
-});
+import { buildSimpleNoticeContentLines } from '../../utils/document-generator.js';
 
 describe('buildSimpleNoticeContentLines', () => {
   test('includes current and new rent for rent increase notices', () => {
@@ -58,11 +35,13 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(lines).toContain('Effective Date: 11/01/2026');
   });
 
-  test('includes named contact with phone and email lines', () => {
+  test('shows the assigned property manager, not the landlord or PMC header', () => {
     const lines = buildSimpleNoticeContentLines({
       notice_type_key: 'rent_increase',
       tenant_names: 'Ada Lovelace',
       pmc_name: 'Salish Property Group',
+      landlord_name: 'Bob B. Bellevue',
+      landlord_address: '100 Main St, Bellevue, WA 98004',
       property_name: 'Pine Court',
       unit_number: 'B',
       current_rent: '$1,200.00',
@@ -77,15 +56,15 @@ describe('buildSimpleNoticeContentLines', () => {
       },
     });
 
-    expect(lines).toContain('Property Management Company: Salish Property Group');
-    expect(lines).toContain(
-      'If you have any questions about this notice, please contact Grace Hopper.'
-    );
+    expect(lines).toContain('Property Manager: Grace Hopper');
     expect(lines).toContain('Phone: 206-555-0100');
     expect(lines).toContain('Email: grace@example.com');
+    expect(lines.some((l) => l.startsWith('Landlord:'))).toBe(false);
+    expect(lines).not.toContain('100 Main St, Bellevue, WA 98004');
+    expect(lines).not.toContain(
+      'Property Management Company: Salish Property Group'
+    );
     expect(lines).toContain('Signature: ________________________________');
-    expect(lines).toContain('Printed Name: _____________________________');
-    expect(lines).toContain('Date: ____________________________________');
   });
 
   test('falls back to phone/email fields when contact_lines is absent', () => {
@@ -103,9 +82,7 @@ describe('buildSimpleNoticeContentLines', () => {
       },
     });
 
-    expect(lines).toContain(
-      'If you have any questions about this notice, please contact Ada Owner.'
-    );
+    expect(lines).toContain('Landlord: Ada Owner');
     expect(lines).toContain('Phone: 425-555-0199');
     expect(lines).toContain('Email: owner@example.com');
   });
@@ -121,8 +98,9 @@ describe('buildSimpleNoticeContentLines', () => {
     });
 
     expect(lines).toContain(
-      'If you have any questions about this notice, please contact Salish Property Group.'
+      'If you have any questions about this notice, please contact:'
     );
+    expect(lines).toContain('Salish Property Group');
     expect(
       lines.some((l) =>
         l.includes('your property manager, property management company, or landlord')
@@ -131,7 +109,7 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(lines).toContain('Signature: ________________________________');
   });
 
-  test('includes landlord name and contact info when no PM/PMC', () => {
+  test('includes landlord name and contact info when self-managing', () => {
     const lines = buildSimpleNoticeContentLines({
       notice_type_key: 'rent_increase',
       tenant_names: 'Ada Lovelace',
@@ -141,6 +119,7 @@ describe('buildSimpleNoticeContentLines', () => {
       questions_contact: {
         role: 'Landlord',
         name: 'Bob B. Bellevue',
+        address: '100 Main St, Bellevue, WA 98004',
         phone: '360-555-0142',
         email: 'bob@example.com',
         contact_lines: ['Phone: 360-555-0142', 'Email: bob@example.com'],
@@ -148,57 +127,36 @@ describe('buildSimpleNoticeContentLines', () => {
     });
 
     expect(lines).toContain('Unit: B');
-    expect(lines).toContain(
-      'If you have any questions about this notice, please contact Bob B. Bellevue.'
-    );
+    expect(lines).toContain('Landlord: Bob B. Bellevue');
+    expect(lines).toContain('100 Main St, Bellevue, WA 98004');
     expect(lines).toContain('Phone: 360-555-0142');
     expect(lines).toContain('Email: bob@example.com');
   });
 
-  test('always includes landlord name and mailing address as party info', () => {
+  test('shows PMC office as the questions contact without a landlord line', () => {
     const lines = buildSimpleNoticeContentLines({
       notice_type_key: 'rent_increase',
       tenant_names: 'Ada Lovelace',
-      landlord_name: 'Bob B. Bellevue',
-      landlord_address: '100 Main St, Bellevue, WA 98004',
-      pmc_name: 'Salish Property Group',
       property_name: 'Pine Court',
       unit_number: 'B',
-      current_rent: '$1,200.00',
-      new_rent: '$1,300.00',
       effective_date: '11/01/2026',
       questions_contact: {
-        role: 'Property Manager',
-        name: 'Grace Hopper',
-        phone: '206-555-0100',
-        email: 'grace@example.com',
-        contact_lines: ['Phone: 206-555-0100', 'Email: grace@example.com'],
+        role: 'Property Management Company',
+        name: 'Salish Property Group',
+        phone: '425-555-0100',
+        email: 'office@salish.example',
+        contact_lines: [
+          'Phone: 425-555-0100',
+          'Email: office@salish.example',
+        ],
       },
     });
 
-    expect(lines).toContain('Landlord: Bob B. Bellevue');
-    expect(lines).toContain('100 Main St, Bellevue, WA 98004');
-    expect(lines.indexOf('Landlord: Bob B. Bellevue')).toBeLessThan(
-      lines.indexOf('Property Management Company: Salish Property Group')
-    );
     expect(lines).toContain(
-      'If you have any questions about this notice, please contact Grace Hopper.'
+      'Property Management Company: Salish Property Group'
     );
-  });
-
-  test('uses lessor aliases when landlord_name is absent', () => {
-    const lines = buildSimpleNoticeContentLines({
-      notice_type_key: 'rent_increase',
-      tenant_names: 'Ada Lovelace',
-      lessor_name: 'Acme Holdings LLC',
-      lessor_address: '200 Owner Ave, Seattle, WA 98101',
-      property_name: 'Pine Court',
-      unit_number: 'B',
-      effective_date: '11/01/2026',
-    });
-
-    expect(lines).toContain('Landlord: Acme Holdings LLC');
-    expect(lines).toContain('200 Owner Ave, Seattle, WA 98101');
+    expect(lines).toContain('Phone: 425-555-0100');
+    expect(lines.some((l) => l.startsWith('Landlord:'))).toBe(false);
   });
 
   test('shows N/A only when unit_number is missing', () => {

@@ -10,6 +10,12 @@ import {
 } from '../src/utils/workflow-date.js';
 import { formatPersonDisplayName } from '../src/utils/lease-display.js';
 import {
+  buildQuestionsContactLines,
+  contactFromLandlord,
+  isOwnerManagedProperty,
+  resolveNoticeQuestionsContact,
+} from '../src/utils/notice-questions-contact.js';
+import {
   deepMergeObjects,
   mapLeaseLikeDataToTemplate,
 } from './map-template-fields.js';
@@ -80,411 +86,7 @@ function formatFullName(firstName, middleName, lastName) {
   return name.trim();
 }
 
-/**
- * Normalize contact_methods into phone, email, and display lines.
- * Treats any non-email method as a phone/reachable contact line.
- * @param {Array<{ method_type?: string, value?: string }>|null|undefined} methods
- * @param {{ email?: string|null }} [extras]
- * @returns {{ phone: string|null, email: string|null, lines: string[] }}
- */
-function normalizeContactMethods(methods, extras = {}) {
-  const list = (methods || []).filter((m) => (m.value || '').trim());
-  let email =
-    list.find((m) => (m.method_type || '').toLowerCase() === 'email')?.value ||
-    extras.email ||
-    null;
-  const phoneTypes = ['phone', 'cell', 'mobile', 'telephone', 'work', 'home', 'office'];
-  let phone =
-    list.find((m) => {
-      const t = (m.method_type || '').toLowerCase();
-      return phoneTypes.some((p) => t === p || t.includes(p));
-    })?.value || null;
-
-  // Any remaining non-email method can serve as phone if none matched
-  if (!phone) {
-    phone =
-      list.find((m) => (m.method_type || '').toLowerCase() !== 'email')?.value ||
-      null;
-  }
-
-  const lines = [];
-  const seen = new Set();
-  for (const m of list) {
-    const type = (m.method_type || '').trim();
-    const value = (m.value || '').trim();
-    if (!value) continue;
-    const key = `${type.toLowerCase()}:${value}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const label =
-      type.toLowerCase() === 'email'
-        ? 'Email'
-        : phoneTypes.some((p) => type.toLowerCase() === p || type.toLowerCase().includes('phone'))
-          ? type.charAt(0).toUpperCase() + type.slice(1)
-          : type
-            ? type.charAt(0).toUpperCase() + type.slice(1)
-            : 'Phone';
-    // Prefer canonical Phone/Email labels for common types
-    const pretty =
-      type.toLowerCase() === 'email'
-        ? 'Email'
-        : ['phone', 'telephone'].includes(type.toLowerCase())
-          ? 'Phone'
-          : label;
-    lines.push(`${pretty}: ${value}`);
-  }
-  if (email && !lines.some((l) => l.toLowerCase().startsWith('email:'))) {
-    lines.push(`Email: ${email}`);
-  }
-
-  return { phone, email, lines };
-}
-
-/**
- * Load contact_methods for a contacts row.
- * @param {object} supabase
- * @param {number|null|undefined} contactId
- */
-async function fetchMethodsForContactId(supabase, contactId) {
-  if (!contactId) return [];
-  const { data } = await supabase
-    .from('contact_methods')
-    .select('method_type, value')
-    .eq('contact_id', contactId);
-  return data || [];
-}
-
-/**
- * Load phone/email + display name for a users row (manager / staff contact).
- * @param {object} supabase
- * @param {{ user_id: number, email?: string|null }} user
- * @param {string} roleLabel
- * @returns {Promise<{ role: string, name: string, phone: string|null, email: string|null, contact_lines: string[] }>}
- */
-async function contactFromUser(supabase, user, roleLabel) {
-  const { data: contact } = await supabase
-    .from('contacts')
-    .select('contact_id, first_name, middle_name, last_name')
-    .eq('contactable_type', 'user')
-    .eq('contactable_id', user.user_id)
-    .maybeSingle();
-
-  const methods = await fetchMethodsForContactId(supabase, contact?.contact_id);
-  const picked = normalizeContactMethods(methods, { email: user.email || null });
-
-  const name =
-    formatPersonDisplayName({
-      first_name: contact?.first_name,
-      middle_name: contact?.middle_name,
-      last_name: contact?.last_name,
-      email: picked.email,
-    }) || roleLabel;
-
-  return {
-    role: roleLabel,
-    name,
-    phone: picked.phone,
-    email: picked.email,
-    contact_lines: picked.lines,
-  };
-}
-
-/**
- * Resolve PMC company name + contact methods.
- * @param {object} supabase
- * @param {number} pmcId
- */
-async function contactFromPmc(supabase, pmcId) {
-  const { data: pmc } = await supabase
-    .from('pm_companies')
-    .select('pmc_id, company_name')
-    .eq('pmc_id', pmcId)
-    .maybeSingle();
-
-  if (!pmc?.company_name) return null;
-
-  const { data: pmcContact } = await supabase
-    .from('contacts')
-    .select('contact_id')
-    .eq('contactable_type', 'pm_company')
-    .eq('contactable_id', pmc.pmc_id)
-    .maybeSingle();
-
-  const methods = await fetchMethodsForContactId(supabase, pmcContact?.contact_id);
-  const picked = normalizeContactMethods(methods);
-
-  return {
-    role: 'Property Management Company',
-    name: pmc.company_name,
-    phone: picked.phone,
-    email: picked.email,
-    contact_lines: picked.lines,
-  };
-}
-
-/**
- * Merge missing phone/email/lines from a fallback contact onto a primary contact.
- */
-function enrichContactInfo(primary, fallback) {
-  if (!primary) return fallback || null;
-  if (!fallback) return primary;
-  const phone = primary.phone || fallback.phone || null;
-  const email = primary.email || fallback.email || null;
-
-  const lines = [...(primary.contact_lines || [])];
-  const hasPhoneLine = lines.some((l) => {
-    const lower = l.toLowerCase();
-    return (
-      lower.startsWith('phone:') ||
-      lower.startsWith('cell:') ||
-      lower.startsWith('mobile:')
-    );
-  });
-  const hasEmailLine = lines.some((l) => l.toLowerCase().startsWith('email:'));
-
-  if (!hasPhoneLine) {
-    if (phone) {
-      lines.push(`Phone: ${phone}`);
-    } else {
-      for (const fl of fallback.contact_lines || []) {
-        const lower = fl.toLowerCase();
-        if (
-          lower.startsWith('phone:') ||
-          lower.startsWith('cell:') ||
-          lower.startsWith('mobile:')
-        ) {
-          lines.push(fl);
-          break;
-        }
-      }
-    }
-  }
-  if (!hasEmailLine) {
-    if (email) {
-      lines.push(`Email: ${email}`);
-    } else {
-      for (const fl of fallback.contact_lines || []) {
-        if (fl.toLowerCase().startsWith('email:')) {
-          lines.push(fl);
-          break;
-        }
-      }
-    }
-  }
-
-  return {
-    ...primary,
-    phone,
-    email,
-    contact_lines: lines,
-  };
-}
-
-/**
- * Build the display name used elsewhere as landlord.formatted_name.
- * Prefer contact first+last (landlord_name is often null in this app).
- * Exported for unit tests.
- * @param {{ landlord_name?: string|null }|null|undefined} landlord
- * @param {{ first_name?: string, middle_name?: string, last_name?: string }|null|undefined} contact
- * @param {string|null|undefined} emailFallback
- * @returns {string}
- */
-export function formatLandlordFormattedName(
-  landlord,
-  contact = null,
-  emailFallback = null
-) {
-  // Same priority as LeasesPage / map-fields: first+last > landlord_name > email
-  const fromContact = formatFullName(
-    contact?.first_name,
-    contact?.middle_name,
-    contact?.last_name
-  );
-  if (fromContact) return fromContact;
-
-  const partial = formatPersonDisplayName({
-    first_name: contact?.first_name,
-    middle_name: contact?.middle_name,
-    last_name: contact?.last_name,
-  });
-  if (partial) return partial;
-
-  const company = (landlord?.landlord_name || '').trim();
-  if (company) return company;
-
-  return (emailFallback || '').trim();
-}
-
-/**
- * Load landlord contact row(s) the same way lease fill / landlord UI does.
- * Uses limit(1) instead of maybeSingle (multiple contacts would null maybeSingle).
- * @param {object} supabase
- * @param {{ landlord_id: number, user_id?: number|null }} landlord
- */
-async function fetchLandlordContactRow(supabase, landlord) {
-  const { data: byLandlordId } = await supabase
-    .from('contacts')
-    .select('contact_id, first_name, middle_name, last_name')
-    .eq('contactable_type', 'landlord')
-    .eq('contactable_id', landlord.landlord_id)
-    .limit(1);
-  if (byLandlordId?.[0]) return byLandlordId[0];
-
-  // Some rows may key landlord contacts by user_id
-  if (landlord.user_id) {
-    const { data: byUserAsLandlord } = await supabase
-      .from('contacts')
-      .select('contact_id, first_name, middle_name, last_name')
-      .eq('contactable_type', 'landlord')
-      .eq('contactable_id', landlord.user_id)
-      .limit(1);
-    if (byUserAsLandlord?.[0]) return byUserAsLandlord[0];
-
-    const { data: byUser } = await supabase
-      .from('contacts')
-      .select('contact_id, first_name, middle_name, last_name')
-      .eq('contactable_type', 'user')
-      .eq('contactable_id', landlord.user_id)
-      .limit(1);
-    if (byUser?.[0]) return byUser[0];
-  }
-
-  return null;
-}
-
-/**
- * Load the landlord mailing address (addresses.addressable_type = 'landlord').
- * @param {object} supabase
- * @param {number} landlordId
- * @returns {Promise<object|null>}
- */
-async function fetchLandlordMailingAddress(supabase, landlordId) {
-  if (!landlordId) return null;
-
-  const { data, error } = await supabase
-    .from('addresses')
-    .select(
-      'address_line_1, address_line_2, city, state_province_region, postal_code, country'
-    )
-    .eq('addressable_type', 'landlord')
-    .eq('addressable_id', landlordId)
-    .limit(1);
-
-  if (error) {
-    console.error(
-      '[RENDER_DIAG] landlord address lookup failed:',
-      error.message || error,
-      { landlordId, code: error.code }
-    );
-    return null;
-  }
-
-  return data?.[0] || null;
-}
-
-/**
- * Resolve landlord name, mailing address, and phone/email.
- * Names live on contacts (landlords.landlord_name does not exist).
- * @param {object} supabase
- * @param {number} landlordId
- * @returns {Promise<{ role: string, name: string, address: string, phone: string|null, email: string|null, contact_lines: string[] }|null>}
- */
-async function contactFromLandlord(supabase, landlordId) {
-  if (!landlordId) return null;
-
-  // Never select landlord_name — that column does not exist (names live on contacts).
-  // Explicit columns avoid PostgREST 400s from stale schema/select lists.
-  const { data: landlord, error: landlordError } = await supabase
-    .from('landlords')
-    .select('landlord_id, user_id, manager_id')
-    .eq('landlord_id', landlordId)
-    .maybeSingle();
-
-  if (landlordError) {
-    console.error(
-      '[RENDER_DIAG] contactFromLandlord landlord lookup failed:',
-      landlordError.message || landlordError,
-      { landlordId, code: landlordError.code, details: landlordError.details }
-    );
-    return null;
-  }
-  if (!landlord) return null;
-
-  let userEmail = null;
-  if (landlord.user_id) {
-    const { data: landlordUser } = await supabase
-      .from('users')
-      .select('email')
-      .eq('user_id', landlord.user_id)
-      .maybeSingle();
-    userEmail = landlordUser?.email || null;
-  }
-
-  const contact = await fetchLandlordContactRow(supabase, landlord);
-  const methods = await fetchMethodsForContactId(supabase, contact?.contact_id);
-  const picked = normalizeContactMethods(methods, { email: userEmail });
-  const addressRow = await fetchLandlordMailingAddress(supabase, landlordId);
-  const address = formatAddress(addressRow);
-
-  const name = formatLandlordFormattedName(landlord, contact, picked.email);
-  if (!name && !address) return null;
-
-  return {
-    role: 'Landlord',
-    name,
-    address,
-    phone: picked.phone,
-    email: picked.email,
-    contact_lines: picked.lines,
-  };
-}
-
-/**
- * Resolve whom tenants should contact with questions about a notice.
- * Priority: property manager → PM company → landlord.
- * Returns name plus phone/email contact lines when available.
- * @param {object} supabase
- * @param {{ manager_id?: number|null, pmc_id?: number|null, landlord_id?: number|null }|null} property
- * @param {number|null|undefined} leaseLandlordId
- * @returns {Promise<{ role: string, name: string, phone: string|null, email: string|null, contact_lines: string[] }|null>}
- */
-async function resolveNoticeQuestionsContact(
-  supabase,
-  property,
-  leaseLandlordId = null
-) {
-  if (!property && !leaseLandlordId) return null;
-
-  const pmcContact = property?.pmc_id
-    ? await contactFromPmc(supabase, property.pmc_id)
-    : null;
-
-  if (property?.manager_id) {
-    const { data: manager } = await supabase
-      .from('users')
-      .select('user_id, email, role')
-      .eq('user_id', property.manager_id)
-      .maybeSingle();
-
-    if (manager) {
-      const pm = await contactFromUser(supabase, manager, 'Property Manager');
-      // Keep the PM's name; fill missing phone/email from the PMC office
-      return enrichContactInfo(pm, pmcContact);
-    }
-  }
-
-  if (pmcContact) {
-    return pmcContact;
-  }
-
-  const landlordId =
-    property?.landlord_id ||
-    property?.building_owner_landlord_id ||
-    leaseLandlordId ||
-    null;
-
-  return contactFromLandlord(supabase, landlordId);
-}
+export { formatLandlordFormattedName } from '../src/utils/notice-questions-contact.js';
 
 /**
  * Load client contacts keyed by client_id or user_id (both used in the app).
@@ -1408,24 +1010,19 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     noticeLandlordId
   );
 
-  // Always resolve landlord from contacts when we have an id.
-  // landlords.landlord_name is often null; the real name is contact first/last
-  // (same source as map-fields formatted_name, e.g. "Bob B. Bellevue").
-  const landlordContact = noticeLandlordId
-    ? await contactFromLandlord(supabase, noticeLandlordId)
-    : null;
+  const ownerManaged = isOwnerManagedProperty(property);
+  // Landlord identity is only for self-managed properties. PM/PMC-managed
+  // notices must not fall back to the landlord as the questions contact.
+  const landlordContact =
+    ownerManaged && noticeLandlordId
+      ? await contactFromLandlord(supabase, noticeLandlordId)
+      : null;
 
-  // Owner-managed (no PM/PMC): prefer landlord. Otherwise keep PM/PMC, fall back to landlord.
-  const ownerManaged = !property?.manager_id && !property?.pmc_id;
-  let ensuredQuestionsContact = questionsContact;
-  if (ownerManaged && landlordContact) {
-    ensuredQuestionsContact = landlordContact;
-  } else if (!ensuredQuestionsContact && landlordContact) {
-    ensuredQuestionsContact = landlordContact;
-  }
+  const ensuredQuestionsContact = questionsContact || landlordContact || null;
 
-  const landlordName = landlordContact?.name || '';
-  const landlordAddress = landlordContact?.address || '';
+  const showLandlord = ensuredQuestionsContact?.role === 'Landlord';
+  const landlordName = showLandlord ? landlordContact?.name || '' : '';
+  const landlordAddress = showLandlord ? landlordContact?.address || '' : '';
   const resolvedUnitNumber =
     unit?.unit_number ||
     additional_data.unit_number ||
@@ -1506,15 +1103,12 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     unit_number: resolvedUnitNumber,
     tenant_names: tenantNames || additional_data.tenant_names || '',
     pmc_name: pmcName || additional_data.pmc_name || '',
-    landlord_name: landlordName || additional_data.landlord_name || '',
-    landlord_address:
-      landlordAddress || additional_data.landlord_address || '',
-    lessor_name: landlordName || additional_data.landlord_name || '',
-    lessor_address: landlordAddress || additional_data.landlord_address || '',
-    landlord_phone:
-      landlordContact?.phone || additional_data.landlord_phone || '',
-    landlord_email:
-      landlordContact?.email || additional_data.landlord_email || '',
+    landlord_name: landlordName,
+    landlord_address: landlordAddress,
+    lessor_name: landlordName,
+    lessor_address: landlordAddress,
+    landlord_phone: showLandlord ? landlordContact?.phone || '' : '',
+    landlord_email: showLandlord ? landlordContact?.email || '' : '',
     questions_contact:
       ensuredQuestionsContact || additional_data.questions_contact || null,
     questions_phone:
@@ -1544,6 +1138,8 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
       notice_type: formData.notice_type,
       percent_increase: formData.percent_increase,
       questions_contact_name: ensuredQuestionsContact?.name || '',
+      questions_phone: ensuredQuestionsContact?.phone || '',
+      questions_email: ensuredQuestionsContact?.email || '',
       pmc_name: formData.pmc_name,
     });
 
@@ -1561,7 +1157,11 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     Object.assign(diagnostics, positioned.diagnostics || {});
     if (positioned.pdfBytes) {
       console.log('[RENDER_DIAG] generateNoticeDocument positioned OK', diagnostics);
-      return { pdfBytes: positioned.pdfBytes, diagnostics };
+      const pdfBytes = await appendQuestionsContactPage(
+        positioned.pdfBytes,
+        formData.questions_contact
+      );
+      return { pdfBytes, diagnostics };
     }
     diagnostics.fallback_reason =
       diagnostics.fallback_reason || 'positioned_render_unavailable';
@@ -1629,29 +1229,6 @@ export function buildSimpleNoticeContentLines(formData = {}) {
     '',
   ];
 
-  const landlordName = (
-    formData.landlord_name ||
-    formData.lessor_name ||
-    ''
-  ).trim();
-  const landlordAddress = (
-    formData.landlord_address ||
-    formData.lessor_address ||
-    ''
-  ).trim();
-  if (landlordName || landlordAddress) {
-    lines.push(`Landlord: ${landlordName || 'N/A'}`);
-    if (landlordAddress) {
-      lines.push(landlordAddress);
-    }
-    lines.push('');
-  }
-
-  if (formData.pmc_name) {
-    lines.push(`Property Management Company: ${formData.pmc_name}`);
-    lines.push('');
-  }
-
   lines.push(
     `Property: ${formData.property_name || 'N/A'}`,
     `Unit: ${formData.unit_number || 'N/A'}`,
@@ -1686,33 +1263,12 @@ export function buildSimpleNoticeContentLines(formData = {}) {
     lines.push('', formData.additional_text);
   }
 
-  lines.push('');
-  const qc = formData.questions_contact;
-  const contactName =
-    (qc && qc.name) ||
-    formData.pmc_name ||
-    formData.landlord_name ||
-    '';
-  if (contactName) {
-    lines.push(
-      `If you have any questions about this notice, please contact ${contactName}.`
-    );
-    const contactLines =
-      Array.isArray(qc?.contact_lines) && qc.contact_lines.length > 0
-        ? qc.contact_lines
-        : [
-            qc?.phone ? `Phone: ${qc.phone}` : null,
-            qc?.email ? `Email: ${qc.email}` : null,
-            !qc?.phone && formData.questions_phone
-              ? `Phone: ${formData.questions_phone}`
-              : null,
-            !qc?.email && formData.questions_email
-              ? `Email: ${formData.questions_email}`
-              : null,
-          ].filter(Boolean);
-    for (const contactLine of contactLines) {
-      lines.push(contactLine);
-    }
+  const questionsLines = buildQuestionsContactLines(formData.questions_contact, {
+    pmc_name: formData.pmc_name,
+    landlord_name: formData.landlord_name,
+  });
+  if (questionsLines.length) {
+    lines.push('', ...questionsLines);
   }
 
   lines.push(
@@ -1726,5 +1282,37 @@ export function buildSimpleNoticeContentLines(formData = {}) {
   );
 
   return lines;
+}
+
+/**
+ * Add a questions-contact page so overlay templates still tell the tenant
+ * whom to call (many Notice templates have no questions-contact fields).
+ * @param {Uint8Array} pdfBytes
+ * @param {object|null} questionsContact
+ * @returns {Promise<Uint8Array>}
+ */
+async function appendQuestionsContactPage(pdfBytes, questionsContact) {
+  const lines = buildQuestionsContactLines(questionsContact);
+  if (!lines.length) return pdfBytes;
+
+  const { PDFDocument, StandardFonts } = await import('pdf-lib');
+  const pdfDoc = await PDFDocument.load(pdfBytes);
+  const page = pdfDoc.addPage([612, 792]);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const { height } = page.getSize();
+  let y = height - 72;
+  page.drawText('Questions about this notice', {
+    x: 50,
+    y,
+    size: 14,
+    font: bold,
+  });
+  y -= 28;
+  for (const line of lines) {
+    page.drawText(line, { x: 50, y, size: 12, font });
+    y -= 20;
+  }
+  return pdfDoc.save();
 }
 

@@ -12,6 +12,7 @@ import {
   isCompleteWorkflowDate,
 } from '../../utils/workflow-date.js';
 import { formatPersonDisplayName } from '../../utils/lease-display.js';
+import { resolveNoticeQuestionsContact } from '../../utils/notice-questions-contact.js';
 
 /**
  * RentIncreaseWorkflow - Guided workflow for rent increase notices
@@ -45,7 +46,9 @@ export default function RentIncreaseWorkflow({
               property_id,
               property_name,
               city_of_jurisdiction,
-              landlord_id
+              landlord_id,
+              manager_id,
+              pmc_id
             )
           )
         `)
@@ -67,7 +70,13 @@ export default function RentIncreaseWorkflow({
         landlordName = formatPersonDisplayName(contacts?.[0]) || '';
       }
 
-      setLease({ ...data, landlordName });
+      const questionsContact = await resolveNoticeQuestionsContact(
+        supabase,
+        data.units?.properties,
+        data.landlord_id
+      );
+
+      setLease({ ...data, landlordName, questionsContact });
     } catch (error) {
       console.error('Error fetching lease details:', error);
     }
@@ -264,10 +273,32 @@ export default function RentIncreaseWorkflow({
                   <span className="text-gray-600">Unit:</span>
                   <span className="font-medium">{lease?.units?.unit_number}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Landlord:</span>
-                  <span className="font-medium">{lease?.landlordName || '—'}</span>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-600">Questions contact:</span>
+                  <span className="font-medium text-right">
+                    {lease?.questionsContact?.name
+                      ? `${lease.questionsContact.name}${
+                          lease.questionsContact.role
+                            ? ` (${lease.questionsContact.role})`
+                            : ''
+                        }`
+                      : '—'}
+                  </span>
                 </div>
+                {(lease?.questionsContact?.phone ||
+                  lease?.questionsContact?.email) && (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-gray-600">Contact info:</span>
+                    <span className="font-medium text-right">
+                      {[
+                        lease.questionsContact.phone,
+                        lease.questionsContact.email,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Current Rent:</span>
                   <span className="font-medium">
