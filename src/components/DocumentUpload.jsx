@@ -10,11 +10,14 @@ import { supabase } from '../lib/supabase';
  * - noticeId: Integer (optional, ID of the legal notice)
  * - propertyId: Integer (optional, ID of the property)
  * - unitId: Integer (optional, ID of the unit)
+ * - complianceWorkflowId: Integer (optional, ID of the compliance workflow)
+ * - userId: Integer (optional, users.user_id — not the auth UUID)
  * - documentType: String (optional, e.g., 'filled_application', 'signed_lease')
  * - onUploadSuccess: Function (callback when upload succeeds)
  * - onUploadError: Function (callback when upload fails)
  * - maxSize: Number (max file size in MB, default 10)
  * - acceptedTypes: Array (accepted MIME types, default ['application/pdf', 'image/png', 'image/jpeg'])
+ * - acceptFile: Function (optional extra file filter)
  */
 export default function DocumentUpload({
   leaseId,
@@ -22,11 +25,14 @@ export default function DocumentUpload({
   noticeId,
   propertyId,
   unitId,
+  complianceWorkflowId,
+  userId,
   documentType,
   onUploadSuccess,
   onUploadError,
   maxSize = 10,
-  acceptedTypes = ['application/pdf', 'image/png', 'image/jpeg']
+  acceptedTypes = ['application/pdf', 'image/png', 'image/jpeg'],
+  acceptFile = null,
 }) {
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -35,9 +41,17 @@ export default function DocumentUpload({
   const handleFile = async (file) => {
     if (!file) return;
 
-    // Validate file type
-    if (!acceptedTypes.includes(file.type)) {
-      onUploadError?.(new Error(`File type ${file.type} not allowed. Accepted types: ${acceptedTypes.join(', ')}`));
+    // Validate file type (custom predicate handles empty iPhone MIME + extensions)
+    const typeAllowed =
+      typeof acceptFile === 'function'
+        ? acceptFile(file)
+        : acceptedTypes.includes(file.type);
+    if (!typeAllowed) {
+      onUploadError?.(
+        new Error(
+          `File type ${file.type || file.name || 'unknown'} not allowed. Accepted types: ${acceptedTypes.join(', ')}`
+        )
+      );
       return;
     }
 
@@ -57,7 +71,7 @@ export default function DocumentUpload({
         try {
           const base64Data = reader.result;
 
-          // Get current user
+          // Get current user — prefer integer users.user_id from AuthContext
           const { data: { user } } = await supabase.auth.getUser();
 
           // Build upload body with entity-specific fields
@@ -67,7 +81,7 @@ export default function DocumentUpload({
             file_type: file.type,
             mime_type: file.type,
             document_type: documentType,
-            user_id: user?.id || null
+            user_id: userId || user?.id || null
           };
           
           // Add entity-specific foreign keys if provided
@@ -76,6 +90,9 @@ export default function DocumentUpload({
           if (noticeId) uploadBody.notice_id = noticeId;
           if (propertyId) uploadBody.property_id = propertyId;
           if (unitId) uploadBody.unit_id = unitId;
+          if (complianceWorkflowId) {
+            uploadBody.compliance_workflow_id = complianceWorkflowId;
+          }
 
           // Upload via API
           const response = await fetch('/api/documents/upload', {
@@ -92,7 +109,12 @@ export default function DocumentUpload({
             throw new Error(result.error || 'Upload failed');
           }
 
-          onUploadSuccess?.(result);
+          onUploadSuccess?.({
+            ...result,
+            file_name: file.name,
+            mime_type: file.type || result.mime_type,
+            file_path: result.file_path,
+          });
         } catch (error) {
           console.error('Upload error:', error);
           onUploadError?.(error);
@@ -153,7 +175,7 @@ export default function DocumentUpload({
           ref={fileInputRef}
           type="file"
           className="hidden"
-          accept={acceptedTypes.join(',')}
+          accept={[...acceptedTypes, '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.heic', '.heif'].join(',')}
           onChange={handleChange}
           disabled={uploading}
         />
@@ -189,7 +211,7 @@ export default function DocumentUpload({
               </button>
             </p>
             <p className="text-sm text-gray-500">
-              Accepted: {acceptedTypes.join(', ')} (max {maxSize}MB)
+              PDF or image, max {maxSize}MB
             </p>
           </div>
         )}

@@ -70,7 +70,7 @@ export default async function handler(req, res) {
     });
 
     // Parse request body
-    let { file, file_name, file_type, mime_type, document_type, user_id, lease_id, notice_id, tenant_user_id, unit_id, property_id } = req.body;
+    let { file, file_name, file_type, mime_type, document_type, user_id, lease_id, notice_id, tenant_user_id, unit_id, property_id, compliance_workflow_id } = req.body;
     
     console.log('[Document Upload] Received request body:', {
       has_file: !!file,
@@ -251,6 +251,12 @@ export default async function handler(req, res) {
     }
     if (unit_id) insertData.unit_id = parseInt(unit_id, 10);
     if (property_id) insertData.property_id = parseInt(property_id, 10);
+    if (compliance_workflow_id != null && compliance_workflow_id !== '') {
+      const parsedWorkflowId = parseInt(compliance_workflow_id, 10);
+      if (!isNaN(parsedWorkflowId)) {
+        insertData.compliance_workflow_id = parsedWorkflowId;
+      }
+    }
     // documents has no notice_id column — store the link in metadata
     if (notice_id != null && notice_id !== '') {
       const parsedNoticeId = parseInt(notice_id, 10);

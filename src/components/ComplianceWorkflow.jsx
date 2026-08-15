@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { CheckCircle, Circle, ArrowRight, ArrowLeft, AlertCircle, Shield, Save } from 'lucide-react';
 import { Card } from './ui';
 import DateInput from './DateInput';
+import WorkflowFileField from './WorkflowFileField';
 import { AuthContext } from '../contexts';
 import { hasMeaningfulWorkflowProgress, workflowProgressStatus } from '../utils/compliance-workflow-persistence.js';
 import {
@@ -323,7 +324,8 @@ export default function ComplianceWorkflow({
           value === null ||
           value === undefined ||
           value === '' ||
-          (typeof value === 'number' && Number.isNaN(value));
+          (typeof value === 'number' && Number.isNaN(value)) ||
+          (field.type === 'file' && !value?.document_id);
 
         if (field.required && isEmpty) {
           stepErrors[field.id] = `${field.label} is required`;
@@ -551,10 +553,25 @@ export default function ComplianceWorkflow({
                     placeholder={field.placeholder}
                   />
                 )}
-                {stepErrors[field.id] && (
+                {field.type === 'file' && (
+                  <WorkflowFileField
+                    value={workflowData[field.id] || null}
+                    onChange={(fileMeta) => updateField(field.id, fileMeta)}
+                    error={stepErrors[field.id]}
+                    leaseId={workflowData.lease_id}
+                    propertyId={workflowData.property_id}
+                    unitId={workflowData.unit_id}
+                    workflowId={workflowId || workflowRecord?.workflow_id}
+                    userId={user?.user_id}
+                    documentType={field.documentType}
+                    acceptedTypes={field.acceptedTypes}
+                    description={field.description}
+                  />
+                )}
+                {stepErrors[field.id] && field.type !== 'file' && (
                   <p className="mt-1 text-sm text-red-600">{stepErrors[field.id]}</p>
                 )}
-                {field.description && (
+                {field.description && field.type !== 'file' && (
                   <p className="mt-1 text-xs text-gray-500">{field.description}</p>
                 )}
               </div>

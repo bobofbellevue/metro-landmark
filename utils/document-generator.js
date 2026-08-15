@@ -1022,7 +1022,6 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
 
   const showLandlord = ensuredQuestionsContact?.role === 'Landlord';
   const landlordName = showLandlord ? landlordContact?.name || '' : '';
-  const landlordAddress = showLandlord ? landlordContact?.address || '' : '';
   const resolvedUnitNumber =
     unit?.unit_number ||
     additional_data.unit_number ||
@@ -1040,7 +1039,6 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     property_name: resolvedPropertyName,
     notice_landlord_id: noticeLandlordId,
     landlord_name: landlordName,
-    landlord_address: landlordAddress,
     questions_contact: ensuredQuestionsContact
       ? {
           role: ensuredQuestionsContact.role,
@@ -1104,9 +1102,9 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     tenant_names: tenantNames || additional_data.tenant_names || '',
     pmc_name: pmcName || additional_data.pmc_name || '',
     landlord_name: landlordName,
-    landlord_address: landlordAddress,
+    landlord_address: '',
     lessor_name: landlordName,
-    lessor_address: landlordAddress,
+    lessor_address: '',
     landlord_phone: showLandlord ? landlordContact?.phone || '' : '',
     landlord_email: showLandlord ? landlordContact?.email || '' : '',
     questions_contact:
@@ -1127,7 +1125,6 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
       end_date: formData.lease_end_date,
       monthly_rent_amount: formData.new_rent || formData.monthly_rent,
       landlord_name: formData.landlord_name,
-      landlord_address: formData.landlord_address,
       tenant_names: formData.tenant_names,
       property_address: formData.property_address,
       property_name: formData.property_name,

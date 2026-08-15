@@ -210,7 +210,7 @@ describe('resolveNoticeQuestionsContact', () => {
     expect(contact.name).toBe('Bob B. Bellevue');
     expect(contact.phone).toBe('360-555-0142');
     expect(contact.email).toBe('bob@example.com');
-    expect(contact.address).toBe('100 Main St, Bellevue, WA, 98004');
+    expect(contact.address).toBeUndefined();
   });
 
   test('does not fall back to landlord when a PMC is assigned', async () => {
@@ -280,7 +280,7 @@ describe('buildQuestionsContactLines', () => {
     expect(lines).toContain('Email: grace@example.com');
   });
 
-  test('includes landlord mailing address only for landlord contacts', () => {
+  test('does not print landlord mailing address even when present on the contact', () => {
     const landlordLines = buildQuestionsContactLines({
       role: 'Landlord',
       name: 'Bob B. Bellevue',
@@ -288,14 +288,6 @@ describe('buildQuestionsContactLines', () => {
       contact_lines: ['Phone: 360-555-0142'],
     });
     expect(landlordLines).toContain('Landlord: Bob B. Bellevue');
-    expect(landlordLines).toContain('100 Main St, Bellevue, WA 98004');
-
-    const pmLines = buildQuestionsContactLines({
-      role: 'Property Manager',
-      name: 'Grace Hopper',
-      address: 'should not print',
-      contact_lines: ['Phone: 206-555-0100'],
-    });
-    expect(pmLines).not.toContain('should not print');
+    expect(landlordLines).not.toContain('100 Main St, Bellevue, WA 98004');
   });
 });

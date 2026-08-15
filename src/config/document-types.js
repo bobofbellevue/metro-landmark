@@ -72,6 +72,11 @@ export const DOCUMENT_TYPE_CATALOG = {
     category: 'notices',
     audiences: ['admin', 'landlord', 'tenant'],
   },
+  proof_of_service: {
+    label: 'Proof of Service',
+    category: 'notices',
+    audiences: ['admin', 'landlord'],
+  },
   work_authorization: {
     label: 'Work Authorization',
     category: 'maintenance',

@@ -178,9 +178,18 @@ export default function EvictionWorkflow({
             ]
           },
           {
+            id: 'proof_of_service_file',
+            label: 'Proof of Service',
+            type: 'file',
+            documentType: 'proof_of_service',
+            description:
+              'Upload a photo or PDF — certified mail receipt, posting photo, email confirmation, or similar.',
+          },
+          {
             id: 'proof_of_service',
-            label: 'Proof of Service (Notes)',
-            type: 'textarea'
+            label: 'Notes (optional)',
+            type: 'textarea',
+            placeholder: 'Tracking number, who accepted service, etc.',
           }
         ]
       },

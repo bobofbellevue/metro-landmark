@@ -13,6 +13,7 @@ import {
 } from '../../utils/workflow-date.js';
 import { formatPersonDisplayName } from '../../utils/lease-display.js';
 import { resolveNoticeQuestionsContact } from '../../utils/notice-questions-contact.js';
+import { proofOfServiceFileLabel } from '../../utils/proof-of-service-file.js';
 
 /**
  * RentIncreaseWorkflow - Guided workflow for rent increase notices
@@ -250,9 +251,18 @@ export default function RentIncreaseWorkflow({
             ]
           },
           {
+            id: 'proof_of_service_file',
+            label: 'Proof of Service',
+            type: 'file',
+            documentType: 'proof_of_service',
+            description:
+              'Upload a photo or PDF — certified mail receipt, posting photo, email confirmation, or similar.',
+          },
+          {
             id: 'proof_of_service',
-            label: 'Proof of Service (Notes)',
-            type: 'textarea'
+            label: 'Notes (optional)',
+            type: 'textarea',
+            placeholder: 'Tracking number, who accepted service, etc.',
           }
         ]
       },
@@ -332,6 +342,14 @@ export default function RentIncreaseWorkflow({
                     <span className="font-medium">{noticeCalculation.noticePeriodDays} days</span>
                   </div>
                 )}
+                {proofOfServiceFileLabel(workflowData.proof_of_service_file) ? (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-gray-600">Proof of service:</span>
+                    <span className="font-medium text-right">
+                      {proofOfServiceFileLabel(workflowData.proof_of_service_file)}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </div>
             <div className="bg-blue-50 p-4 rounded-lg">

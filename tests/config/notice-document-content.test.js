@@ -128,7 +128,7 @@ describe('buildSimpleNoticeContentLines', () => {
 
     expect(lines).toContain('Unit: B');
     expect(lines).toContain('Landlord: Bob B. Bellevue');
-    expect(lines).toContain('100 Main St, Bellevue, WA 98004');
+    expect(lines).not.toContain('100 Main St, Bellevue, WA 98004');
     expect(lines).toContain('Phone: 360-555-0142');
     expect(lines).toContain('Email: bob@example.com');
   });

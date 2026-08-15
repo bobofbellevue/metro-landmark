@@ -27,24 +27,6 @@ function formatFullName(firstName, middleName, lastName) {
 }
 
 /**
- * Format address as a single line.
- * @param {object|null|undefined} address
- * @returns {string}
- */
-function formatMailingAddress(address) {
-  if (!address) return '';
-  return [
-    address.address_line_1,
-    address.address_line_2,
-    address.city,
-    address.state_province_region,
-    address.postal_code,
-  ]
-    .filter(Boolean)
-    .join(', ');
-}
-
-/**
  * Normalize contact_methods into phone, email, and display lines.
  * @param {Array<{ method_type?: string, value?: string }>|null|undefined} methods
  * @param {{ email?: string|null }} [extras]
@@ -260,7 +242,6 @@ export async function contactFromUser(supabase, user, roleLabel) {
     phone: picked.phone,
     email: picked.email,
     contact_lines: picked.lines,
-    address: '',
   };
 }
 
@@ -293,7 +274,6 @@ export async function contactFromPmc(supabase, pmcId) {
     phone: picked.phone,
     email: picked.email,
     contact_lines: picked.lines,
-    address: '',
   };
 }
 
@@ -326,37 +306,10 @@ async function fetchLandlordContactRow(supabase, landlord) {
 }
 
 /**
- * @param {object} supabase
- * @param {number} landlordId
- */
-async function fetchLandlordMailingAddress(supabase, landlordId) {
-  if (!landlordId) return null;
-
-  const { data, error } = await supabase
-    .from('addresses')
-    .select(
-      'address_line_1, address_line_2, city, state_province_region, postal_code, country'
-    )
-    .eq('addressable_type', 'landlord')
-    .eq('addressable_id', landlordId)
-    .limit(1);
-
-  if (error) {
-    console.error(
-      '[RENDER_DIAG] landlord address lookup failed:',
-      error.message || error,
-      { landlordId, code: error.code }
-    );
-    return null;
-  }
-
-  return data?.[0] || null;
-}
-
-/**
- * Resolve landlord name, mailing address, and phone/email.
+ * Resolve landlord name and phone/email.
  * Names live on contacts. Do not select landlords.manager_id — that column
  * was dropped (managers are assigned on properties).
+ * Landlord mailing address is PMC-internal and must not appear on notices.
  * @param {object} supabase
  * @param {number} landlordId
  */
@@ -392,16 +345,13 @@ export async function contactFromLandlord(supabase, landlordId) {
   const contact = await fetchLandlordContactRow(supabase, landlord);
   const methods = await fetchMethodsForContactId(supabase, contact?.contact_id);
   const picked = normalizeContactMethods(methods, { email: userEmail });
-  const addressRow = await fetchLandlordMailingAddress(supabase, landlordId);
-  const address = formatMailingAddress(addressRow);
 
   const name = formatLandlordFormattedName(landlord, contact, picked.email);
-  if (!name && !address) return null;
+  if (!name) return null;
 
   return {
     role: 'Landlord',
     name,
-    address,
     phone: picked.phone,
     email: picked.email,
     contact_lines: picked.lines,
@@ -493,11 +443,6 @@ export function buildQuestionsContactLines(
         ].filter(Boolean);
   for (const contactLine of contactLines) {
     lines.push(contactLine);
-  }
-
-  const address = (qc?.address || '').trim();
-  if (address && role === 'Landlord') {
-    lines.push(address);
   }
 
   return lines;
