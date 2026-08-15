@@ -1,14 +1,9 @@
 /* eslint-env node */
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '../utils/supabase-client.js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables');
+function getSupabase() {
+  return createSupabaseClient();
 }
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
  * Merge policy data with inheritance
@@ -80,7 +75,7 @@ async function getPolicyWithInheritance(policyType, context = {}) {
 
   // 1. Property level
   if (property_id) {
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('compliance_policies')
       .select('*')
       .eq('policy_type', policyType)
@@ -99,7 +94,7 @@ async function getPolicyWithInheritance(policyType, context = {}) {
 
   // 2. Landlord level
   if (!policy && landlord_id) {
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('compliance_policies')
       .select('*')
       .eq('policy_type', policyType)
@@ -118,7 +113,7 @@ async function getPolicyWithInheritance(policyType, context = {}) {
 
   // 3. Company level
   if (!policy && pmc_id) {
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('compliance_policies')
       .select('*')
       .eq('policy_type', policyType)
@@ -137,7 +132,7 @@ async function getPolicyWithInheritance(policyType, context = {}) {
 
   // 4. System level (fallback)
   if (!policy) {
-    const { data } = await supabase
+    const { data } = await getSupabase()
       .from('compliance_policies')
       .select('*')
       .eq('policy_type', policyType)
@@ -162,7 +157,7 @@ async function getPolicyWithInheritance(policyType, context = {}) {
   let currentPolicy = policy;
 
   while (currentPolicy.inherits_from_policy_id) {
-    const { data: parentPolicy } = await supabase
+    const { data: parentPolicy } = await getSupabase()
       .from('compliance_policies')
       .select('*')
       .eq('policy_id', currentPolicy.inherits_from_policy_id)
@@ -196,6 +191,16 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  let supabase;
+  try {
+    supabase = getSupabase();
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Database configuration error',
+    });
   }
 
   try {
