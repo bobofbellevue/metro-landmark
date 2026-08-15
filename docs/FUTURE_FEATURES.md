@@ -78,6 +78,33 @@ Overlaps existing voice/maintenance-bot direction. Treat as **Phase E+** after M
 
 ---
 
+## Subsidy / low-income program tracking (2026-08-15)
+
+**Status:** planned (roadmap **E11**) — not built. We do not currently store subsidy on leases, units, or tenants. The E1 calculator accepts an optional `subsidized` flag for RCW 59.18.140(3)(b) (30-day rent-increase notice on income-based subsidized tenancies), but nothing in the data model sets that flag.
+
+**Why two attachment points**
+
+1. **Lease (subsidized tenant / household)** — This tenancy’s rent is set or paid in part by a subsidy (voucher, project-based, income-based). Ties to the lease, not the person forever: a tenant can move from a subsidized lease to a market lease.
+2. **Unit (reserved for low-income occupancy)** — The unit itself is set aside (set-aside, income-restricted, project-based). The reservation can exist while vacant and can outlive any one lease.
+
+A reserved unit may be vacant; a subsidized lease may sit in a unit that is not itself reserved (e.g. tenant-based voucher). Track both.
+
+**What to record (both levels)**
+
+- **Fact of subsidizing / restriction** — boolean (or equivalent) that this lease or unit is in a subsidy / income-restricted program.
+- **Jurisdiction** — which government or housing authority the program sits under (may differ from the property’s WA/Seattle *compliance* pack).
+- **Program** — named program (Section 8 HCV, SHA project-based, LIHTC set-aside, rural USDA, local levy, etc.), not a free-text blob as the only field.
+
+Suggested shape when we build it: a small program catalog (jurisdiction + program id/name) plus optional FKs or rows on `leases` and `units`. Do not invent `is_subsidized` without program/jurisdiction — the 30-day notice path is specifically *income-based subsidized* tenancies, which is a program fact, not a vibe.
+
+**Consumers later**
+
+- Rent-increase calculator (E1 hook already exists).
+- Screening / first-qualified-applicant and other pack rules that treat subsidized housing differently.
+- Listings and vacancy (E5) so reserved units are not marketed as unrestricted.
+
+---
+
 ## How to use this file
 
 - Add dated sections for new parking-lot themes.

@@ -16,7 +16,7 @@ Washington’s Salish Landmark Property Management is the reference operator con
 
 ### Compliance disclaimer
 
-Compliance calculators and workflows are **jurisdiction-pack dependent**. The shipped WA/Seattle packs encode 2025/2026 RCW 59.18 and Seattle overlay notice periods (90-day rent-increase notice, 30-day deposit return, statewide just cause and rent cap) plus statute citations. Treat support for other jurisdictions as **experimental** until additional packs and tests exist. This software is not a substitute for legal counsel.
+Compliance calculators and workflows are **jurisdiction-pack dependent**. The shipped WA/Seattle packs encode 2025/2026 RCW 59.18 and Seattle overlay notice periods (90-day rent-increase notice, 30-day deposit return, statewide just cause and rent cap) plus statute citations. A 30-day rent-increase path for income-based subsidized tenancies is in the pack (RCW 59.18.140(3)(b)) but is not wired to data yet — we do not track subsidy on leases or units (roadmap E11). Treat support for other jurisdictions as **experimental** until additional packs and tests exist. This software is not a substitute for legal counsel.
 
 ## Stack
 

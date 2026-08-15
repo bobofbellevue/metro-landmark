@@ -193,7 +193,8 @@ export default function RentIncreaseWorkflow({
                     effectiveDate: workflowData.effective_date,
                     percent_increase: percentIncrease,
                     tenancyStartDate: lease?.start_date || lease?.lease_start_date || null,
-                    subsidized: !!lease?.is_subsidized || !!lease?.income_based_rent,
+                    // E11: no lease/unit subsidy fields yet; pack 30-day path stays unused.
+                    subsidized: false,
                   }}
                   onCalculationChange={setNoticeCalculation}
                 />

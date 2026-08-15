@@ -11,7 +11,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 | Core PMS ops | Properties, units, leases, tenants, applicants, landlords, PMCs, maintenance |
 | Config seams | Brand, locale display, WA/Seattle jurisdiction packs, shared VAPI/maintenance phone |
 | Operator hygiene | Example DB env file, documented secrets handling, no silent hardcoded client Supabase fallbacks |
-| E1 WA/Seattle pack + calculator tests | 2025/2026 RCW 59.18 notice math, statute citations, pack-driven calculator coverage |
+| E1 WA/Seattle pack + calculator tests | 2025/2026 RCW 59.18 notice math, statute citations, pack-driven calculator coverage. The 30-day subsidized rent-increase path is encoded in the pack only — we do not yet track subsidy on leases or units (E11). |
 
 ## Partial
 
@@ -35,6 +35,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 | E8 | Contextual documents for landlords & maintenance | Mount `DocumentManagement` on landlord property/lease/maintenance views (bids, work authorizations, etc.) |
 | E9 | Audience-aware document lists in portals | Tenant / landlord / vendor portals show only related docs (catalog audiences + FK scoping) |
 | E10 | Expand template kinds | Template types beyond Application / Lease as new packs and notice/maintenance templates land |
+| E11 | Subsidy / low-income program tracking | Record *that* a tenancy or unit is subsidized, plus **jurisdiction** and **program**. Lease-level (subsidized tenant) and unit-level (reserved for low-income occupancy) are distinct. Unblocks the RCW 59.18.140(3)(b) 30-day rent-increase path. Design notes: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#subsidy--low-income-program-tracking-2026-08-15) |
 
 ## Out of scope (near term)
 
@@ -49,5 +50,5 @@ Consulting and adaptation for custom packs, branding, or production hardening: R
 
 ## Parking lot
 
-Longer design notes and deferred ideas (not active Planned builds): [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md) — includes parked template/doc-creation reliability directions (DocuSign-style placement, generation-time positions, prompt-guided re-import, NL commands).
+Longer design notes and deferred ideas: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md) — parked template/doc-creation reliability directions, plus the E11 subsidy / low-income program sketch.
 
