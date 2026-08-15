@@ -80,9 +80,14 @@ function setNestedProperty(obj, path, value) {
  * does not land on Security_Deposit_Bank before Security_Deposit_Amount.
  * @param {object} templateData
  * @param {string[]} fieldNameVariations
+ * @param {{ exactOnly?: boolean }} [options]
  * @returns {{ path: string }|null}
  */
-export function findTemplateField(templateData, fieldNameVariations) {
+export function findTemplateField(
+  templateData,
+  fieldNameVariations,
+  options = {}
+) {
   if (!templateData || typeof templateData !== 'object') return null;
 
   const variations = (fieldNameVariations || [])
@@ -131,6 +136,9 @@ export function findTemplateField(templateData, fieldNameVariations) {
     return { path: hits[0].path };
   };
 
+  if (options.exactOnly) {
+    return pickBest(exactHits);
+  }
   return pickBest(exactHits) || pickBest(softHits);
 }
 
@@ -145,9 +153,9 @@ export function mapLeaseLikeDataToTemplate(templateData, values = {}) {
 
   const mapped = {};
 
-  const assign = (variations, value) => {
+  const assign = (variations, value, findOptions = {}) => {
     if (value === null || value === undefined || value === '') return;
-    const field = findTemplateField(templateData, variations);
+    const field = findTemplateField(templateData, variations, findOptions);
     if (field) {
       setNestedProperty(mapped, field.path, value);
     }
@@ -244,6 +252,22 @@ export function mapLeaseLikeDataToTemplate(templateData, values = {}) {
       'Property Owner',
     ],
     values.landlord_name
+  );
+
+  // Exact-only so "Landlord Address" does not overwrite a "Landlord" name field
+  // (soft matching treats "landlord" as a substring of "landlordaddress").
+  assign(
+    [
+      'Landlord Address',
+      'landlord_address',
+      'Lessor Address',
+      'lessor_address',
+      'Owner Address',
+      'Landlord Mailing Address',
+      'Lessor Mailing Address',
+    ],
+    values.landlord_address,
+    { exactOnly: true }
   );
 
   assign(

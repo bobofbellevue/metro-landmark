@@ -11,6 +11,7 @@ import {
   formatWorkflowDateForLocale,
   isCompleteWorkflowDate,
 } from '../../utils/workflow-date.js';
+import { formatPersonDisplayName } from '../../utils/lease-display.js';
 
 /**
  * RentIncreaseWorkflow - Guided workflow for rent increase notices
@@ -31,7 +32,7 @@ export default function RentIncreaseWorkflow({
     }
   }, [initialData.lease_id]);
 
-  const fetchLeaseDetails = async (leaseId) => {
+  const fetchLeaseDetails = async (leaseId, selected = null) => {
     try {
       const { data, error } = await supabase
         .from('leases')
@@ -52,7 +53,21 @@ export default function RentIncreaseWorkflow({
         .single();
 
       if (error) throw error;
-      setLease(data);
+
+      let landlordName = selected?.landlordName || '';
+      const landlordId =
+        data.landlord_id || data.units?.properties?.landlord_id || null;
+      if (!landlordName && landlordId) {
+        const { data: contacts } = await supabase
+          .from('contacts')
+          .select('first_name, middle_name, last_name')
+          .eq('contactable_type', 'landlord')
+          .eq('contactable_id', landlordId)
+          .limit(1);
+        landlordName = formatPersonDisplayName(contacts?.[0]) || '';
+      }
+
+      setLease({ ...data, landlordName });
     } catch (error) {
       console.error('Error fetching lease details:', error);
     }
@@ -92,7 +107,7 @@ export default function RentIncreaseWorkflow({
               );
               updateField('new_rent', null);
               if (leaseId) {
-                fetchLeaseDetails(leaseId);
+                fetchLeaseDetails(leaseId, selected);
               } else {
                 setLease(null);
               }
@@ -250,6 +265,10 @@ export default function RentIncreaseWorkflow({
                   <span className="font-medium">{lease?.units?.unit_number}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-gray-600">Landlord:</span>
+                  <span className="font-medium">{lease?.landlordName || '—'}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-gray-600">Current Rent:</span>
                   <span className="font-medium">
                     {workflowData.current_rent != null
@@ -334,6 +353,7 @@ export default function RentIncreaseWorkflow({
                     lease?.landlord_id ||
                     lease?.units?.properties?.landlord_id ||
                     null,
+                  landlord_name: lease?.landlordName || null,
                 }
               })
             });

@@ -353,10 +353,41 @@ async function fetchLandlordContactRow(supabase, landlord) {
 }
 
 /**
- * Resolve landlord name + phone/email for notice questions footer.
+ * Load the landlord mailing address (addresses.addressable_type = 'landlord').
  * @param {object} supabase
  * @param {number} landlordId
- * @returns {Promise<{ role: string, name: string, phone: string|null, email: string|null, contact_lines: string[] }|null>}
+ * @returns {Promise<object|null>}
+ */
+async function fetchLandlordMailingAddress(supabase, landlordId) {
+  if (!landlordId) return null;
+
+  const { data, error } = await supabase
+    .from('addresses')
+    .select(
+      'address_line_1, address_line_2, city, state_province_region, postal_code, country'
+    )
+    .eq('addressable_type', 'landlord')
+    .eq('addressable_id', landlordId)
+    .limit(1);
+
+  if (error) {
+    console.error(
+      '[RENDER_DIAG] landlord address lookup failed:',
+      error.message || error,
+      { landlordId, code: error.code }
+    );
+    return null;
+  }
+
+  return data?.[0] || null;
+}
+
+/**
+ * Resolve landlord name, mailing address, and phone/email.
+ * Names live on contacts (landlords.landlord_name does not exist).
+ * @param {object} supabase
+ * @param {number} landlordId
+ * @returns {Promise<{ role: string, name: string, address: string, phone: string|null, email: string|null, contact_lines: string[] }|null>}
  */
 async function contactFromLandlord(supabase, landlordId) {
   if (!landlordId) return null;
@@ -392,13 +423,16 @@ async function contactFromLandlord(supabase, landlordId) {
   const contact = await fetchLandlordContactRow(supabase, landlord);
   const methods = await fetchMethodsForContactId(supabase, contact?.contact_id);
   const picked = normalizeContactMethods(methods, { email: userEmail });
+  const addressRow = await fetchLandlordMailingAddress(supabase, landlordId);
+  const address = formatAddress(addressRow);
 
   const name = formatLandlordFormattedName(landlord, contact, picked.email);
-  if (!name) return null;
+  if (!name && !address) return null;
 
   return {
     role: 'Landlord',
     name,
+    address,
     phone: picked.phone,
     email: picked.email,
     contact_lines: picked.lines,
@@ -1391,6 +1425,7 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
   }
 
   const landlordName = landlordContact?.name || '';
+  const landlordAddress = landlordContact?.address || '';
   const resolvedUnitNumber =
     unit?.unit_number ||
     additional_data.unit_number ||
@@ -1408,6 +1443,7 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     property_name: resolvedPropertyName,
     notice_landlord_id: noticeLandlordId,
     landlord_name: landlordName,
+    landlord_address: landlordAddress,
     questions_contact: ensuredQuestionsContact
       ? {
           role: ensuredQuestionsContact.role,
@@ -1438,9 +1474,8 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     monthly_rent: formatCurrency(lease.monthly_rent_amount),
     
     // Property and unit (from resolved unit — not lease.unit, which is undefined
-    // when the embed is named `units`)
-    property_name: resolvedPropertyName,
-    unit_number: resolvedUnitNumber,
+    // when the embed is named `units`). Names/numbers are set again after
+    // additional_data so client placeholders cannot override resolved values.
     property_address: formatAddress(propertyAddress),
     
     // Tenants
@@ -1472,6 +1507,14 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     tenant_names: tenantNames || additional_data.tenant_names || '',
     pmc_name: pmcName || additional_data.pmc_name || '',
     landlord_name: landlordName || additional_data.landlord_name || '',
+    landlord_address:
+      landlordAddress || additional_data.landlord_address || '',
+    lessor_name: landlordName || additional_data.landlord_name || '',
+    lessor_address: landlordAddress || additional_data.landlord_address || '',
+    landlord_phone:
+      landlordContact?.phone || additional_data.landlord_phone || '',
+    landlord_email:
+      landlordContact?.email || additional_data.landlord_email || '',
     questions_contact:
       ensuredQuestionsContact || additional_data.questions_contact || null,
     questions_phone:
@@ -1490,6 +1533,7 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
       end_date: formData.lease_end_date,
       monthly_rent_amount: formData.new_rent || formData.monthly_rent,
       landlord_name: formData.landlord_name,
+      landlord_address: formData.landlord_address,
       tenant_names: formData.tenant_names,
       property_address: formData.property_address,
       property_name: formData.property_name,
@@ -1584,6 +1628,24 @@ export function buildSimpleNoticeContentLines(formData = {}) {
     `To: ${formData.tenant_names || 'Tenant'}`,
     '',
   ];
+
+  const landlordName = (
+    formData.landlord_name ||
+    formData.lessor_name ||
+    ''
+  ).trim();
+  const landlordAddress = (
+    formData.landlord_address ||
+    formData.lessor_address ||
+    ''
+  ).trim();
+  if (landlordName || landlordAddress) {
+    lines.push(`Landlord: ${landlordName || 'N/A'}`);
+    if (landlordAddress) {
+      lines.push(landlordAddress);
+    }
+    lines.push('');
+  }
 
   if (formData.pmc_name) {
     lines.push(`Property Management Company: ${formData.pmc_name}`);

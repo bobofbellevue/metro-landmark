@@ -55,6 +55,36 @@ describe('map-template-fields', () => {
     );
   });
 
+  test('maps landlord address without overwriting landlord name', () => {
+    const schema = {
+      Parties: {
+        Landlord: { type: 'string', description: 'Landlord name' },
+        Landlord_Address: { type: 'string', description: 'Landlord Address' },
+      },
+    };
+    const mapped = mapLeaseLikeDataToTemplate(schema, {
+      landlord_name: 'Bob B. Bellevue',
+      landlord_address: '100 Main St, Bellevue, WA 98004',
+    });
+    expect(mapped.Parties.Landlord).toBe('Bob B. Bellevue');
+    expect(mapped.Parties.Landlord_Address).toBe(
+      '100 Main St, Bellevue, WA 98004'
+    );
+  });
+
+  test('does not write landlord address onto a Landlord name-only field', () => {
+    const schema = {
+      Parties: {
+        Landlord: { type: 'string', description: 'Owner' },
+      },
+    };
+    const mapped = mapLeaseLikeDataToTemplate(schema, {
+      landlord_name: 'Bob B. Bellevue',
+      landlord_address: '100 Main St, Bellevue, WA 98004',
+    });
+    expect(mapped.Parties.Landlord).toBe('Bob B. Bellevue');
+  });
+
   test('maps county and rent due date fields', () => {
     const schema = {
       Premises: {

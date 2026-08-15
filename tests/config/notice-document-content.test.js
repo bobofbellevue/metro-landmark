@@ -41,6 +41,7 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(lines).toContain('New Monthly Rent: $1,300.00');
     expect(lines).toContain('Increase: 8.3%');
     expect(lines).toContain('Effective Date: 11/01/2026');
+    expect(lines.some((l) => l.startsWith('Landlord:'))).toBe(false);
   });
 
   test('omits rent lines for other notice types', () => {
@@ -152,6 +153,52 @@ describe('buildSimpleNoticeContentLines', () => {
     );
     expect(lines).toContain('Phone: 360-555-0142');
     expect(lines).toContain('Email: bob@example.com');
+  });
+
+  test('always includes landlord name and mailing address as party info', () => {
+    const lines = buildSimpleNoticeContentLines({
+      notice_type_key: 'rent_increase',
+      tenant_names: 'Ada Lovelace',
+      landlord_name: 'Bob B. Bellevue',
+      landlord_address: '100 Main St, Bellevue, WA 98004',
+      pmc_name: 'Salish Property Group',
+      property_name: 'Pine Court',
+      unit_number: 'B',
+      current_rent: '$1,200.00',
+      new_rent: '$1,300.00',
+      effective_date: '11/01/2026',
+      questions_contact: {
+        role: 'Property Manager',
+        name: 'Grace Hopper',
+        phone: '206-555-0100',
+        email: 'grace@example.com',
+        contact_lines: ['Phone: 206-555-0100', 'Email: grace@example.com'],
+      },
+    });
+
+    expect(lines).toContain('Landlord: Bob B. Bellevue');
+    expect(lines).toContain('100 Main St, Bellevue, WA 98004');
+    expect(lines.indexOf('Landlord: Bob B. Bellevue')).toBeLessThan(
+      lines.indexOf('Property Management Company: Salish Property Group')
+    );
+    expect(lines).toContain(
+      'If you have any questions about this notice, please contact Grace Hopper.'
+    );
+  });
+
+  test('uses lessor aliases when landlord_name is absent', () => {
+    const lines = buildSimpleNoticeContentLines({
+      notice_type_key: 'rent_increase',
+      tenant_names: 'Ada Lovelace',
+      lessor_name: 'Acme Holdings LLC',
+      lessor_address: '200 Owner Ave, Seattle, WA 98101',
+      property_name: 'Pine Court',
+      unit_number: 'B',
+      effective_date: '11/01/2026',
+    });
+
+    expect(lines).toContain('Landlord: Acme Holdings LLC');
+    expect(lines).toContain('200 Owner Ave, Seattle, WA 98101');
   });
 
   test('shows N/A only when unit_number is missing', () => {
