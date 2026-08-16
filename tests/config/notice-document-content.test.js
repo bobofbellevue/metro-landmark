@@ -36,14 +36,19 @@ describe('buildSimpleNoticeContentLines', () => {
         'If you need help understanding this notice, call the Renting in Seattle Helpline at (206) 684-5700.',
       ],
       product_name: 'Salish Landmark',
+      preferred_landlord_association: {
+        name: 'Rental Housing Association of Washington (RHAWA)',
+        recommendation:
+          'Join RHAWA and import their current city-specific rent-increase templates into Documents.',
+      },
     });
 
     const toIndex = lines.indexOf('To: Ada Lovelace');
     const rentIndex = lines.indexOf('Current Monthly Rent: $1,200.00');
     const effectiveIndex = lines.indexOf('Effective Date: 03/01/2027');
     const signatureIndex = lines.indexOf('Signature: ________________________________');
-    const officialIndex = lines.findIndex((l) =>
-      l.includes('Official forms and guidance')
+    const fullDisclaimerIndex = lines.findIndex((l) =>
+      l.includes('statutory Washington rent-increase notice')
     );
     const helplineIndexes = lines
       .map((l, i) => (l.includes('Renting in Seattle Helpline') ? i : -1))
@@ -54,11 +59,13 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(effectiveIndex).toBeGreaterThan(rentIndex);
     expect(helplineIndexes.length).toBeGreaterThanOrEqual(2);
     expect(helplineIndexes[0]).toBeLessThan(signatureIndex);
-    expect(officialIndex).toBeGreaterThan(signatureIndex);
+    expect(fullDisclaimerIndex).toBeGreaterThan(signatureIndex);
     expect(lines.some((l) => l.includes('Salish Landmark does not provide'))).toBe(
       true
     );
   });
+
+  test('omits rent lines for other notice types', () => {
     const lines = buildSimpleNoticeContentLines({
       notice_type_key: 'eviction',
       tenant_names: 'Ada Lovelace',

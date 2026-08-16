@@ -42,8 +42,8 @@ describe('workflow-date helpers', () => {
   });
 
   test('addDays and calendar-day counts stay on the local calendar', () => {
-    expect(addDaysToWorkflowDate('2027-03-01', -181)).toBe('2026-08-31');
-    expect(calendarDaysBetween('2026-08-31', '2027-03-01')).toBe(181);
+    expect(addDaysToWorkflowDate('2027-03-01', -181)).toBe('2026-09-01');
+    expect(calendarDaysBetween('2026-09-01', '2027-03-01')).toBe(181);
     expect(toWorkflowDateString('2027-03-01')).toBe('2027-03-01');
     expect(calendarDaysUntil('2026-08-16', new Date(2026, 7, 16))).toBe(0);
   });

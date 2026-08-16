@@ -199,7 +199,7 @@ describe('date helpers', () => {
 
   test('ISO date-only strings do not shift a day west of UTC', () => {
     expect(calculateRequiredNoticeDate('2027-03-01', 180, { excludeDayOfService: true }))
-      .toBe('2026-08-31');
+      .toBe('2026-09-01');
     expect(formatWorkflowDateForLocale('2027-03-01', 'en-US')).toBe('03/01/2027');
   });
 
@@ -279,7 +279,7 @@ describe('noticePeriodDaysFromPack / calculateNoticePeriod', () => {
 
     expect(result.noticePeriodDays).toBe(180);
     expect(result.effectiveDate).toBe('2027-03-01');
-    expect(result.requiredNoticeDate).toBe('2026-08-31');
+    expect(result.requiredNoticeDate).toBe('2026-09-01');
     expect(formatWorkflowDateForLocale(result.effectiveDate, 'en-US')).toBe(
       '03/01/2027'
     );
