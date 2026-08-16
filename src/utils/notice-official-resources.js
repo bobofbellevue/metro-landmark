@@ -64,10 +64,11 @@ export function buildRequiredNoticeLanguageLines(resources = {}) {
     ? resources.requiredNoticeLanguage
     : [];
   if (!required.length) return [];
+  const includeHeading = resources.includeHeading !== false;
   const where = resources.packDisplayName
     ? `${resources.packDisplayName} required language (include on the official form):`
     : 'Required local language (include on the official form):';
-  const lines = [...wrapNoticeText(where)];
+  const lines = includeHeading ? [...wrapNoticeText(where)] : [];
   for (const paragraph of required) {
     lines.push(...wrapNoticeText(paragraph));
   }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Printer, Mail, Copy, Check, AlertCircle, ExternalLink, FileText } from 'lucide-react';
+import { Printer, Mail, Check, AlertCircle, ExternalLink, FileText } from 'lucide-react';
 import WorkflowDateInput from '../WorkflowDateInput.jsx';
 import WorkflowFileField from '../WorkflowFileField.jsx';
 import { readResponseJson } from '../../utils/read-response-json.js';
@@ -81,17 +81,6 @@ export default function NoticeServiceStep({
     setTimeout(() => setCopied(''), 2000);
   };
 
-  const copyEmails = async () => {
-    const text = tenantEmails.join(', ');
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      markCopied('emails');
-    } catch {
-      setDocError('Could not copy email addresses');
-    }
-  };
-
   const copyEmailText = async () => {
     const text = buildNoticeEmailPlainText(emailOpts);
     if (!text) return;
@@ -167,20 +156,6 @@ export default function NoticeServiceStep({
               Email notice in mail app
             </button>
           )}
-          {tenantEmails.length > 0 && (
-            <button
-              type="button"
-              onClick={copyEmails}
-              className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              {copied === 'emails' ? (
-                <Check className="h-4 w-4 text-green-600" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-              {copied === 'emails' ? 'Copied' : 'Copy tenant email addresses'}
-            </button>
-          )}
         </div>
         {tenantEmails.length > 0 ? (
           <p className="mt-3 text-xs text-indigo-800">
@@ -188,9 +163,8 @@ export default function NoticeServiceStep({
             {tenantEmails.join(', ')}. Email notice in mail app needs a desktop
             or phone mail program. If you use Gmail in a browser, use Open Gmail
             in browser or Copy notice email text and paste it into Gmail. Attach
-            the downloaded PDF before sending. Copy tenant email addresses copies
-            only the addresses. Emailing may not constitute legal service
-            depending on the lease and jurisdiction.
+            the downloaded PDF before sending. Emailing may not constitute legal
+            service depending on the lease and jurisdiction.
           </p>
         ) : (
           <p className="mt-3 text-xs text-indigo-800">

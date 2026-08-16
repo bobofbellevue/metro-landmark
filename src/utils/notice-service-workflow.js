@@ -130,7 +130,7 @@ export function buildNoticeEmailParts({
   return {
     to: emails.filter(Boolean).join(', '),
     subject: `${capitalizeNoticeKind(noticeKind)} notice — ${propertyLabel}`,
-    body: `Please find the attached ${noticeKind} notice for ${propertyLabel}.\n\nAttach the downloaded PDF before sending.`,
+    body: `Please find the attached ${noticeKind} notice for ${propertyLabel}.`,
   };
 }
 
@@ -187,6 +187,62 @@ export function tenantEmailsFromLeaseClients(rows) {
     if (email && emails.indexOf(email) === -1) emails.push(email);
   }
   return emails;
+}
+
+/**
+ * Lease id stored on a compliance workflow row.
+ * @param {object|null|undefined} workflow
+ * @returns {string|number|null}
+ */
+export function workflowLeaseId(workflow) {
+  if (!workflow) return null;
+  return workflow.lease_id ?? workflow.workflow_data?.lease_id ?? null;
+}
+
+/**
+ * Open workflows keyed by lease id. Prefers an awaiting-service row when two exist.
+ * @param {object[]} workflows
+ * @returns {Map<string, object>}
+ */
+export function openWorkflowsByLeaseId(workflows) {
+  const map = new Map();
+  for (const workflow of workflows || []) {
+    const leaseId = workflowLeaseId(workflow);
+    if (leaseId == null || leaseId === '') continue;
+    const key = String(leaseId);
+    const previous = map.get(key);
+    if (
+      !previous ||
+      (isAwaitingNoticeService(workflow) && !isAwaitingNoticeService(previous))
+    ) {
+      map.set(key, workflow);
+    }
+  }
+  return map;
+}
+
+export const NOTICE_PICKER_GROUP_RECORD_SERVICE = 'record_service';
+export const NOTICE_PICKER_GROUP_GENERATE = 'generate';
+
+/**
+ * Badge/group for Select Lease: record service vs generate/continue a notice.
+ * @param {object|null|undefined} workflow
+ * @returns {{ group: string, badge: string, badgeClass: string }|null}
+ */
+export function noticePickerAnnotation(workflow) {
+  if (!workflow) return null;
+  if (isAwaitingNoticeService(workflow)) {
+    return {
+      group: NOTICE_PICKER_GROUP_RECORD_SERVICE,
+      badge: 'Record service',
+      badgeClass: 'bg-amber-100 text-amber-800',
+    };
+  }
+  return {
+    group: NOTICE_PICKER_GROUP_GENERATE,
+    badge: 'In progress',
+    badgeClass: 'bg-blue-100 text-blue-800',
+  };
 }
 
 function capitalizeNoticeKind(kind) {

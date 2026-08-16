@@ -17,6 +17,8 @@ const DEFAULT_STATUSES = ['active', 'pending', 'future'];
  * @param {string} [props.emptyMessage]
  * @param {boolean} [props.showRent]
  * @param {boolean} [props.showDeposit]
+ * @param {{ id: string, title: string, description?: string, emptyLabel?: string }[]} [props.groups]
+ * @param {Record<string, { group?: string, badge?: string, badgeClass?: string }>} [props.leaseAnnotations]
  */
 export default function LeaseSelectionPicker({
   value = null,
@@ -26,6 +28,8 @@ export default function LeaseSelectionPicker({
   emptyMessage = 'No matching leases found.',
   showRent = true,
   showDeposit = false,
+  groups = null,
+  leaseAnnotations = {},
 }) {
   const [leases, setLeases] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,11 +89,31 @@ export default function LeaseSelectionPicker({
     });
   }, [filteredLeases]);
 
-  const { visibleCount, hasMore, showMore } = useFinderLimit(sortedLeases.length, [
+  const groupedSections = useMemo(() => {
+    if (!Array.isArray(groups) || groups.length === 0) {
+      return [{ group: null, leases: sortedLeases }];
+    }
+    const searching = Boolean(debouncedSearchTerm);
+    return groups
+      .map((group) => ({
+        group,
+        leases: sortedLeases.filter((lease) => {
+          const annotation = leaseAnnotations[String(lease.lease_id)];
+          const groupId = annotation?.group || 'generate';
+          return groupId === group.id;
+        }),
+      }))
+      .filter((section) => searching ? section.leases.length > 0 : true);
+  }, [groups, sortedLeases, leaseAnnotations, debouncedSearchTerm]);
+
+  const listLength = groupedSections.reduce(
+    (sum, section) => sum + section.leases.length,
+    0
+  );
+  const { visibleCount, hasMore, showMore } = useFinderLimit(listLength, [
     debouncedSearchTerm,
     leases.length,
   ]);
-  const displayedLeases = sortedLeases.slice(0, visibleCount || sortedLeases.length);
   const selectedLease =
     value != null && value !== ''
       ? leases.find((l) => String(l.lease_id) === String(value))
@@ -120,6 +144,7 @@ export default function LeaseSelectionPicker({
               lease={selectedLease}
               showRent={showRent}
               showDeposit={showDeposit}
+              annotation={leaseAnnotations[String(selectedLease.lease_id)]}
             />
             <button
               type="button"
@@ -164,7 +189,7 @@ export default function LeaseSelectionPicker({
                 </span>
               ) : (
                 <span>
-                  Showing {displayedLeases.length} of {sortedLeases.length} matching leases
+                  Showing {Math.min(visibleCount, sortedLeases.length)} of {sortedLeases.length} matching leases
                   {leases.length !== sortedLeases.length
                     ? ` (${leases.length} total)`
                     : ''}
@@ -172,46 +197,39 @@ export default function LeaseSelectionPicker({
               )
             ) : (
               <span>
-                Showing {displayedLeases.length} of {leases.length} leases
+                Showing {Math.min(visibleCount, leases.length)} of {leases.length} leases
               </span>
             )}
           </div>
 
           {!isLoading && !loadError && (
-            <div className="max-h-80 overflow-y-auto border border-gray-200 rounded-md divide-y divide-gray-100">
-              {displayedLeases.length === 0 ? (
-                <div className="p-4 text-center text-sm text-gray-500">{emptyMessage}</div>
+            <div className="space-y-4">
+              {listLength === 0 && groupedSections.length <= 1 ? (
+                <div className="max-h-80 overflow-y-auto border border-gray-200 rounded-md">
+                  <div className="p-4 text-center text-sm text-gray-500">{emptyMessage}</div>
+                </div>
               ) : (
-                displayedLeases.map((lease) => {
-                  const isSelected = String(lease.lease_id) === String(value);
-                  return (
-                    <button
-                      key={lease.lease_id}
-                      type="button"
-                      onClick={() => handleSelect(lease)}
-                      className={`w-full text-left p-3 hover:bg-gray-50 transition-colors ${
-                        isSelected ? 'bg-indigo-50' : 'bg-white'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                            isSelected
-                              ? 'bg-indigo-600 border-indigo-600'
-                              : 'border-gray-300'
-                          }`}
-                        >
-                          {isSelected && <Check size={12} className="text-white" />}
-                        </div>
-                        <LeaseRowContent
-                          lease={lease}
-                          showRent={showRent}
-                          showDeposit={showDeposit}
-                        />
-                      </div>
-                    </button>
-                  );
-                })
+                (() => {
+                  let remaining = visibleCount || listLength;
+                  return groupedSections.map((section) => {
+                    const take = Math.min(section.leases.length, remaining);
+                    remaining -= take;
+                    const visibleLeases = section.leases.slice(0, take);
+                    return (
+                      <LeaseGroup
+                        key={section.group?.id || 'all'}
+                        group={section.group}
+                        leases={visibleLeases}
+                        emptyLabel={section.group?.emptyLabel}
+                        value={value}
+                        onSelect={handleSelect}
+                        showRent={showRent}
+                        showDeposit={showDeposit}
+                        leaseAnnotations={leaseAnnotations}
+                      />
+                    );
+                  });
+                })()
               )}
             </div>
           )}
@@ -231,7 +249,71 @@ export default function LeaseSelectionPicker({
   );
 }
 
-function LeaseRowContent({ lease, showRent, showDeposit }) {
+function LeaseGroup({
+  group,
+  leases,
+  emptyLabel,
+  value,
+  onSelect,
+  showRent,
+  showDeposit,
+  leaseAnnotations,
+}) {
+  return (
+    <div>
+      {group ? (
+        <div className="mb-1">
+          <h4 className="text-sm font-semibold text-gray-800">{group.title}</h4>
+          {group.description ? (
+            <p className="text-xs text-gray-600">{group.description}</p>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="max-h-80 overflow-y-auto border border-gray-200 rounded-md divide-y divide-gray-100">
+        {leases.length === 0 ? (
+          <div className="p-3 text-sm text-gray-500">
+            {emptyLabel || 'None right now.'}
+          </div>
+        ) : (
+          leases.map((lease) => {
+            const isSelected = String(lease.lease_id) === String(value);
+            const annotation = leaseAnnotations[String(lease.lease_id)];
+            return (
+              <button
+                key={lease.lease_id}
+                type="button"
+                onClick={() => onSelect(lease)}
+                className={`w-full text-left p-3 hover:bg-gray-50 transition-colors ${
+                  isSelected ? 'bg-indigo-50' : 'bg-white'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                      isSelected
+                        ? 'bg-indigo-600 border-indigo-600'
+                        : 'border-gray-300'
+                    }`}
+                  >
+                    {isSelected && <Check size={12} className="text-white" />}
+                  </div>
+                  <LeaseRowContent
+                    lease={lease}
+                    showRent={showRent}
+                    showDeposit={showDeposit}
+                    annotation={annotation}
+                  />
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LeaseRowContent({ lease, showRent, showDeposit, annotation }) {
   const propertyName = lease.units?.properties?.property_name || 'Property';
   const unitNumber = lease.units?.unit_number ?? '—';
   const rentLabel =
@@ -245,9 +327,20 @@ function LeaseRowContent({ lease, showRent, showDeposit }) {
 
   return (
     <div className="flex-1 min-w-0 space-y-0.5">
-      <div className="font-medium text-gray-900">
-        {propertyName}
-        <span className="text-gray-500 font-normal"> · Unit {unitNumber}</span>
+      <div className="font-medium text-gray-900 flex flex-wrap items-center gap-2">
+        <span>
+          {propertyName}
+          <span className="text-gray-500 font-normal"> · Unit {unitNumber}</span>
+        </span>
+        {annotation?.badge ? (
+          <span
+            className={`px-2 py-0.5 rounded text-xs font-semibold ${
+              annotation.badgeClass || 'bg-gray-100 text-gray-700'
+            }`}
+          >
+            {annotation.badge}
+          </span>
+        ) : null}
       </div>
       {lease.addressLine && (
         <div className="text-sm text-gray-600 truncate">{lease.addressLine}</div>

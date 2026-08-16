@@ -23,6 +23,10 @@ import { resolveNoticeQuestionsContact } from '../../utils/notice-questions-cont
 import NoticeServiceStep from './NoticeServiceStep.jsx';
 import { readResponseJson } from '../../utils/read-response-json.js';
 import {
+  NOTICE_PICKER_GROUP_GENERATE,
+  NOTICE_PICKER_GROUP_RECORD_SERVICE,
+  noticePickerAnnotation,
+  openWorkflowsByLeaseId,
   rentIncreaseNoticeFingerprint,
   tenantEmailsFromLeaseClients,
   validateNoticeService,
@@ -37,9 +41,17 @@ export default function RentIncreaseWorkflow({
   onComplete, 
   onCancel,
   onWorkflowCreated,
+  onResumeWorkflow,
+  openWorkflows = [],
 }) {
   const [lease, setLease] = useState(null);
   const [noticeCalculation, setNoticeCalculation] = useState(null);
+  const workflowsByLease = openWorkflowsByLeaseId(openWorkflows);
+  const leaseAnnotations = {};
+  for (const [leaseId, openWorkflow] of workflowsByLease) {
+    const annotation = noticePickerAnnotation(openWorkflow);
+    if (annotation) leaseAnnotations[leaseId] = annotation;
+  }
 
   useEffect(() => {
     if (initialData.lease_id) {
@@ -169,7 +181,8 @@ export default function RentIncreaseWorkflow({
     return [
       {
         title: 'Select Lease',
-        description: 'Choose the lease for which you want to increase rent.',
+        description:
+          'Leases with a generated notice still waiting to be served are listed first. Pick one of those to record service, or pick another lease to generate a notice.',
         fields: [
           {
             id: 'lease_id',
@@ -185,7 +198,38 @@ export default function RentIncreaseWorkflow({
             statuses={['active', 'pending', 'future']}
             showRent
             emptyMessage="No active, pending, or future leases found."
+            groups={[
+              {
+                id: NOTICE_PICKER_GROUP_RECORD_SERVICE,
+                title: 'Record service',
+                description:
+                  'These leases already have a rent-increase notice. Open one to print, email, or record how it was served.',
+                emptyLabel: 'No notices are waiting for service.',
+              },
+              {
+                id: NOTICE_PICKER_GROUP_GENERATE,
+                title: 'Generate a notice',
+                description:
+                  'Choose a lease to calculate the notice period and create a worksheet, or continue an in-progress draft.',
+                emptyLabel: 'No other leases are available.',
+              },
+            ]}
+            leaseAnnotations={leaseAnnotations}
             onChange={(leaseId, selected) => {
+              if (leaseId == null) {
+                updateField('lease_id', null);
+                setLease(null);
+                return;
+              }
+              const existing = workflowsByLease.get(String(leaseId));
+              if (
+                existing &&
+                typeof onResumeWorkflow === 'function' &&
+                String(existing.workflow_id) !== String(workflowId || '')
+              ) {
+                onResumeWorkflow(existing.workflow_id);
+                return;
+              }
               updateField('lease_id', leaseId);
               updateField(
                 'current_rent',
@@ -194,11 +238,7 @@ export default function RentIncreaseWorkflow({
                   : null
               );
               updateField('new_rent', null);
-              if (leaseId) {
-                fetchLeaseDetails(leaseId, selected);
-              } else {
-                setLease(null);
-              }
+              fetchLeaseDetails(leaseId, selected);
             }}
           />
         )
@@ -241,67 +281,75 @@ export default function RentIncreaseWorkflow({
               : null;
 
           return (
-            <div className="space-y-4">
-              <div>
-                <CurrencyInput
-                  label="Current Monthly Rent"
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+              <div className="space-y-4">
+                <div>
+                  <CurrencyInput
+                    label="Current Monthly Rent"
+                    required
+                    value={currentRent}
+                    onChange={(val) => updateField('current_rent', val)}
+                    className={errors.current_rent ? '[&_input]:border-red-300' : ''}
+                  />
+                  {errors.current_rent && (
+                    <p className="mt-1 text-sm text-red-600">{errors.current_rent}</p>
+                  )}
+                </div>
+
+                <div>
+                  <CurrencyInput
+                    label="New Monthly Rent"
+                    required
+                    value={newRent}
+                    onChange={(val) => updateField('new_rent', val)}
+                    className={errors.new_rent ? '[&_input]:border-red-300' : ''}
+                  />
+                  {errors.new_rent && (
+                    <p className="mt-1 text-sm text-red-600">{errors.new_rent}</p>
+                  )}
+                  {currentRent != null && newRent != null && newRent > currentRent && (
+                    <p className="mt-1 text-sm text-gray-600">
+                      Increase: ${(newRent - currentRent).toFixed(2)}/month ({percentIncrease.toFixed(1)}%)
+                    </p>
+                  )}
+                </div>
+
+                <WorkflowDateInput
+                  label="Desired Effective Date"
                   required
-                  value={currentRent}
-                  onChange={(val) => updateField('current_rent', val)}
-                  className={errors.current_rent ? '[&_input]:border-red-300' : ''}
+                  value={workflowData.effective_date || ''}
+                  onChange={(next) => updateField('effective_date', next)}
+                  error={errors.effective_date || ''}
                 />
-                {errors.current_rent && (
-                  <p className="mt-1 text-sm text-red-600">{errors.current_rent}</p>
-                )}
               </div>
 
               <div>
-                <CurrencyInput
-                  label="New Monthly Rent"
-                  required
-                  value={newRent}
-                  onChange={(val) => updateField('new_rent', val)}
-                  className={errors.new_rent ? '[&_input]:border-red-300' : ''}
-                />
-                {errors.new_rent && (
-                  <p className="mt-1 text-sm text-red-600">{errors.new_rent}</p>
-                )}
-                {currentRent != null && newRent != null && newRent > currentRent && (
-                  <p className="mt-1 text-sm text-gray-600">
-                    Increase: ${(newRent - currentRent).toFixed(2)}/month ({percentIncrease.toFixed(1)}%)
-                  </p>
-                )}
-              </div>
-
-              <WorkflowDateInput
-                label="Desired Effective Date"
-                required
-                value={workflowData.effective_date || ''}
-                onChange={(next) => updateField('effective_date', next)}
-                error={errors.effective_date || ''}
-              />
-
-              {workflowData.lease_id &&
+                {workflowData.lease_id &&
                 currentRent != null &&
                 newRent != null &&
-                isCompleteWorkflowDate(workflowData.effective_date) && (
-                <NoticePeriodCalculator
-                  workflowType="rent_increase"
-                  leaseType={leaseType}
-                  propertyId={property?.property_id}
-                  jurisdiction={jurisdiction}
-                  context={{
-                    currentRent,
-                    newRent,
-                    effectiveDate: workflowData.effective_date,
-                    percent_increase: percentIncrease,
-                    tenancyStartDate: lease?.start_date || lease?.lease_start_date || null,
-                    // E11: no lease/unit subsidy fields yet; pack 30-day path stays unused.
-                    subsidized: false,
-                  }}
-                  onCalculationChange={setNoticeCalculation}
-                />
-              )}
+                isCompleteWorkflowDate(workflowData.effective_date) ? (
+                  <NoticePeriodCalculator
+                    workflowType="rent_increase"
+                    leaseType={leaseType}
+                    propertyId={property?.property_id}
+                    jurisdiction={jurisdiction}
+                    context={{
+                      currentRent,
+                      newRent,
+                      effectiveDate: workflowData.effective_date,
+                      percent_increase: percentIncrease,
+                      tenancyStartDate: lease?.start_date || lease?.lease_start_date || null,
+                      // E11: no lease/unit subsidy fields yet; pack 30-day path stays unused.
+                      subsidized: false,
+                    }}
+                    onCalculationChange={setNoticeCalculation}
+                  />
+                ) : (
+                  <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
+                    Enter current rent, new rent, and a desired effective date to see the required notice period.
+                  </div>
+                )}
+              </div>
             </div>
           );
         }

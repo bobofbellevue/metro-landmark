@@ -9,7 +9,7 @@ import { AuthContext, SidebarContext } from '../contexts';
 import { Card, ConfirmationModal } from '../components/ui';
 import { supabase } from '../lib/supabase';
 import { readResponseJson } from '../utils/read-response-json.js';
-import { isAwaitingNoticeService } from '../utils/notice-service-workflow.js';
+import { isAwaitingNoticeService, GENERATE_THEN_SERVE_WORKFLOW_TYPES } from '../utils/notice-service-workflow.js';
 
 // Import workflow components
 import RentIncreaseWorkflow from '../components/compliance/RentIncreaseWorkflow';
@@ -246,7 +246,16 @@ export default function CompliancePage() {
 
     switch (selectedProcess) {
       case 'rent_increase':
-        return <RentIncreaseWorkflow {...workflowProps} />;
+        return (
+          <RentIncreaseWorkflow
+            key={selectedWorkflowId ?? 'new'}
+            {...workflowProps}
+            openWorkflows={activeWorkflows.filter(
+              (workflow) => workflow.workflow_type === 'rent_increase'
+            )}
+            onResumeWorkflow={(id) => setSelectedWorkflowId(id)}
+          />
+        );
       case 'lease_renewal':
         return <LeaseRenewalWorkflow {...workflowProps} />;
       case 'move_in':
@@ -435,6 +444,7 @@ export default function CompliancePage() {
         message={completionNotice?.message || ''}
         confirmText={completionNotice?.status === 'success' ? 'View Documents' : 'OK'}
         cancelText="Close"
+        hideCancel={completionNotice?.status === 'pending_service'}
         isDestructive={completionNotice?.status === 'error'}
         isSuccess={
           completionNotice?.status === 'success' ||
@@ -445,16 +455,24 @@ export default function CompliancePage() {
       {/* Process Cards Grid */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredProcesses.map(process => {
-          const activeWorkflow = activeWorkflows.find(w => w.workflow_type === process.id);
+          const matchingWorkflows = activeWorkflows.filter(
+            (workflow) => workflow.workflow_type === process.id
+          );
+          const activeWorkflow = matchingWorkflows[0] || null;
+          const awaitingCount = matchingWorkflows.filter(isAwaitingNoticeService).length;
+          const startFresh = GENERATE_THEN_SERVE_WORKFLOW_TYPES.has(process.id);
           return (
             <ComplianceActionCard
               key={process.id}
               process={process}
               activeWorkflow={activeWorkflow}
+              awaitingCount={awaitingCount}
+              inProgressCount={matchingWorkflows.length}
+              startFresh={startFresh}
               onStartWorkflow={() =>
                 handleStartWorkflow(
                   process.id,
-                  activeWorkflow?.workflow_id ?? null
+                  startFresh ? null : activeWorkflow?.workflow_id ?? null
                 )
               }
             />
@@ -523,12 +541,20 @@ export default function CompliancePage() {
 }
 
 // A reusable component for each action on the compliance page
-const ComplianceActionCard = ({ process, activeWorkflow, onStartWorkflow }) => {
+const ComplianceActionCard = ({
+  process,
+  activeWorkflow,
+  awaitingCount = 0,
+  inProgressCount = 0,
+  startFresh = false,
+  onStartWorkflow,
+}) => {
   const priorityColors = {
     high: 'bg-red-100 text-red-800',
     medium: 'bg-yellow-100 text-yellow-800',
     low: 'bg-blue-100 text-blue-800'
   };
+  const showResume = Boolean(activeWorkflow) && !startFresh;
 
   return (
     <Card title="" className="bg-white hover:shadow-lg transition-shadow h-full flex flex-col">
@@ -541,16 +567,17 @@ const ComplianceActionCard = ({ process, activeWorkflow, onStartWorkflow }) => {
             <span className={`px-2 py-1 rounded text-xs font-semibold ${priorityColors[process.priority]}`}>
               {process.priority}
             </span>
-            {activeWorkflow && (
-              <span className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 ${
-                isAwaitingNoticeService(activeWorkflow)
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-blue-100 text-blue-800'
-              }`}>
+            {awaitingCount > 0 ? (
+              <span className="px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 bg-amber-100 text-amber-800">
                 <Clock className="w-3 h-3" />
-                {isAwaitingNoticeService(activeWorkflow) ? 'Awaiting service' : 'Active'}
+                {awaitingCount} awaiting service
               </span>
-            )}
+            ) : inProgressCount > 0 ? (
+              <span className="px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 bg-blue-100 text-blue-800">
+                <Clock className="w-3 h-3" />
+                {startFresh ? `${inProgressCount} in progress` : 'Active'}
+              </span>
+            ) : null}
           </div>
         </div>
         <h3 className="mb-2 text-lg font-semibold text-gray-800">{process.title}</h3>
@@ -559,7 +586,7 @@ const ComplianceActionCard = ({ process, activeWorkflow, onStartWorkflow }) => {
           onClick={onStartWorkflow}
           className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 flex items-center justify-center gap-2"
         >
-          {activeWorkflow ? 'Resume Workflow' : 'Start Workflow'}
+          {showResume ? 'Resume Workflow' : 'Start Workflow'}
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>

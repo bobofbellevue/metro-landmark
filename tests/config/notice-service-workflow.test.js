@@ -4,10 +4,15 @@ import {
   buildNoticeEmailPlainText,
   evictionNoticeFingerprint,
   isAwaitingNoticeService,
+  NOTICE_PICKER_GROUP_GENERATE,
+  NOTICE_PICKER_GROUP_RECORD_SERVICE,
+  noticePickerAnnotation,
+  openWorkflowsByLeaseId,
   rentIncreaseNoticeFingerprint,
   resumeStepIndex,
   tenantEmailsFromLeaseClients,
   validateNoticeService,
+  workflowLeaseId,
 } from '../../src/utils/notice-service-workflow.js';
 
 describe('isAwaitingNoticeService', () => {
@@ -148,7 +153,8 @@ describe('fingerprints and mailto', () => {
     });
     expect(href.startsWith('mailto:a@example.com,b@example.com?')).toBe(true);
     expect(href).toContain(encodeURIComponent('Rent increase notice — Oak St #2'));
-    expect(href).toContain(encodeURIComponent('Attach the downloaded PDF'));
+    expect(href).toContain(encodeURIComponent('Please find the attached'));
+    expect(href).not.toContain(encodeURIComponent('Attach the downloaded PDF'));
   });
 
   test('copy-text and Gmail compose share the same subject and body', () => {
@@ -160,7 +166,8 @@ describe('fingerprints and mailto', () => {
     const text = buildNoticeEmailPlainText(opts);
     expect(text).toContain('To: a@example.com, b@example.com');
     expect(text).toContain('Subject: Rent increase notice — Oak St #2');
-    expect(text).toContain('Attach the downloaded PDF');
+    expect(text).toContain('Please find the attached rent increase notice');
+    expect(text).not.toContain('Attach the downloaded PDF');
 
     const gmail = buildGmailComposeUrl(opts);
     expect(gmail.startsWith('https://mail.google.com/mail/?')).toBe(true);
@@ -179,5 +186,41 @@ describe('fingerprints and mailto', () => {
         { clients: { users: { email: '' } } },
       ])
     ).toEqual(['a@x.com', 'b@x.com']);
+  });
+});
+
+describe('notice picker lease grouping', () => {
+  test('maps open workflows by lease and prefers awaiting service', () => {
+    const draft = {
+      workflow_id: 1,
+      lease_id: 10,
+      status: 'in_progress',
+      workflow_type: 'rent_increase',
+      workflow_data: {},
+    };
+    const awaiting = {
+      workflow_id: 2,
+      lease_id: 10,
+      status: 'in_progress',
+      workflow_type: 'rent_increase',
+      workflow_data: { notice_document_id: 99, service_status: 'pending' },
+    };
+    const other = {
+      workflow_id: 3,
+      workflow_type: 'rent_increase',
+      status: 'draft',
+      workflow_data: { lease_id: 11 },
+    };
+    const byLease = openWorkflowsByLeaseId([draft, awaiting, other]);
+    expect(workflowLeaseId(other)).toBe(11);
+    expect(byLease.get('10').workflow_id).toBe(2);
+    expect(byLease.get('11').workflow_id).toBe(3);
+    expect(noticePickerAnnotation(awaiting).group).toBe(
+      NOTICE_PICKER_GROUP_RECORD_SERVICE
+    );
+    expect(noticePickerAnnotation(draft).group).toBe(
+      NOTICE_PICKER_GROUP_GENERATE
+    );
+    expect(noticePickerAnnotation(null)).toBeNull();
   });
 });

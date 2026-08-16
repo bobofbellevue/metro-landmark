@@ -60,6 +60,19 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(helplineIndexes.length).toBeGreaterThanOrEqual(2);
     expect(helplineIndexes[0]).toBeLessThan(signatureIndex);
     expect(fullDisclaimerIndex).toBeGreaterThan(signatureIndex);
+    expect(
+      lines.some(
+        (l, i) =>
+          i < signatureIndex &&
+          l.includes('required language (include on the official form)')
+      )
+    ).toBe(false);
+    expect(
+      lines.some(
+        (l, i) =>
+          i > signatureIndex && l.includes('City of Seattle required language')
+      )
+    ).toBe(true);
     expect(lines.some((l) => l.includes('Salish Landmark does not provide'))).toBe(
       true
     );

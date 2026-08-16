@@ -1,5 +1,6 @@
 import {
   buildOfficialFormReferralLines,
+  buildRequiredNoticeLanguageLines,
   copyrightedFormsDisclaimer,
   wrapNoticeText,
 } from '../../src/utils/notice-official-resources.js';
@@ -55,5 +56,23 @@ describe('buildOfficialFormReferralLines', () => {
       true
     );
     expect(lines.some((l) => /we do not ship/i.test(l))).toBe(false);
+  });
+});
+
+describe('buildRequiredNoticeLanguageLines', () => {
+  test('can omit the official-form heading for the tenant page', () => {
+    const withHeading = buildRequiredNoticeLanguageLines({
+      packDisplayName: 'City of Seattle',
+      requiredNoticeLanguage: ['Call the helpline.'],
+    });
+    expect(withHeading.some((l) => l.includes('required language'))).toBe(true);
+
+    const tenantPage = buildRequiredNoticeLanguageLines({
+      packDisplayName: 'City of Seattle',
+      requiredNoticeLanguage: ['Call the helpline.'],
+      includeHeading: false,
+    });
+    expect(tenantPage).toEqual(['Call the helpline.']);
+    expect(tenantPage.some((l) => l.includes('required language'))).toBe(false);
   });
 });

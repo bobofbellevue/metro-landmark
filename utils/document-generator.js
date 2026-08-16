@@ -1214,7 +1214,16 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     size: 16,
     font: helveticaBoldFont,
   });
-  y -= 36;
+  y -= 28;
+
+  if (isRentIncreaseWorksheet) {
+    const disclaimerParts = wrapNoticeText(simpleNoticeWorksheetDisclaimerLine());
+    for (const part of disclaimerParts) {
+      page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
+      y -= 14;
+    }
+    y -= 12;
+  }
 
   page.drawText(`Date: ${formData.date_generated}`, {
     x: margin,
@@ -1223,15 +1232,6 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     font: helveticaFont,
   });
   y -= 24;
-
-  if (isRentIncreaseWorksheet) {
-    const disclaimerParts = wrapNoticeText(simpleNoticeWorksheetDisclaimerLine());
-    for (const part of disclaimerParts) {
-      page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
-      y -= 14;
-    }
-    y -= 10;
-  }
 
   const drawn = drawNoticeBodyLines(
     pdfDoc,
@@ -1348,7 +1348,10 @@ export function buildSimpleNoticeTenantLines(formData = {}) {
   }
 
   if (formData.notice_type_key === 'rent_increase') {
-    const requiredLanguage = buildRequiredNoticeLanguageLines(noticeResourceOptions(formData));
+    const requiredLanguage = buildRequiredNoticeLanguageLines({
+      ...noticeResourceOptions(formData),
+      includeHeading: false,
+    });
     if (requiredLanguage.length) {
       lines.push('', ...requiredLanguage);
     }

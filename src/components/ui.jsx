@@ -18,6 +18,7 @@ export const ConfirmationModal = ({
     message = "Are you sure you want to proceed?", 
     confirmText = "Confirm", 
     cancelText = "Cancel",
+    hideCancel = false,
     isDestructive = false,
     isSuccess = false,
     isLoading = false 
@@ -75,6 +76,7 @@ export const ConfirmationModal = ({
                             {title}
                         </h3>
                     </div>
+                    {!hideCancel && (
                     <button
                         onClick={onClose}
                         className="text-gray-400 hover:text-gray-600"
@@ -82,6 +84,7 @@ export const ConfirmationModal = ({
                     >
                         <X size={20} />
                     </button>
+                    )}
                 </div>
                 
                 <div className="p-6">
@@ -90,6 +93,7 @@ export const ConfirmationModal = ({
                     </p>
                     
                     <div className="flex justify-end space-x-3">
+                        {!hideCancel && (
                         <button
                             onClick={onClose}
                             disabled={isLoading}
@@ -97,6 +101,7 @@ export const ConfirmationModal = ({
                         >
                             {cancelText}
                         </button>
+                        )}
                         <button
                             onClick={handleConfirm}
                             disabled={isLoading}
