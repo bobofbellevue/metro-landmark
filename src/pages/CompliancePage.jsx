@@ -9,6 +9,7 @@ import { AuthContext, SidebarContext } from '../contexts';
 import { Card, ConfirmationModal } from '../components/ui';
 import { supabase } from '../lib/supabase';
 import { readResponseJson } from '../utils/read-response-json.js';
+import { isAwaitingNoticeService } from '../utils/notice-service-workflow.js';
 
 // Import workflow components
 import RentIncreaseWorkflow from '../components/compliance/RentIncreaseWorkflow';
@@ -30,7 +31,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'rent_increase',
     title: 'Rent Increase Notice',
-    description: 'Calculate required notice period and generate compliant rent increase notice.',
+    description: 'Calculate the notice period, generate the PDF, then print or email it and record service (or save for later).',
     icon: <TrendingUp className="w-8 h-8 text-blue-500" />,
     priority: 'high',
     category: 'core'
@@ -78,7 +79,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'eviction',
     title: 'Eviction Process',
-    description: 'Multi-step guided workflow from initial notice to court filing.',
+    description: 'Generate the eviction notice, then print or email it and record service (or save for later).',
     icon: <Gavel className="w-8 h-8 text-red-500" />,
     priority: 'medium',
     category: 'notices'
@@ -173,7 +174,7 @@ export default function CompliancePage() {
         `)
         .in('status', ['draft', 'in_progress'])
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(40);
 
       if (error) throw error;
       setActiveWorkflows(data || []);
@@ -337,7 +338,9 @@ export default function CompliancePage() {
       {activeWorkflows.length > 0 && (
         <Card title="Active Workflows" className="mb-6">
           <div className="space-y-3">
-            {activeWorkflows.map(workflow => (
+            {[...activeWorkflows]
+              .sort((a, b) => Number(isAwaitingNoticeService(b)) - Number(isAwaitingNoticeService(a)))
+              .map(workflow => (
               <div
                 key={workflow.workflow_id}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100"
@@ -348,10 +351,14 @@ export default function CompliancePage() {
                   onClick={() => handleStartWorkflow(workflow.workflow_type, workflow.workflow_id)}
                 >
                   <div className={`p-2 rounded-full ${
-                    workflow.status === 'in_progress' ? 'bg-blue-100' : 'bg-gray-200'
+                    isAwaitingNoticeService(workflow)
+                      ? 'bg-amber-100'
+                      : workflow.status === 'in_progress' ? 'bg-blue-100' : 'bg-gray-200'
                   }`}>
                     <Clock className={`w-4 h-4 ${
-                      workflow.status === 'in_progress' ? 'text-blue-600' : 'text-gray-600'
+                      isAwaitingNoticeService(workflow)
+                        ? 'text-amber-700'
+                        : workflow.status === 'in_progress' ? 'text-blue-600' : 'text-gray-600'
                     }`} />
                   </div>
                   <div className="min-w-0">
@@ -367,6 +374,11 @@ export default function CompliancePage() {
                   </div>
                 </button>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {isAwaitingNoticeService(workflow) && (
+                    <span className="px-2 py-1 text-xs rounded bg-amber-100 text-amber-800">
+                      Awaiting service
+                    </span>
+                  )}
                   <span className={`px-2 py-1 text-xs rounded ${
                     workflow.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-700'
                   }`}>
@@ -424,7 +436,10 @@ export default function CompliancePage() {
         confirmText={completionNotice?.status === 'success' ? 'View Documents' : 'OK'}
         cancelText="Close"
         isDestructive={completionNotice?.status === 'error'}
-        isSuccess={completionNotice?.status === 'success'}
+        isSuccess={
+          completionNotice?.status === 'success' ||
+          completionNotice?.status === 'pending_service'
+        }
       />
 
       {/* Process Cards Grid */}
@@ -448,10 +463,16 @@ export default function CompliancePage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
         <div className="bg-blue-50 p-4 rounded-lg">
           <p className="text-2xl font-bold text-blue-900">{activeWorkflows.length}</p>
           <p className="text-sm text-blue-700">Active Workflows</p>
+        </div>
+        <div className="bg-amber-50 p-4 rounded-lg">
+          <p className="text-2xl font-bold text-amber-900">
+            {activeWorkflows.filter(isAwaitingNoticeService).length}
+          </p>
+          <p className="text-sm text-amber-800">Awaiting service</p>
         </div>
         <div className="bg-green-50 p-4 rounded-lg">
           <p className="text-2xl font-bold text-green-900">
@@ -521,9 +542,13 @@ const ComplianceActionCard = ({ process, activeWorkflow, onStartWorkflow }) => {
               {process.priority}
             </span>
             {activeWorkflow && (
-              <span className="px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800 flex items-center gap-1">
+              <span className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 ${
+                isAwaitingNoticeService(activeWorkflow)
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-blue-100 text-blue-800'
+              }`}>
                 <Clock className="w-3 h-3" />
-                Active
+                {isAwaitingNoticeService(activeWorkflow) ? 'Awaiting service' : 'Active'}
               </span>
             )}
           </div>

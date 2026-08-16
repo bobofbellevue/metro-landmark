@@ -10,6 +10,10 @@ import {
   shouldIgnoreWorkflowNext,
 } from '../utils/workflow-action-guard.js';
 import { readResponseJson } from '../utils/read-response-json.js';
+import {
+  GENERATE_THEN_SERVE_WORKFLOW_TYPES,
+  resumeStepIndex,
+} from '../utils/notice-service-workflow.js';
 
 /**
  * ComplianceWorkflow - Guided workflow component for compliance processes
@@ -22,9 +26,10 @@ import { readResponseJson } from '../utils/read-response-json.js';
  * @param {Object} initialData - Initial workflow data
  * @param {number} workflowId - Existing workflow ID (if resuming)
  * @param {Function} getSteps - Optional function to get custom workflow steps
- * @param {Function} onComplete - Callback when workflow is completed
+ * @param {Function} onComplete - Callback when workflow is completed (or Service Later)
  * @param {Function} onCancel - Callback when workflow is cancelled
  * @param {Function} onWorkflowCreated - Callback when a new workflow row is created
+ * @param {Function} onWorkflowLoaded - Callback after an existing workflow row is loaded
  */
 export default function ComplianceWorkflow({
   workflowType,
@@ -33,7 +38,8 @@ export default function ComplianceWorkflow({
   getSteps = null,
   onComplete,
   onCancel,
-  onWorkflowCreated
+  onWorkflowCreated,
+  onWorkflowLoaded,
 }) {
   const { user } = useContext(AuthContext);
   const [currentStep, setCurrentStep] = useState(1);
@@ -46,6 +52,7 @@ export default function ComplianceWorkflow({
   const [isSaving, setIsSaving] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isAdvancing, setIsAdvancing] = useState(false);
   // Sync lock so Space keyup cannot cancel after Next has already started.
   const actionLockRef = useRef(false);
 
@@ -61,12 +68,25 @@ export default function ComplianceWorkflow({
         const parsed = await readResponseJson(response);
         const result = parsed.data;
         if (parsed.ok && result?.success && result.workflow) {
-          setWorkflowRecord(result.workflow);
-          setCurrentStep(result.workflow.current_step || 1);
-          setWorkflowData({
+          const loadedData = {
             ...result.workflow.workflow_data,
             ...initialData
-          });
+          };
+          const loadedSteps = getSteps ? (getSteps() || []) : getWorkflowSteps(workflowType) || [];
+          const totalSteps = loadedSteps.length || result.workflow.total_steps || 1;
+          setWorkflowRecord(result.workflow);
+          setCurrentStep(
+            resumeStepIndex({
+              currentStep: result.workflow.current_step || 1,
+              totalSteps,
+              workflowData: loadedData,
+              generateThenServe: GENERATE_THEN_SERVE_WORKFLOW_TYPES.has(workflowType),
+            })
+          );
+          setWorkflowData(loadedData);
+          if (typeof onWorkflowLoaded === 'function') {
+            onWorkflowLoaded(result.workflow);
+          }
         }
       }
 
@@ -107,16 +127,21 @@ export default function ComplianceWorkflow({
     if (
       shouldIgnoreWorkflowNext({
         actionLocked: actionLockRef.current,
-        busy: isSaving || isCancelling || isCompleting,
+        busy: isSaving || isCancelling || isCompleting || isAdvancing,
       })
     ) {
       return;
     }
-    if (!validateStep(currentStep)) return;
+    const activeSteps = getSteps ? (getSteps() || []) : steps;
+    const stepDef = activeSteps[currentStep - 1];
+    if (Array.isArray(stepDef?.finishActions) && stepDef.finishActions.length > 0) {
+      return;
+    }
+    if (!validateStep(currentStep, { action: 'next' })) return;
 
     actionLockRef.current = true;
     const nextStep = currentStep + 1;
-    const totalSteps = (getSteps ? getSteps() : steps)?.length || steps.length;
+    const totalSteps = activeSteps.length || steps.length;
     const isFinalStep = nextStep > totalSteps;
 
     if (isFinalStep) {
@@ -124,10 +149,29 @@ export default function ComplianceWorkflow({
     }
 
     try {
+      let extra = {};
+      if (typeof stepDef?.onAdvance === 'function') {
+        setIsAdvancing(true);
+        try {
+          extra = (await stepDef.onAdvance(workflowData)) || {};
+        } catch (error) {
+          setErrors({ general: error.message || 'Failed to continue' });
+          return;
+        } finally {
+          setIsAdvancing(false);
+        }
+      }
+
+      const merged = { ...workflowData, ...extra };
+      if (Object.keys(extra).length > 0) {
+        setWorkflowData(merged);
+      }
+
       // Only mark completed on actual Complete — navigating TO the last
       // (review) step must stay in_progress or the session looks finished.
       const saved = await saveProgress(isFinalStep ? totalSteps : nextStep, {
         markCompleted: isFinalStep,
+        workflowData: merged,
       });
       if (!saved && !isFinalStep) {
         return;
@@ -136,7 +180,7 @@ export default function ComplianceWorkflow({
       if (!isFinalStep) {
         setCurrentStep(nextStep);
       } else {
-        await handleComplete();
+        await handleComplete(merged, { action: 'complete' });
       }
     } finally {
       if (isFinalStep) {
@@ -155,14 +199,15 @@ export default function ComplianceWorkflow({
   const saveProgress = async (step = null, options = {}) => {
     setIsSaving(true);
     try {
+      const dataToSave = options.workflowData || workflowData;
       const stepToSave = step || currentStep;
       const totalSteps = (getSteps ? getSteps() : steps)?.length || steps.length;
       const markCompleted = options.markCompleted === true;
       const existingId = workflowId || workflowRecord?.workflow_id;
-      const meaningful = hasMeaningfulWorkflowProgress(workflowData, {
+      const meaningful = hasMeaningfulWorkflowProgress(dataToSave, {
         ...(workflowRecord || {}),
         current_step: stepToSave,
-        lease_id: workflowData.lease_id ?? workflowRecord?.lease_id,
+        lease_id: dataToSave.lease_id ?? workflowRecord?.lease_id,
       });
 
       // Do not create empty drafts (e.g. Save Progress on step 1 with no lease).
@@ -183,8 +228,8 @@ export default function ComplianceWorkflow({
           totalSteps,
           markCompleted
         ),
-        workflow_data: workflowData,
-        ...workflowData
+        workflow_data: dataToSave,
+        ...dataToSave
       };
 
       let response;
@@ -239,7 +284,7 @@ export default function ComplianceWorkflow({
     if (
       shouldIgnoreWorkflowCancel({
         actionLocked: actionLockRef.current,
-        busy: isSaving || isCompleting || isCancelling,
+        busy: isSaving || isCompleting || isCancelling || isAdvancing,
       })
     ) {
       return;
@@ -268,10 +313,11 @@ export default function ComplianceWorkflow({
     }
   };
 
-  const handleComplete = async () => {
+  const handleComplete = async (dataOverride = null, meta = {}) => {
     // isCompleting is set by handleNext for the final step; keep it true if already set
     setIsCompleting(true);
     try {
+      const data = dataOverride || workflowData;
       const id = workflowId || workflowRecord?.workflow_id;
       const totalSteps = (getSteps ? getSteps() : steps)?.length || steps.length;
 
@@ -280,7 +326,7 @@ export default function ComplianceWorkflow({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            workflow_data: workflowData,
+            workflow_data: data,
             completed_at: new Date().toISOString()
           })
         });
@@ -294,12 +340,12 @@ export default function ComplianceWorkflow({
           throw new Error(result.error || 'Failed to complete workflow');
         }
       } else {
-        await saveProgress(totalSteps);
+        await saveProgress(totalSteps, { markCompleted: true, workflowData: data });
       }
 
       if (onComplete) {
         // Await so async generators (notice/renewal) finish before the parent unmounts
-        await onComplete(workflowData);
+        await onComplete(data, meta);
       }
     } catch (error) {
       console.error('Error completing workflow:', error);
@@ -309,7 +355,62 @@ export default function ComplianceWorkflow({
     }
   };
 
-  const validateStep = (stepNumber) => {
+  const handleFinishAction = async (finishAction) => {
+    if (
+      shouldIgnoreWorkflowNext({
+        actionLocked: actionLockRef.current,
+        busy: isSaving || isCancelling || isCompleting || isAdvancing,
+      })
+    ) {
+      return;
+    }
+    const actionId = finishAction?.id;
+    if (!actionId) return;
+    if (!validateStep(currentStep, { action: actionId })) return;
+
+    actionLockRef.current = true;
+    const markCompleted = finishAction.complete !== false;
+    if (markCompleted) {
+      setIsCompleting(true);
+    }
+
+    try {
+      const activeSteps = getSteps ? (getSteps() || []) : steps;
+      const stepDef = activeSteps[currentStep - 1];
+      let extra = {};
+      if (typeof stepDef?.onFinish === 'function') {
+        extra = (await stepDef.onFinish(workflowData, { action: actionId })) || {};
+      }
+      if (actionId === 'service_later') {
+        extra = { ...extra, service_status: 'pending' };
+      }
+      if (actionId === 'record_service') {
+        extra = { ...extra, service_status: 'served' };
+      }
+      const merged = { ...workflowData, ...extra };
+      setWorkflowData(merged);
+
+      const saved = await saveProgress(currentStep, {
+        markCompleted,
+        workflowData: merged,
+      });
+      if (!saved) return;
+
+      if (markCompleted) {
+        await handleComplete(merged, { action: actionId });
+      } else if (onComplete) {
+        await onComplete(merged, { action: actionId });
+      }
+    } catch (error) {
+      console.error('Error finishing workflow step:', error);
+      setErrors({ general: error.message });
+    } finally {
+      setIsCompleting(false);
+      actionLockRef.current = false;
+    }
+  };
+
+  const validateStep = (stepNumber, ctx = {}) => {
     const activeSteps = getSteps ? (getSteps() || []) : steps;
     const step = activeSteps[stepNumber - 1];
     if (!step) return true;
@@ -343,7 +444,7 @@ export default function ComplianceWorkflow({
     }
 
     if (typeof step.validate === 'function') {
-      const customErrors = step.validate(workflowData) || {};
+      const customErrors = step.validate(workflowData, ctx) || {};
       Object.entries(customErrors).forEach(([fieldId, message]) => {
         if (message) {
           stepErrors[fieldId] = message;
@@ -392,31 +493,37 @@ export default function ComplianceWorkflow({
 
   const currentStepData = resolvedSteps[currentStep - 1];
   const stepErrors = errors[currentStep] || {};
-  const busy = isSaving || isCancelling || isCompleting;
+  const busy = isSaving || isCancelling || isCompleting || isAdvancing;
+  const finishActions = currentStepData?.finishActions;
+  const hasFinishActions = Array.isArray(finishActions) && finishActions.length > 0;
+  const overlayLabel = isAdvancing
+    ? (currentStepData?.advanceBusyLabel || 'Generating document…')
+    : (currentStepData?.completeBusyLabel || 'Generating document…');
 
   return (
     <form
-      className={`space-y-6 ${isCompleting ? 'cursor-wait' : ''}`}
+      className={`space-y-6 ${isCompleting || isAdvancing ? 'cursor-wait' : ''}`}
       onSubmit={(e) => {
         e.preventDefault();
-        if (!busy) handleNext();
+        if (busy || hasFinishActions) return;
+        handleNext();
       }}
     >
-      {isCompleting && (
+      {(isCompleting || isAdvancing) && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 cursor-wait"
           role="alertdialog"
           aria-busy="true"
           aria-live="assertive"
-          aria-label="Generating document"
+          aria-label={overlayLabel}
         >
           <div className="bg-white rounded-lg shadow-xl px-8 py-6 max-w-sm mx-4 text-center">
             <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-b-2 border-indigo-600" />
             <p className="text-base font-semibold text-gray-900">
-              Generating document…
+              {overlayLabel}
             </p>
             <p className="mt-2 text-sm text-gray-600">
-              Please wait. This may take a moment — do not click Complete again.
+              Please wait. This may take a moment — do not click again.
             </p>
           </div>
         </div>
@@ -486,7 +593,9 @@ export default function ComplianceWorkflow({
           currentStepData.render({
             workflowData,
             updateField,
-            errors: stepErrors
+            errors: stepErrors,
+            workflowId: workflowId || workflowRecord?.workflow_id,
+            userId: user?.user_id,
           })
         ) : (
           <div className="space-y-4">
@@ -665,38 +774,76 @@ export default function ComplianceWorkflow({
               Previous
             </button>
           )}
-          <button
-            type="button"
-            aria-disabled={busy ? 'true' : undefined}
-            onClick={(e) => {
-              if (busy || actionLockRef.current) {
-                e.preventDefault();
-                return;
-              }
-              handleNext();
-            }}
-            onKeyDown={(e) => {
-              if (
-                (busy || actionLockRef.current) &&
-                (e.key === ' ' || e.key === 'Enter')
-              ) {
-                e.preventDefault();
-                e.stopPropagation();
-              }
-            }}
-            className={`px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 flex items-center gap-2 ${
-              busy ? 'opacity-50 cursor-wait' : ''
-            } ${isCompleting ? 'cursor-wait' : ''}`}
-          >
-            {isCompleting
-              ? 'Generating…'
-              : currentStep === resolvedSteps.length
-                ? 'Complete'
-                : 'Next'}
-            {currentStep < resolvedSteps.length && !isCompleting && (
-              <ArrowRight className="w-4 h-4" />
-            )}
-          </button>
+          {hasFinishActions ? (
+            finishActions.map((action) => {
+              const isPrimary = action.variant !== 'outline';
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  aria-disabled={busy ? 'true' : undefined}
+                  onClick={(e) => {
+                    if (busy || actionLockRef.current) {
+                      e.preventDefault();
+                      return;
+                    }
+                    handleFinishAction(action);
+                  }}
+                  onKeyDown={(e) => {
+                    if (
+                      (busy || actionLockRef.current) &&
+                      (e.key === ' ' || e.key === 'Enter')
+                    ) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }
+                  }}
+                  className={`px-4 py-2 text-sm font-medium rounded-md flex items-center gap-2 ${
+                    isPrimary
+                      ? 'text-white bg-indigo-600 hover:bg-indigo-700'
+                      : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                  } ${busy ? 'opacity-50 cursor-wait' : ''}`}
+                >
+                  {action.label}
+                </button>
+              );
+            })
+          ) : (
+            <button
+              type="button"
+              aria-disabled={busy ? 'true' : undefined}
+              onClick={(e) => {
+                if (busy || actionLockRef.current) {
+                  e.preventDefault();
+                  return;
+                }
+                handleNext();
+              }}
+              onKeyDown={(e) => {
+                if (
+                  (busy || actionLockRef.current) &&
+                  (e.key === ' ' || e.key === 'Enter')
+                ) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+              className={`px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 flex items-center gap-2 ${
+                busy ? 'opacity-50 cursor-wait' : ''
+              } ${isCompleting || isAdvancing ? 'cursor-wait' : ''}`}
+            >
+              {isAdvancing
+                ? (currentStepData?.advanceBusyLabel || 'Generating…')
+                : isCompleting
+                  ? 'Generating…'
+                  : currentStep === resolvedSteps.length
+                    ? 'Complete'
+                    : 'Next'}
+              {currentStep < resolvedSteps.length && !isCompleting && !isAdvancing && (
+                <ArrowRight className="w-4 h-4" />
+              )}
+            </button>
+          )}
         </div>
       </div>
     </form>

@@ -105,6 +105,22 @@ Suggested shape when we build it: a small program catalog (jurisdiction + progra
 
 ---
 
+## Notice service automation (parked 2026-08-16)
+
+**Context:** Rent-increase (and eviction) workflows now generate the PDF first, then offer Print / Email and **Record Service** or **Service Later**. Unserved notices stay in Active Workflows, the Compliance Dashboard, and the manager task list.
+
+**Not built (idea):**
+
+1. **In-app emailed PDF** — SendGrid (or similar) with the notice attached, delivery log, and a service method of `email` when the operator confirms send. Today Email opens the user’s mail client; they must attach the downloaded PDF.
+2. **Electronic certified mail** — Place a certified-mail order from the notice (USPS or a mail vendor), store tracking on the workflow, and prompt to record service when delivered.
+3. **Process-server / servicing-company order** — Send the generated notice to a third-party server, then ingest affidavit / proof of service back into Documents.
+
+Do not block day-to-day notice workflows on these. Legal service rules still depend on the lease and jurisdiction; automation must not imply that email or a vendor order is always valid service.
+
+**Status:** idea (post-migration)
+
+---
+
 ## How to use this file
 
 - Add dated sections for new parking-lot themes.

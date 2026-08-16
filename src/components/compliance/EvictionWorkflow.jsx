@@ -7,6 +7,13 @@ import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import { DEFAULT_JURISDICTION_PACK_ID } from '../../jurisdictions/index.js';
 import { isCompleteWorkflowDate } from '../../utils/workflow-date.js';
+import NoticeServiceStep from './NoticeServiceStep.jsx';
+import { readResponseJson } from '../../utils/read-response-json.js';
+import {
+  evictionNoticeFingerprint,
+  tenantEmailsFromLeaseClients,
+  validateNoticeService,
+} from '../../utils/notice-service-workflow.js';
 
 /**
  * EvictionWorkflow - Multi-step guided workflow for eviction process
@@ -48,10 +55,65 @@ export default function EvictionWorkflow({
         .single();
 
       if (error) throw error;
-      setLease(data);
+
+      let tenantEmails = [];
+      try {
+        const { data: leaseClients } = await supabase
+          .from('lease_clients')
+          .select(`
+            client_id,
+            clients (
+              client_id,
+              user_id,
+              users:users!clients_user_id_fkey ( email )
+            )
+          `)
+          .eq('lease_id', leaseId);
+        tenantEmails = tenantEmailsFromLeaseClients(leaseClients);
+      } catch (emailError) {
+        console.error('Error fetching tenant emails:', emailError);
+      }
+
+      setLease({
+        ...data,
+        tenantEmails,
+      });
     } catch (error) {
       console.error('Error fetching lease details:', error);
     }
+  };
+
+  const generateNotice = async (data) => {
+    const fingerprint = evictionNoticeFingerprint(data);
+    if (data.notice_document_id && data.notice_fingerprint === fingerprint) {
+      return {
+        status: 'success',
+        document_id: data.notice_document_id,
+        notice_id: data.notice_id,
+        reused: true,
+      };
+    }
+
+    const response = await fetch('/api/documents/generate/notice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lease_id: data.lease_id,
+        notice_type: data.notice_type,
+        notice_data: {
+          effective_date: data.effective_date,
+          violation_reason: data.violation_reason,
+          amount_owed: data.amount_owed,
+        }
+      })
+    });
+
+    const parsed = await readResponseJson(response);
+    const result = parsed.data || {};
+    if (!parsed.ok || !result.success) {
+      throw new Error(parsed.error || result.error || 'Failed to generate eviction notice document');
+    }
+    return result;
   };
 
   const getWorkflowSteps = () => {
@@ -156,47 +218,22 @@ export default function EvictionWorkflow({
         )
       },
       {
-        title: 'Notice Service',
-        description: 'Record how and when the notice was served.',
-        fields: [
-          {
-            id: 'served_date',
-            label: 'Date Notice Served',
-            type: 'date',
-            required: true
-          },
-          {
-            id: 'served_method',
-            label: 'Service Method',
-            type: 'select',
-            required: true,
-            options: [
-              { value: 'in_person', label: 'In Person' },
-              { value: 'certified_mail', label: 'Certified Mail' },
-              { value: 'posting', label: 'Posting on Door' },
-              { value: 'email', label: 'Email' }
-            ]
-          },
-          {
-            id: 'proof_of_service_file',
-            label: 'Proof of Service',
-            type: 'file',
-            documentType: 'proof_of_service',
-            description:
-              'Upload a photo or PDF — certified mail receipt, posting photo, email confirmation, or similar.',
-          },
-          {
-            id: 'proof_of_service',
-            label: 'Notes (optional)',
-            type: 'textarea',
-            placeholder: 'Tracking number, who accepted service, etc.',
-          }
-        ]
-      },
-      {
         title: 'Generate Notice',
-        description: 'Review the details and generate the eviction notice document.',
+        description: 'Review the details, then click Next to generate the eviction notice PDF.',
         fields: [],
+        advanceBusyLabel: 'Generating notice…',
+        onAdvance: async (data) => {
+          if (!data.lease_id || !data.notice_type || !data.effective_date) {
+            throw new Error('Lease, notice type, and effective date are required to generate the notice.');
+          }
+          const result = await generateNotice(data);
+          return {
+            notice_document_id: result.document_id,
+            notice_id: result.notice_id,
+            notice_fingerprint: evictionNoticeFingerprint(data),
+            service_status: data.service_status || 'unserved',
+          };
+        },
         render: ({ workflowData }) => {
           const noticeTypeLabels = {
             '3_day_pay_or_vacate': '3-Day Pay or Vacate',
@@ -242,12 +279,57 @@ export default function EvictionWorkflow({
               </div>
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  Click "Complete" to generate the eviction notice document and save the workflow.
+                  {workflowData.notice_document_id &&
+                  workflowData.notice_fingerprint ===
+                    evictionNoticeFingerprint(workflowData)
+                    ? 'This notice PDF was already generated. Click Next to print, email, or record service.'
+                    : 'Click Next to generate the eviction notice. You will print, email, or otherwise serve it on the next step.'}
                 </p>
               </div>
             </div>
           );
         }
+      },
+      {
+        title: 'Notice Service',
+        description: 'Print or email the notice, then record service or save it for later.',
+        fields: [],
+        completeBusyLabel: 'Recording service…',
+        validate: (data, ctx) => validateNoticeService(data, ctx),
+        finishActions: [
+          {
+            id: 'service_later',
+            label: 'Service Later',
+            variant: 'outline',
+            complete: false,
+          },
+          {
+            id: 'record_service',
+            label: 'Record Service',
+            variant: 'primary',
+            complete: true,
+          },
+        ],
+        render: ({ workflowData, updateField, errors, workflowId, userId }) => (
+          <NoticeServiceStep
+            workflowData={workflowData}
+            updateField={updateField}
+            errors={errors}
+            documentId={workflowData.notice_document_id}
+            tenantEmails={lease?.tenantEmails || []}
+            propertyLabel={
+              [property?.property_name, lease?.units?.unit_number && `Unit ${lease.units.unit_number}`]
+                .filter(Boolean)
+                .join(' — ')
+            }
+            noticeKind="eviction"
+            leaseId={workflowData.lease_id}
+            propertyId={property?.property_id}
+            unitId={lease?.units?.unit_id}
+            workflowId={workflowId}
+            userId={userId}
+          />
+        )
       }
     ];
   };
@@ -263,55 +345,37 @@ export default function EvictionWorkflow({
       }}
       workflowId={workflowId}
       getSteps={getWorkflowSteps}
-      onComplete={async (data) => {
-        let generationResult = { status: 'skipped' };
-
-        if (data.lease_id && data.notice_type && data.effective_date) {
-          try {
-            const response = await fetch('/api/documents/generate/notice', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                lease_id: data.lease_id,
-                notice_type: data.notice_type,
-                notice_data: {
-                  effective_date: data.effective_date,
-                  violation_reason: data.violation_reason,
-                  amount_owed: data.amount_owed,
-                  served_date: data.served_date,
-                  served_method: data.served_method,
-                  proof_of_service: data.proof_of_service
-                }
-              })
-            });
-
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok || !result.success) {
-              throw new Error(result.error || 'Failed to generate eviction notice document');
-            }
-            generationResult = {
-              status: 'success',
-              title: 'Eviction notice created',
-              message: 'The notice PDF was generated and saved to Documents.',
-              documentId: result.document_id,
-              noticeId: result.notice_id,
-            };
-          } catch (error) {
-            console.error('Error generating notice:', error);
-            generationResult = {
-              status: 'error',
-              title: 'Workflow completed, but notice was not created',
-              message: error.message || 'Document generation failed.',
-            };
-          }
+      onComplete={async (data, meta = {}) => {
+        if (!onComplete) return;
+        if (meta.action === 'service_later') {
+          onComplete(data, {
+            status: 'pending_service',
+            title: 'Notice ready — record service when you can',
+            message:
+              'The PDF is saved in Documents. This workflow stays in Active Workflows until you record how the notice was served.',
+            documentId: data.notice_document_id,
+            noticeId: data.notice_id,
+          });
+          return;
         }
-
-        if (onComplete) {
-          onComplete(data, generationResult);
-        }
+        onComplete(data, {
+          status: data.notice_document_id ? 'success' : 'error',
+          title: data.notice_document_id
+            ? 'Service recorded'
+            : 'Workflow completed without a notice',
+          message: data.notice_document_id
+            ? 'Service is recorded. The eviction notice is in Documents.'
+            : 'Lease, notice type, and effective date are required to generate the notice.',
+          documentId: data.notice_document_id,
+          noticeId: data.notice_id,
+        });
       }}
       onCancel={onCancel}
       onWorkflowCreated={onWorkflowCreated}
+      onWorkflowLoaded={(workflow) => {
+        const leaseId = workflow?.workflow_data?.lease_id || workflow?.lease_id;
+        if (leaseId) fetchLeaseDetails(leaseId);
+      }}
     />
   );
 }

@@ -13,7 +13,13 @@ import {
 } from '../../utils/workflow-date.js';
 import { formatPersonDisplayName } from '../../utils/lease-display.js';
 import { resolveNoticeQuestionsContact } from '../../utils/notice-questions-contact.js';
-import { proofOfServiceFileLabel } from '../../utils/proof-of-service-file.js';
+import NoticeServiceStep from './NoticeServiceStep.jsx';
+import { readResponseJson } from '../../utils/read-response-json.js';
+import {
+  rentIncreaseNoticeFingerprint,
+  tenantEmailsFromLeaseClients,
+  validateNoticeService,
+} from '../../utils/notice-service-workflow.js';
 
 /**
  * RentIncreaseWorkflow - Guided workflow for rent increase notices
@@ -77,10 +83,73 @@ export default function RentIncreaseWorkflow({
         data.landlord_id
       );
 
-      setLease({ ...data, landlordName, questionsContact });
+      let tenantEmails = [];
+      try {
+        const { data: leaseClients } = await supabase
+          .from('lease_clients')
+          .select(`
+            client_id,
+            clients (
+              client_id,
+              user_id,
+              users:users!clients_user_id_fkey ( email )
+            )
+          `)
+          .eq('lease_id', leaseId);
+        tenantEmails = tenantEmailsFromLeaseClients(leaseClients);
+      } catch (emailError) {
+        console.error('Error fetching tenant emails:', emailError);
+      }
+
+      setLease({ ...data, landlordName, questionsContact, tenantEmails });
     } catch (error) {
       console.error('Error fetching lease details:', error);
     }
+  };
+
+  const generateNotice = async (data) => {
+    const fingerprint = rentIncreaseNoticeFingerprint(data);
+    if (data.notice_document_id && data.notice_fingerprint === fingerprint) {
+      return {
+        status: 'success',
+        document_id: data.notice_document_id,
+        notice_id: data.notice_id,
+        reused: true,
+      };
+    }
+
+    const response = await fetch('/api/documents/generate/notice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lease_id: data.lease_id,
+        notice_type: 'rent_increase',
+        notice_data: {
+          current_rent: data.current_rent,
+          new_rent: data.new_rent,
+          effective_date: data.effective_date,
+          percent_increase:
+            data.current_rent > 0
+              ? ((data.new_rent - data.current_rent) / data.current_rent) * 100
+              : null,
+          locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
+          unit_number: lease?.units?.unit_number || null,
+          property_name: lease?.units?.properties?.property_name || null,
+          landlord_id:
+            lease?.landlord_id ||
+            lease?.units?.properties?.landlord_id ||
+            null,
+          landlord_name: lease?.landlordName || null,
+        }
+      })
+    });
+
+    const parsed = await readResponseJson(response);
+    const result = parsed.data || {};
+    if (!parsed.ok || !result.success) {
+      throw new Error(parsed.error || result.error || 'Failed to generate notice document');
+    }
+    return result;
   };
 
   const getWorkflowSteps = () => {
@@ -229,47 +298,35 @@ export default function RentIncreaseWorkflow({
         }
       },
       {
-        title: 'Notice Service',
-        description: 'Record how and when the notice was served to the tenant.',
-        fields: [
-          {
-            id: 'served_date',
-            label: 'Date Notice Served',
-            type: 'date',
-            required: true
-          },
-          {
-            id: 'served_method',
-            label: 'Service Method',
-            type: 'select',
-            required: true,
-            options: [
-              { value: 'in_person', label: 'In Person' },
-              { value: 'certified_mail', label: 'Certified Mail' },
-              { value: 'posting', label: 'Posting on Door' },
-              { value: 'email', label: 'Email' }
-            ]
-          },
-          {
-            id: 'proof_of_service_file',
-            label: 'Proof of Service',
-            type: 'file',
-            documentType: 'proof_of_service',
-            description:
-              'Upload a photo or PDF — certified mail receipt, posting photo, email confirmation, or similar.',
-          },
-          {
-            id: 'proof_of_service',
-            label: 'Notes (optional)',
-            type: 'textarea',
-            placeholder: 'Tracking number, who accepted service, etc.',
-          }
-        ]
-      },
-      {
         title: 'Generate Notice',
-        description: 'Review the details and generate the compliant rent increase notice document.',
+        description: 'Review the details, then click Next to generate the rent increase notice PDF.',
         fields: [],
+        advanceBusyLabel: 'Generating notice…',
+        onAdvance: async (data) => {
+          if (!data.lease_id || !data.new_rent || !data.effective_date) {
+            throw new Error('Lease, new rent, and effective date are required to generate the notice.');
+          }
+          const result = await generateNotice(data);
+          const render = result.render || {};
+          const renderMode = render.mode || 'unknown';
+          const usedTemplatePositions =
+            renderMode === 'pdf_overlay' || renderMode === 'image_based';
+          if (!result.reused) {
+            console.log('[RentIncreaseWorkflow] notice generated', {
+              document_id: result.document_id,
+              notice_id: result.notice_id,
+              render,
+            });
+          }
+          return {
+            notice_document_id: result.document_id,
+            notice_id: result.notice_id,
+            notice_fingerprint: rentIncreaseNoticeFingerprint(data),
+            notice_render_mode: renderMode,
+            notice_used_template: usedTemplatePositions,
+            service_status: data.service_status || 'unserved',
+          };
+        },
         render: ({ workflowData }) => (
           <div className="space-y-4">
             <div className="bg-gray-50 p-4 rounded-lg">
@@ -342,22 +399,59 @@ export default function RentIncreaseWorkflow({
                     <span className="font-medium">{noticeCalculation.noticePeriodDays} days</span>
                   </div>
                 )}
-                {proofOfServiceFileLabel(workflowData.proof_of_service_file) ? (
-                  <div className="flex justify-between gap-4">
-                    <span className="text-gray-600">Proof of service:</span>
-                    <span className="font-medium text-right">
-                      {proofOfServiceFileLabel(workflowData.proof_of_service_file)}
-                    </span>
-                  </div>
-                ) : null}
               </div>
             </div>
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-blue-800">
-                Click "Complete" to generate the rent increase notice document and save the workflow.
+                {workflowData.notice_document_id &&
+                workflowData.notice_fingerprint ===
+                  rentIncreaseNoticeFingerprint(workflowData)
+                  ? 'This notice PDF was already generated. Click Next to print, email, or record service. Changing rent details will create a new PDF.'
+                  : 'Click Next to generate the rent increase notice. You will print, email, or otherwise serve it on the next step.'}
               </p>
             </div>
           </div>
+        )
+      },
+      {
+        title: 'Notice Service',
+        description: 'Print or email the notice, then record service or save it for later.',
+        fields: [],
+        completeBusyLabel: 'Recording service…',
+        validate: (data, ctx) => validateNoticeService(data, ctx),
+        finishActions: [
+          {
+            id: 'service_later',
+            label: 'Service Later',
+            variant: 'outline',
+            complete: false,
+          },
+          {
+            id: 'record_service',
+            label: 'Record Service',
+            variant: 'primary',
+            complete: true,
+          },
+        ],
+        render: ({ workflowData, updateField, errors, workflowId, userId }) => (
+          <NoticeServiceStep
+            workflowData={workflowData}
+            updateField={updateField}
+            errors={errors}
+            documentId={workflowData.notice_document_id}
+            tenantEmails={lease?.tenantEmails || []}
+            propertyLabel={
+              [property?.property_name, lease?.units?.unit_number && `Unit ${lease.units.unit_number}`]
+                .filter(Boolean)
+                .join(' — ')
+            }
+            noticeKind="rent increase"
+            leaseId={workflowData.lease_id}
+            propertyId={property?.property_id}
+            unitId={lease?.units?.unit_id}
+            workflowId={workflowId}
+            userId={userId}
+          />
         )
       }
     ];
@@ -374,84 +468,42 @@ export default function RentIncreaseWorkflow({
       }}
       workflowId={workflowId}
       getSteps={getWorkflowSteps}
-      onComplete={async (data) => {
-        let generationResult = { status: 'skipped' };
+      onComplete={async (data, meta = {}) => {
+        if (!onComplete) return;
 
-        // Generate notice document
-        if (data.lease_id && data.new_rent && data.effective_date) {
-          try {
-            const response = await fetch('/api/documents/generate/notice', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                lease_id: data.lease_id,
-                notice_type: 'rent_increase',
-                notice_data: {
-                  current_rent: data.current_rent,
-                  new_rent: data.new_rent,
-                  effective_date: data.effective_date,
-                  percent_increase: ((data.new_rent - data.current_rent) / data.current_rent) * 100,
-                  served_date: data.served_date,
-                  served_method: data.served_method,
-                  proof_of_service: data.proof_of_service,
-                  locale: typeof navigator !== 'undefined' ? navigator.language : 'en-US',
-                  unit_number: lease?.units?.unit_number || null,
-                  property_name: lease?.units?.properties?.property_name || null,
-                  // landlord_name column is often null; server resolves from contacts
-                  landlord_id:
-                    lease?.landlord_id ||
-                    lease?.units?.properties?.landlord_id ||
-                    null,
-                  landlord_name: lease?.landlordName || null,
-                }
-              })
-            });
-
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok || !result.success) {
-              throw new Error(result.error || 'Failed to generate notice document');
-            }
-            const render = result.render || {};
-            const renderMode = render.mode || 'unknown';
-            const usedTemplatePositions =
-              renderMode === 'pdf_overlay' || renderMode === 'image_based';
-            console.log('[RentIncreaseWorkflow] notice generated', {
-              document_id: result.document_id,
-              notice_id: result.notice_id,
-              render,
-            });
-            generationResult = {
-              status: 'success',
-              title: 'Rent increase notice created',
-              message: usedTemplatePositions
-                ? 'Your rent increase notice was saved to Documents.'
-                : 'Your rent increase notice was saved to Documents using a simple layout (a Notice template with field positions was unavailable).',
-              documentId: result.document_id,
-              noticeId: result.notice_id,
-              render,
-            };
-          } catch (error) {
-            console.error('Error generating notice:', error);
-            generationResult = {
-              status: 'error',
-              title: 'Workflow completed, but notice was not created',
-              message: error.message || 'Document generation failed. Check Documents or try again from a new workflow.',
-            };
-          }
-        } else {
-          generationResult = {
-            status: 'error',
-            title: 'Workflow completed without a notice',
-            message: 'Lease, new rent, and effective date are required to generate the notice document.',
-          };
+        if (meta.action === 'service_later') {
+          onComplete(data, {
+            status: 'pending_service',
+            title: 'Notice ready — record service when you can',
+            message:
+              'The PDF is saved in Documents. This workflow stays in Active Workflows until you record how the notice was served.',
+            documentId: data.notice_document_id,
+            noticeId: data.notice_id,
+          });
+          return;
         }
 
-        if (onComplete) {
-          onComplete(data, generationResult);
-        }
+        const usedTemplatePositions = data.notice_used_template === true;
+        onComplete(data, {
+          status: data.notice_document_id ? 'success' : 'error',
+          title: data.notice_document_id
+            ? 'Service recorded'
+            : 'Workflow completed without a notice',
+          message: data.notice_document_id
+            ? usedTemplatePositions || !data.notice_render_mode
+              ? 'Service is recorded. The rent increase notice is in Documents.'
+              : 'Service is recorded. The notice was saved using a simple layout (a Notice template with field positions was unavailable).'
+            : 'Lease, new rent, and effective date are required to generate the notice document.',
+          documentId: data.notice_document_id,
+          noticeId: data.notice_id,
+        });
       }}
       onCancel={onCancel}
       onWorkflowCreated={onWorkflowCreated}
+      onWorkflowLoaded={(workflow) => {
+        const leaseId = workflow?.workflow_data?.lease_id || workflow?.lease_id;
+        if (leaseId) fetchLeaseDetails(leaseId);
+      }}
     />
   );
 }

@@ -1,0 +1,232 @@
+import React, { useState } from 'react';
+import { Printer, Mail, Copy, Check, AlertCircle } from 'lucide-react';
+import WorkflowDateInput from '../WorkflowDateInput.jsx';
+import WorkflowFileField from '../WorkflowFileField.jsx';
+import { readResponseJson } from '../../utils/read-response-json.js';
+import {
+  NOTICE_SERVICE_METHODS,
+  buildNoticeMailto,
+} from '../../utils/notice-service-workflow.js';
+import { PROOF_OF_SERVICE_DOCUMENT_TYPE } from '../../utils/proof-of-service-file.js';
+
+/**
+ * Shared Notice Service UI: print/email the generated PDF, then optionally
+ * record how it was served — or leave service for later.
+ */
+export default function NoticeServiceStep({
+  workflowData,
+  updateField,
+  errors = {},
+  documentId,
+  tenantEmails = [],
+  propertyLabel = '',
+  noticeKind = 'rent increase',
+  leaseId,
+  propertyId,
+  unitId,
+  workflowId,
+  userId,
+}) {
+  const [docError, setDocError] = useState('');
+  const [opening, setOpening] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const method = NOTICE_SERVICE_METHODS.find(
+    (m) => m.value === workflowData.served_method
+  );
+  const needsPrint = !method || method.needsPrint;
+  const mailto = buildNoticeMailto({
+    emails: tenantEmails,
+    propertyLabel: propertyLabel || 'the property',
+    noticeKind,
+  });
+
+  const openPdf = async () => {
+    if (!documentId) {
+      setDocError('Generate the notice first — there is no PDF to print yet.');
+      return;
+    }
+    setDocError('');
+    setOpening(true);
+    try {
+      const response = await fetch(`/api/documents/${documentId}/download`, {
+        credentials: 'include',
+      });
+      const parsed = await readResponseJson(response);
+      const url = parsed.data?.url;
+      if (!parsed.ok || !parsed.data?.success || !url) {
+        throw new Error(
+          parsed.error || parsed.data?.error || 'Could not get a download link'
+        );
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      setDocError(err.message || 'Could not open the notice PDF');
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  const copyEmails = async () => {
+    const text = tenantEmails.join(', ');
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setDocError('Could not copy email addresses');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+        <h4 className="mb-1 font-semibold text-indigo-900">Serve the notice</h4>
+        <p className="text-sm text-indigo-800">
+          Print a copy for in-person delivery, posting, or certified mail — or
+          email it to the tenant. Then record service below, or choose Service
+          Later if you have not served it yet.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={openPdf}
+            disabled={opening || !documentId}
+            className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Printer className="h-4 w-4" />
+            {opening ? 'Opening…' : 'Print / Download PDF'}
+          </button>
+          {tenantEmails.length > 0 ? (
+            <a
+              href={mailto}
+              className="inline-flex items-center gap-2 rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-50"
+            >
+              <Mail className="h-4 w-4" />
+              Email notice
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-400"
+              title="No tenant email on file"
+            >
+              <Mail className="h-4 w-4" />
+              Email notice
+            </button>
+          )}
+          {tenantEmails.length > 0 && (
+            <button
+              type="button"
+              onClick={copyEmails}
+              className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              {copied ? (
+                <Check className="h-4 w-4 text-green-600" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+              {copied ? 'Copied' : 'Copy emails'}
+            </button>
+          )}
+        </div>
+        {tenantEmails.length > 0 ? (
+          <p className="mt-3 text-xs text-indigo-800">
+            Tenant email{tenantEmails.length === 1 ? '' : 's'}:{' '}
+            {tenantEmails.join(', ')}. Email opens your mail client — attach the
+            downloaded PDF before sending. Emailing may not constitute legal
+            service depending on the lease and jurisdiction.
+          </p>
+        ) : (
+          <p className="mt-3 text-xs text-indigo-800">
+            No tenant email on file. Download the PDF and send it yourself, or
+            use in-person, posting, or certified mail.
+          </p>
+        )}
+        {needsPrint && method && (
+          <p className="mt-2 text-xs font-medium text-indigo-900">
+            {method.label} usually needs a printed copy. Use Print / Download
+            PDF first.
+          </p>
+        )}
+        {docError && (
+          <div className="mt-3 flex items-start gap-2 text-sm text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{docError}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <h4 className="font-semibold text-gray-800">Record service</h4>
+        <p className="text-sm text-gray-600">
+          Required only if you click Record Service. Service Later saves the
+          workflow so you can come back after the notice is actually served.
+        </p>
+
+        <WorkflowDateInput
+          label="Date Notice Served"
+          value={workflowData.served_date || ''}
+          onChange={(next) => updateField('served_date', next)}
+          error={errors.served_date || ''}
+        />
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Service Method
+          </label>
+          <select
+            value={workflowData.served_method || ''}
+            onChange={(e) => updateField('served_method', e.target.value)}
+            className={`w-full rounded-md border px-3 py-2 ${
+              errors.served_method ? 'border-red-300' : 'border-gray-300'
+            }`}
+          >
+            <option value="">Select…</option>
+            {NOTICE_SERVICE_METHODS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.served_method && (
+            <p className="mt-1 text-sm text-red-600">{errors.served_method}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Proof of Service
+          </label>
+          <WorkflowFileField
+            value={workflowData.proof_of_service_file || null}
+            onChange={(fileMeta) => updateField('proof_of_service_file', fileMeta)}
+            error={errors.proof_of_service_file}
+            leaseId={leaseId}
+            propertyId={propertyId}
+            unitId={unitId}
+            workflowId={workflowId}
+            userId={userId}
+            documentType={PROOF_OF_SERVICE_DOCUMENT_TYPE}
+            description="Upload a photo or PDF — certified mail receipt, posting photo, email confirmation, or similar."
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Notes (optional)
+          </label>
+          <textarea
+            value={workflowData.proof_of_service || ''}
+            onChange={(e) => updateField('proof_of_service', e.target.value)}
+            rows={3}
+            className="w-full rounded-md border border-gray-300 px-3 py-2"
+            placeholder="Tracking number, who accepted service, etc."
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

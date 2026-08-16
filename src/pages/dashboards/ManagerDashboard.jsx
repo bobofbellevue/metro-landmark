@@ -3,6 +3,7 @@ import { Building2, FileText, Wrench, Calendar, AlertTriangle, CheckCircle, Cloc
 import { supabase } from '../../lib/supabase.js';
 import { AuthContext, SidebarContext } from '../../contexts';
 import { Card } from '../../components/ui';
+import { isAwaitingNoticeService } from '../../utils/notice-service-workflow.js';
 
 export default function ManagerDashboard() {
     const { user } = useContext(AuthContext);
@@ -153,6 +154,29 @@ export default function ManagerDashboard() {
                         workflowId: workflow.workflow_id,
                     });
                 }
+            });
+
+            const { data: noticeWorkflows } = unitIds.length > 0
+                ? await supabase
+                    .from('compliance_workflows')
+                    .select('workflow_id, workflow_type, workflow_data, status, unit_id')
+                    .in('unit_id', unitIds)
+                    .in('status', ['draft', 'in_progress'])
+                    .in('workflow_type', ['rent_increase', 'eviction'])
+                : { data: [] };
+
+            noticeWorkflows?.filter(isAwaitingNoticeService).forEach(workflow => {
+                const unit = units.find(u => u.unit_id === workflow.unit_id);
+                const label = workflow.workflow_type === 'eviction'
+                    ? 'Eviction notice'
+                    : 'Rent increase notice';
+                tasks.push({
+                    type: 'notice_service',
+                    title: `Record service: ${label}`,
+                    description: `Unit ${unit?.unit_number || 'N/A'} — notice generated, service not recorded`,
+                    priority: 'high',
+                    workflowId: workflow.workflow_id,
+                });
             });
 
             // Document generation needed (leases without signed documents)
@@ -308,7 +332,7 @@ export default function ManagerDashboard() {
                 <StatCard 
                     icon={<Shield />} 
                     title="Compliance Tasks" 
-                    value={pendingTasks.filter(t => t.type === 'compliance').length} 
+                    value={pendingTasks.filter(t => t.type === 'compliance' || t.type === 'notice_service').length} 
                     page="Compliance" 
                     color="purple" 
                 />
@@ -372,7 +396,7 @@ export default function ManagerDashboard() {
                                                 View
                                             </button>
                                         )}
-                                        {task.type === 'compliance' && (
+                                        {(task.type === 'compliance' || task.type === 'notice_service') && (
                                             <button
                                                 onClick={() => setActivePage('Compliance')}
                                                 className="text-sm text-indigo-600 hover:text-indigo-800"

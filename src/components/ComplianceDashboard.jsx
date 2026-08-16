@@ -3,9 +3,9 @@ import { Card } from './ui';
 import { supabase } from '../lib/supabase';
 import { AuthContext } from '../contexts';
 import { 
-  Clock, CheckCircle, AlertCircle, Calendar, 
-  TrendingUp, Gavel, DollarSign, FileText 
+  Clock, CheckCircle, AlertCircle, Calendar, FileText 
 } from 'lucide-react';
+import { isAwaitingNoticeService } from '../utils/notice-service-workflow.js';
 
 /**
  * ComplianceDashboard - Dashboard view for compliance workflows
@@ -16,10 +16,12 @@ export default function ComplianceDashboard() {
     active: 0,
     completed: 0,
     upcomingDeadlines: 0,
-    overdue: 0
+    overdue: 0,
+    awaitingService: 0,
   });
   const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
   const [recentWorkflows, setRecentWorkflows] = useState([]);
+  const [unservedNotices, setUnservedNotices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -82,21 +84,41 @@ export default function ComplianceDashboard() {
           workflow_type,
           status,
           created_at,
+          workflow_data,
           property:properties(property_name),
           unit:units(unit_number)
         `)
         .order('created_at', { ascending: false })
         .limit(10);
 
+      const { data: unservedData } = await supabase
+        .from('compliance_workflows')
+        .select(`
+          workflow_id,
+          workflow_type,
+          status,
+          workflow_data,
+          property:properties(property_name),
+          unit:units(unit_number)
+        `)
+        .in('status', ['draft', 'in_progress'])
+        .in('workflow_type', ['rent_increase', 'eviction'])
+        .order('updated_at', { ascending: false })
+        .limit(25);
+
+      const awaitingService = (unservedData || []).filter(isAwaitingNoticeService);
+
       setStats({
         active: activeData?.length || 0,
         completed: completedData?.length || 0,
         upcomingDeadlines: deadlinesData?.length || 0,
-        overdue: overdueData?.length || 0
+        overdue: overdueData?.length || 0,
+        awaitingService: awaitingService.length,
       });
 
       setUpcomingDeadlines(deadlinesData || []);
       setRecentWorkflows(recentData || []);
+      setUnservedNotices(awaitingService.slice(0, 10));
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -139,7 +161,7 @@ export default function ComplianceDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card title="" className="bg-white">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-blue-100 rounded-lg">
@@ -178,6 +200,18 @@ export default function ComplianceDashboard() {
 
         <Card title="" className="bg-white">
           <div className="flex items-center gap-3">
+            <div className="p-3 bg-amber-100 rounded-lg">
+              <FileText className="w-6 h-6 text-amber-700" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-800">{stats.awaitingService || 0}</p>
+              <p className="text-sm text-gray-600">Awaiting service</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="" className="bg-white">
+          <div className="flex items-center gap-3">
             <div className="p-3 bg-red-100 rounded-lg">
               <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
@@ -190,6 +224,33 @@ export default function ComplianceDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card title="Notices awaiting service">
+          {unservedNotices.length === 0 ? (
+            <p className="text-gray-600 text-sm">No generated notices waiting to be served</p>
+          ) : (
+            <div className="space-y-3">
+              {unservedNotices.map(workflow => (
+                <div
+                  key={workflow.workflow_id}
+                  className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium text-gray-800">
+                      {getWorkflowTypeLabel(workflow.workflow_type)}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      {workflow.property?.property_name} - Unit {workflow.unit?.unit_number}
+                    </p>
+                  </div>
+                  <span className="px-2 py-1 text-xs rounded bg-amber-100 text-amber-800">
+                    Record service
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
         {/* Upcoming Deadlines */}
         <Card title="Upcoming Deadlines (Next 7 Days)">
           {upcomingDeadlines.length === 0 ? (
