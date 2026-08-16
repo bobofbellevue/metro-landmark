@@ -25,7 +25,7 @@ export const washingtonStatePack = {
     membershipUrl: 'https://www.rhawa.org/',
     formsUrl: 'https://www.rhawa.org/rent-increase-notices',
     recommendation:
-      'Join RHAWA and import their current city-specific rent-increase templates into Documents. We do not ship their copyrighted forms.',
+      'Join RHAWA and import their current city-specific rent-increase templates into Documents.',
   },
   sourceUrls: [
     {

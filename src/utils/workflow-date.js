@@ -1,6 +1,10 @@
 /**
  * Workflow date helpers for compliance date fields (effective dates, etc.).
  * HTML date inputs can emit intermediate years while typing (e.g. 0002, 0020, 0202).
+ *
+ * Calendar dates must stay on local Y/M/D parts. `new Date('YYYY-MM-DD')` is UTC
+ * midnight and displays as the previous day west of UTC (03/01 → 02/28). Prefer
+ * these helpers over Date.parse / toISOString().slice(0, 10) for notice math.
  */
 
 export const WORKFLOW_DATE_MIN_YEAR = 1900;
@@ -147,6 +151,48 @@ export function todayWorkflowDate(now = new Date()) {
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/**
+ * Calendar date as a local midnight Date. Never use `new Date('YYYY-MM-DD')`
+ * (UTC midnight, which shifts a day west of UTC).
+ * @param {string|Date|null|undefined} value
+ * @returns {Date|null}
+ */
+export function workflowDateToLocalDate(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+  const iso = toWorkflowDateString(value);
+  const parts = parseWorkflowDateParts(iso);
+  if (!parts || !isCompleteWorkflowDate(iso)) return null;
+  return new Date(parts.year, parts.month - 1, parts.day);
+}
+
+/**
+ * Whole calendar days from start to end (YYYY-MM-DD or parseable workflow dates).
+ * Positive when end is after start. Uses UTC-from-parts so DST does not skew the count.
+ * @param {string|Date} start
+ * @param {string|Date} end
+ * @returns {number|null}
+ */
+export function calendarDaysBetween(start, end) {
+  const a = parseWorkflowDateParts(toWorkflowDateString(start));
+  const b = parseWorkflowDateParts(toWorkflowDateString(end));
+  if (!a || !b) return null;
+  const utcA = Date.UTC(a.year, a.month - 1, a.day);
+  const utcB = Date.UTC(b.year, b.month - 1, b.day);
+  return Math.round((utcB - utcA) / 86400000);
+}
+
+/**
+ * Calendar days from today (local) until isoDate. Negative if the date is past.
+ * @param {string|Date} isoDate
+ * @param {Date} [now]
+ * @returns {number|null}
+ */
+export function calendarDaysUntil(isoDate, now = new Date()) {
+  return calendarDaysBetween(todayWorkflowDate(now), isoDate);
 }
 
 /**

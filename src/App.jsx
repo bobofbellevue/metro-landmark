@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Building2, LayoutDashboard, Wrench, Shield, LogOut, Settings as SettingsIcon, Menu, X, UserCircle, UserPlus, Building, Briefcase, FileText, UserCheck, Store } from 'lucide-react';
 
 // Import shared modules
@@ -276,30 +276,22 @@ const LoginPage = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const emailInputRef = useRef(null);
 
-  // Reset form on component mount to prevent autofill contamination
+  // Clear leftover autofill, then put the caret in Email address.
   useEffect(() => {
     setEmail('');
     setPassword('');
     setError('');
-    
-    // Additional aggressive clearing after a short delay
+
     const timeout = setTimeout(() => {
       setEmail('');
       setPassword('');
+      emailInputRef.current?.focus();
     }, 100);
-    
+
     return () => clearTimeout(timeout);
   }, []);
-
-  // Additional reset on focus to clear any cached autofill
-  const handleEmailFocus = () => {
-    setEmail('');
-  };
-
-  const handlePasswordFocus = () => {
-    setPassword('');
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -341,8 +333,8 @@ const LoginPage = ({ onLoginSuccess }) => {
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit} autoComplete="off">
           <div className="space-y-3">
-            <div><input id="email-address" name="email" type="email" autoComplete="off" required className="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md appearance-none" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} onFocus={handleEmailFocus} /></div>
-            <div><input id="password" name="password" type="password" autoComplete="off" required className="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md appearance-none" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onFocus={handlePasswordFocus} /></div>
+            <div><input id="email-address" name="email" type="email" autoComplete="off" required className="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md appearance-none" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} ref={emailInputRef} /></div>
+            <div><input id="password" name="password" type="password" autoComplete="off" required className="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md appearance-none" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
           </div>
           {error && (<div className="p-3 text-sm text-red-700 bg-red-100 border-red-400 rounded-md">{error}</div>)}
           <div><button type="submit" disabled={isLoading} className="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-indigo-600 bg-gray-100 border border-gray-300 rounded-md group hover:bg-gray-200">{isLoading ? 'Signing in...' : 'Sign in'}</button></div>

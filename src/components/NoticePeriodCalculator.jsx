@@ -5,7 +5,12 @@ import {
   detectJurisdictionFromPropertyId,
   getJurisdictionDisplayName,
 } from '../utils/jurisdiction-detector';
-import { isCompleteWorkflowDate } from '../utils/workflow-date.js';
+import {
+  calendarDaysUntil,
+  formatWorkflowDateForLocale,
+  isCompleteWorkflowDate,
+  toWorkflowDateString,
+} from '../utils/workflow-date.js';
 
 /**
  * NoticePeriodCalculator - Calculates required notice periods for compliance workflows
@@ -126,11 +131,18 @@ export default function NoticePeriodCalculator({
     citations = [],
     evaluation,
   } = calculation;
-  const today = new Date();
-  const noticeDate = requiredNoticeDate ? new Date(requiredNoticeDate) : null;
-  const effective = effectiveDate ? new Date(effectiveDate) : null;
-  const isNoticeDatePast = noticeDate && noticeDate < today;
-  const daysUntilNotice = noticeDate ? Math.ceil((noticeDate - today) / (1000 * 60 * 60 * 24)) : null;
+  const requiredNoticeIso = toWorkflowDateString(requiredNoticeDate);
+  const effectiveIso = toWorkflowDateString(effectiveDate);
+  const displayLocale =
+    typeof navigator !== 'undefined' ? navigator.language : 'en-US';
+  const requiredNoticeLabel = requiredNoticeIso
+    ? formatWorkflowDateForLocale(requiredNoticeIso, displayLocale)
+    : '';
+  const effectiveLabel = effectiveIso
+    ? formatWorkflowDateForLocale(effectiveIso, displayLocale)
+    : '';
+  const daysUntilNotice = requiredNoticeIso ? calendarDaysUntil(requiredNoticeIso) : null;
+  const isNoticeDatePast = daysUntilNotice != null && daysUntilNotice < 0;
   const unitLabel = workflowType === 'entry' || workflowType === 'entry_notice' ? 'hours' : 'days';
 
   return (
@@ -141,12 +153,12 @@ export default function NoticePeriodCalculator({
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-blue-900 mb-2">Notice Period Requirements</h4>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                 <span className="text-blue-700">Required Notice Period:</span>
                 <span className="font-semibold text-blue-900">{noticePeriodDays} {unitLabel}</span>
               </div>
               {calcJurisdiction && (
-                <div className="flex justify-between">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-blue-700">Jurisdiction pack:</span>
                   <span className="font-semibold text-blue-900">
                     {getJurisdictionDisplayName(calcJurisdiction)}
@@ -154,7 +166,7 @@ export default function NoticePeriodCalculator({
                 </div>
               )}
               {leaseType && (
-                <div className="flex justify-between">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-blue-700">Lease Type:</span>
                   <span className="font-semibold text-blue-900">
                     {leaseType === 'month_to_month' ? 'Month-to-Month' : 'Fixed-Term'}
@@ -245,7 +257,7 @@ export default function NoticePeriodCalculator({
                   ? 'text-yellow-800'
                   : 'text-green-800'
               }`}>
-                Notice must be served by: <strong>{noticeDate?.toLocaleDateString()}</strong>
+                Notice must be served by: <strong>{requiredNoticeLabel}</strong>
               </p>
               {isNoticeDatePast && (
                 <p className="text-xs text-red-700 mt-2">
@@ -257,9 +269,9 @@ export default function NoticePeriodCalculator({
                   ⚠️ Notice date is approaching. Ensure notice is served on time.
                 </p>
               )}
-              {effective && (
+              {effectiveLabel && (
                 <p className="text-xs text-gray-600 mt-2">
-                  Effective date: {effective.toLocaleDateString()}
+                  Effective date: {effectiveLabel}
                 </p>
               )}
             </div>

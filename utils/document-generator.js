@@ -30,7 +30,8 @@ import {
   getJurisdictionDisplayName,
   getRentIncreaseNoticeResources,
 } from '../src/jurisdictions/index.js';
-import { buildOfficialFormReferralLines, wrapNoticeText } from '../src/utils/notice-official-resources.js';
+import { buildOfficialFormReferralLines, wrapNoticeText, buildRequiredNoticeLanguageLines, simpleNoticeWorksheetDisclaimerLine } from '../src/utils/notice-official-resources.js';
+import { brand } from '../api/utils/brand.js';
 
 /**
  * Format date as MM/DD/YYYY (timezone-safe for YYYY-MM-DD strings).
@@ -1130,6 +1131,7 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     official_form_urls: noticeResources.officialFormUrls,
     required_notice_language: noticeResources.requiredNoticeLanguage,
     preferred_landlord_association: noticeResources.preferredLandlordAssociation,
+    product_name: brand.productName,
   };
 
   // Prefer a Notice template with stored field positions (same path as lease/renewal).
@@ -1201,14 +1203,18 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
 
   let y = height - 50;
   const margin = 50;
+  const isRentIncreaseWorksheet = formData.notice_type_key === 'rent_increase';
+  const title = isRentIncreaseWorksheet
+    ? 'RENT INCREASE NOTICE WORKSHEET'
+    : `${formData.notice_type} NOTICE`;
 
-  page.drawText(`${formData.notice_type} NOTICE`, {
+  page.drawText(title, {
     x: margin,
     y,
-    size: 18,
+    size: 16,
     font: helveticaBoldFont,
   });
-  y -= 40;
+  y -= 36;
 
   page.drawText(`Date: ${formData.date_generated}`, {
     x: margin,
@@ -1216,18 +1222,44 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     size: 12,
     font: helveticaFont,
   });
-  y -= 30;
+  y -= 24;
 
-  for (const line of buildSimpleNoticeContentLines(formData)) {
-    const wrapped = line === '' ? [''] : wrapNoticeText(line);
-    for (const part of wrapped) {
-      if (y < 100) {
-        page = pdfDoc.addPage([612, 792]);
-        y = height - 50;
-      }
-      page.drawText(part, { x: margin, y, size: 11, font: helveticaFont });
-      y -= 16;
+  if (isRentIncreaseWorksheet) {
+    const disclaimerParts = wrapNoticeText(simpleNoticeWorksheetDisclaimerLine());
+    for (const part of disclaimerParts) {
+      page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
+      y -= 14;
     }
+    y -= 10;
+  }
+
+  const drawn = drawNoticeBodyLines(
+    pdfDoc,
+    page,
+    isRentIncreaseWorksheet
+      ? buildSimpleNoticeTenantLines(formData)
+      : buildSimpleNoticeContentLines(formData),
+    { y, margin, height, font: helveticaFont }
+  );
+  page = drawn.page;
+  y = drawn.y;
+
+  if (isRentIncreaseWorksheet) {
+    page = pdfDoc.addPage([612, 792]);
+    y = height - 50;
+    page.drawText('Disclaimer and resources', {
+      x: margin,
+      y,
+      size: 14,
+      font: helveticaBoldFont,
+    });
+    y -= 28;
+    drawNoticeBodyLines(
+      pdfDoc,
+      page,
+      buildSimpleNoticeResourceLines(formData),
+      { y, margin, height, font: helveticaFont }
+    );
   }
 
   const pdfBytes = await pdfDoc.save();
@@ -1236,24 +1268,50 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
 }
 
 /**
- * Build body lines for a template-less notice PDF.
- * Exported for unit tests.
+ * Draw wrapped body lines, adding pages when the cursor runs out of room.
+ */
+function drawNoticeBodyLines(pdfDoc, startPage, lines, { y, margin, height, font, size = 11, lineHeight = 16 }) {
+  let page = startPage;
+  let cursorY = y;
+  for (const line of lines) {
+    const wrapped = line === '' ? [''] : wrapNoticeText(line);
+    for (const part of wrapped) {
+      if (cursorY < 60) {
+        page = pdfDoc.addPage([612, 792]);
+        cursorY = height - 50;
+      }
+      page.drawText(part, { x: margin, y: cursorY, size, font });
+      cursorY -= lineHeight;
+    }
+  }
+  return { page, y: cursorY };
+}
+
+function noticeResourceOptions(formData = {}) {
+  return {
+    officialFormUrls: formData.official_form_urls,
+    requiredNoticeLanguage: formData.required_notice_language,
+    packDisplayName: formData.pack_display_name,
+    preferredLandlordAssociation: formData.preferred_landlord_association,
+    productName: formData.product_name,
+  };
+}
+
+/**
+ * Tenant-facing body for page 1 of the rent-increase worksheet.
  * @param {object} formData
  * @returns {string[]}
  */
-export function buildSimpleNoticeContentLines(formData = {}) {
+export function buildSimpleNoticeTenantLines(formData = {}) {
   const lines = [
     `To: ${formData.tenant_names || 'Tenant'}`,
     '',
-  ];
-
-  lines.push(
     `Property: ${formData.property_name || 'N/A'}`,
     `Unit: ${formData.unit_number || 'N/A'}`,
     '',
     `This notice is regarding your lease agreement.`,
-    ''
-  );
+    '',
+  ];
 
   if (formData.notice_type_key === 'rent_increase') {
     if (formData.current_rent) {
@@ -1273,14 +1331,6 @@ export function buildSimpleNoticeContentLines(formData = {}) {
     if (formData.current_rent || formData.new_rent) {
       lines.push('');
     }
-    lines.push(
-      ...buildOfficialFormReferralLines({
-        officialFormUrls: formData.official_form_urls,
-        requiredNoticeLanguage: formData.required_notice_language,
-        packDisplayName: formData.pack_display_name,
-        preferredLandlordAssociation: formData.preferred_landlord_association,
-      })
-    );
   }
 
   lines.push(`Effective Date: ${formData.effective_date || ''}`);
@@ -1297,6 +1347,13 @@ export function buildSimpleNoticeContentLines(formData = {}) {
     lines.push('', ...questionsLines);
   }
 
+  if (formData.notice_type_key === 'rent_increase') {
+    const requiredLanguage = buildRequiredNoticeLanguageLines(noticeResourceOptions(formData));
+    if (requiredLanguage.length) {
+      lines.push('', ...requiredLanguage);
+    }
+  }
+
   lines.push(
     '',
     '',
@@ -1308,6 +1365,39 @@ export function buildSimpleNoticeContentLines(formData = {}) {
   );
 
   return lines;
+}
+
+/**
+ * Full disclaimer, official URLs, association referral, and required language
+ * for page 2 of the rent-increase worksheet.
+ * @param {object} formData
+ * @returns {string[]}
+ */
+export function buildSimpleNoticeResourceLines(formData = {}) {
+  return buildOfficialFormReferralLines({
+    ...noticeResourceOptions(formData),
+    includeRequiredLanguage: true,
+  });
+}
+
+/**
+ * Build body lines for a template-less notice PDF.
+ * Rent-increase worksheets concatenate tenant page then resource page.
+ * Exported for unit tests.
+ * @param {object} formData
+ * @returns {string[]}
+ */
+export function buildSimpleNoticeContentLines(formData = {}) {
+  if (formData.notice_type_key === 'rent_increase') {
+    return [
+      simpleNoticeWorksheetDisclaimerLine(),
+      '',
+      ...buildSimpleNoticeTenantLines(formData),
+      '',
+      ...buildSimpleNoticeResourceLines(formData),
+    ];
+  }
+  return buildSimpleNoticeTenantLines(formData);
 }
 
 /**
@@ -1355,6 +1445,7 @@ async function appendOfficialFormReferralPage(pdfBytes, formData) {
     requiredNoticeLanguage: formData.required_notice_language,
     packDisplayName: formData.pack_display_name,
     preferredLandlordAssociation: formData.preferred_landlord_association,
+    productName: formData.product_name,
   });
   if (!lines.length) return pdfBytes;
 

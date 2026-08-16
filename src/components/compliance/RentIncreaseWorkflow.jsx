@@ -11,10 +11,13 @@ import {
   getNoticeServiceMethods,
   getRentIncreaseNoticeResources,
 } from '../../jurisdictions/index.js';
+import { brand } from '../../config/brand.js';
 import {
   formatWorkflowDateForLocale,
   isCompleteWorkflowDate,
+  toWorkflowDateString,
 } from '../../utils/workflow-date.js';
+import { copyrightedFormsDisclaimer } from '../../utils/notice-official-resources.js';
 import { formatPersonDisplayName } from '../../utils/lease-display.js';
 import { resolveNoticeQuestionsContact } from '../../utils/notice-questions-contact.js';
 import NoticeServiceStep from './NoticeServiceStep.jsx';
@@ -338,17 +341,17 @@ export default function RentIncreaseWorkflow({
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="font-semibold text-gray-800 mb-3">Notice Summary</h4>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-gray-600">Property:</span>
                   <span className="font-medium">{property?.property_name}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-gray-600">Unit:</span>
                   <span className="font-medium">{lease?.units?.unit_number}</span>
                 </div>
-                <div className="flex justify-between gap-4">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-gray-600">Questions contact:</span>
-                  <span className="font-medium text-right">
+                  <span className="font-medium">
                     {lease?.questionsContact?.name
                       ? `${lease.questionsContact.name}${
                           lease.questionsContact.role
@@ -360,9 +363,9 @@ export default function RentIncreaseWorkflow({
                 </div>
                 {(lease?.questionsContact?.phone ||
                   lease?.questionsContact?.email) && (
-                  <div className="flex justify-between gap-4">
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     <span className="text-gray-600">Contact info:</span>
-                    <span className="font-medium text-right">
+                    <span className="font-medium">
                       {[
                         lease.questionsContact.phone,
                         lease.questionsContact.email,
@@ -372,7 +375,7 @@ export default function RentIncreaseWorkflow({
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-gray-600">Current Rent:</span>
                   <span className="font-medium">
                     {workflowData.current_rent != null
@@ -380,7 +383,7 @@ export default function RentIncreaseWorkflow({
                       : '—'}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-gray-600">New Rent:</span>
                   <span className="font-medium">
                     {workflowData.new_rent != null
@@ -388,7 +391,7 @@ export default function RentIncreaseWorkflow({
                       : '—'}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-gray-600">Effective Date:</span>
                   <span className="font-medium">
                     {isCompleteWorkflowDate(workflowData.effective_date)
@@ -400,9 +403,20 @@ export default function RentIncreaseWorkflow({
                   </span>
                 </div>
                 {noticeCalculation && (
-                  <div className="flex justify-between">
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     <span className="text-gray-600">Required Notice Period:</span>
                     <span className="font-medium">{noticeCalculation.noticePeriodDays} days</span>
+                  </div>
+                )}
+                {toWorkflowDateString(noticeCalculation?.requiredNoticeDate) && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                    <span className="text-gray-600">Required Notice Date:</span>
+                    <span className="font-medium">
+                      {formatWorkflowDateForLocale(
+                        toWorkflowDateString(noticeCalculation.requiredNoticeDate),
+                        typeof navigator !== 'undefined' ? navigator.language : 'en-US'
+                      )}
+                    </span>
                   </div>
                 )}
               </div>
@@ -458,7 +472,8 @@ export default function RentIncreaseWorkflow({
                     {noticeResources.preferredLandlordAssociation.name}
                   </a>
                   : join and import their current rent-increase forms into
-                  Documents. We do not ship those copyrighted forms.
+                  Documents.{' '}
+                  {copyrightedFormsDisclaimer(brand.productName)}
                   {noticeResources.preferredLandlordAssociation.formsUrl ? (
                     <>
                       {' '}

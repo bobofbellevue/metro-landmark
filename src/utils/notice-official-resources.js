@@ -4,6 +4,25 @@
  * This worksheet must not be served as the notice.
  */
 
+import { DEFAULT_PRODUCT_NAME } from '../config/brand-derive.js';
+
+/**
+ * @param {string} [productName]
+ * @returns {string}
+ */
+export function copyrightedFormsDisclaimer(productName) {
+  const name = String(productName || '').trim() || DEFAULT_PRODUCT_NAME;
+  return `${name} does not provide those copyrighted forms.`;
+}
+
+/**
+ * One-line tenant-page disclaimer for the rent-increase worksheet.
+ * @returns {string}
+ */
+export function simpleNoticeWorksheetDisclaimerLine() {
+  return 'This worksheet is not the statutory notice. Official form required — see page 2.';
+}
+
 /**
  * @param {string} text
  * @param {number} [maxChars]
@@ -37,10 +56,37 @@ export function wrapNoticeText(text, maxChars = 88) {
 }
 
 /**
- * @param {{ officialFormUrls?: Array<{label?: string, href?: string}>, requiredNoticeLanguage?: string[], packDisplayName?: string }} resources
+ * @param {{ requiredNoticeLanguage?: string[], packDisplayName?: string }} resources
+ * @returns {string[]}
+ */
+export function buildRequiredNoticeLanguageLines(resources = {}) {
+  const required = Array.isArray(resources.requiredNoticeLanguage)
+    ? resources.requiredNoticeLanguage
+    : [];
+  if (!required.length) return [];
+  const where = resources.packDisplayName
+    ? `${resources.packDisplayName} required language (include on the official form):`
+    : 'Required local language (include on the official form):';
+  const lines = [...wrapNoticeText(where)];
+  for (const paragraph of required) {
+    lines.push(...wrapNoticeText(paragraph));
+  }
+  return lines;
+}
+
+/**
+ * @param {{
+ *   officialFormUrls?: Array<{label?: string, href?: string}>,
+ *   requiredNoticeLanguage?: string[],
+ *   packDisplayName?: string,
+ *   preferredLandlordAssociation?: object,
+ *   productName?: string,
+ *   includeRequiredLanguage?: boolean
+ * }} resources
  * @returns {string[]}
  */
 export function buildOfficialFormReferralLines(resources = {}) {
+  const productName = resources.productName || DEFAULT_PRODUCT_NAME;
   const lines = [
     'This worksheet is not the statutory Washington rent-increase notice.',
     'RCW 59.18.720 requires a notice substantially the same as the state form.',
@@ -66,6 +112,7 @@ export function buildOfficialFormReferralLines(resources = {}) {
           `Recommended fillable templates: join ${association.name} and import their current forms.`
       )
     );
+    lines.push(...wrapNoticeText(copyrightedFormsDisclaimer(productName)));
     if (association.membershipUrl) {
       lines.push(...wrapNoticeText(association.membershipUrl));
     }
@@ -74,16 +121,10 @@ export function buildOfficialFormReferralLines(resources = {}) {
     }
     lines.push('');
   }
-  const required = Array.isArray(resources.requiredNoticeLanguage)
-    ? resources.requiredNoticeLanguage
-    : [];
-  if (required.length) {
-    const where = resources.packDisplayName
-      ? `${resources.packDisplayName} required language (include on the official form):`
-      : 'Required local language (include on the official form):';
-    lines.push(...wrapNoticeText(where));
-    for (const paragraph of required) {
-      lines.push(...wrapNoticeText(paragraph));
+  if (resources.includeRequiredLanguage !== false) {
+    const requiredLines = buildRequiredNoticeLanguageLines(resources);
+    if (requiredLines.length) {
+      lines.push(...requiredLines);
     }
   }
   return lines;

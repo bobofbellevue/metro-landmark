@@ -1,5 +1,6 @@
 import {
   buildOfficialFormReferralLines,
+  copyrightedFormsDisclaimer,
   wrapNoticeText,
 } from '../../src/utils/notice-official-resources.js';
 
@@ -44,10 +45,15 @@ describe('buildOfficialFormReferralLines', () => {
         membershipUrl: 'https://www.rhawa.org/',
         formsUrl: 'https://www.rhawa.org/rent-increase-notices',
         recommendation:
-          'Join RHAWA and import their current city-specific rent-increase templates into Documents. We do not ship their copyrighted forms.',
+          'Join RHAWA and import their current city-specific rent-increase templates into Documents.',
       },
+      productName: 'Salish Landmark',
     });
     expect(lines.some((l) => l.includes('Join RHAWA'))).toBe(true);
     expect(lines.some((l) => l.includes('rhawa.org'))).toBe(true);
+    expect(lines.some((l) => l.includes(copyrightedFormsDisclaimer('Salish Landmark')))).toBe(
+      true
+    );
+    expect(lines.some((l) => /we do not ship/i.test(l))).toBe(false);
   });
 });

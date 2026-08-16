@@ -120,7 +120,7 @@ So “the tenant has a voucher” is not the same as “this is an income-based 
 
 **Not built (idea):**
 
-1. **In-app emailed PDF** — SendGrid (or similar) with the notice attached, delivery log, and a service method of `email` when the operator confirms send. Today Email opens the user’s mail client; they must attach the downloaded PDF.
+1. **In-app emailed PDF** — SendGrid (or similar) with the notice attached, delivery log, and a service method of `email` when the operator confirms send. Today the service step offers **Email notice in mail app** (`mailto:`), **Open Gmail in browser**, and **Copy notice email text**; the operator still attaches the downloaded PDF.
 2. **Electronic certified mail** — Place a certified-mail order from the notice (USPS or a mail vendor), store tracking on the workflow, and prompt to record service when delivered.
 3. **Process-server / servicing-company order** — Send the generated notice to a third-party server, then ingest affidavit / proof of service back into Documents.
 
@@ -139,7 +139,7 @@ Do not block day-to-day notice workflows on these. Legal service rules still dep
 - Seattle **180-day** housing-cost notice (SMC 7.24.030 as amended; seattle.gov since 2021-11-09), with **day of service excluded** from the 180-day count.
 - Pack-driven **service methods**, including first class mail, posting **and** first class mail, and Other.
 - Official form URLs on packs (RCW 59.18.720, Commerce HB 1217 Landlord Resource Center, Seattle housing-cost page).
-- Template-less PDF labeled as a **worksheet**, not the statutory notice, with those URLs and Seattle helpline language when the pack requires it.
+- Template-less PDF labeled **RENT INCREASE NOTICE WORKSHEET**, with tenant-facing figures and required local language on page 1 and the full disclaimer / official URLs on page 2.
 - Commerce **2027** statewide cap of 10% stored on the WA pack.
 
 **Do not copy RHAWA PDFs.** Those forms are copyrighted and paywalled. The WA pack **favors RHAWA** as the recommended association: tell operators to join and **import** current city-specific templates themselves. There is no in-app picker for a competing association; a different favorite means a source-code fork or custom pack. Use RHAWA’s *city list* as a catalog of jurisdictions to research from **official** sources (RCW, Commerce, city pages, municipal code). The regulation scanner must not fetch member-only forms.

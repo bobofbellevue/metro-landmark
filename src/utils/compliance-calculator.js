@@ -14,6 +14,12 @@ import {
   getResolvedJurisdictionPack,
   getRuleCitations,
 } from '../jurisdictions/index.js';
+import {
+  addDaysToWorkflowDate,
+  calendarDaysBetween,
+  parseWorkflowDateParts,
+  toWorkflowDateString,
+} from './workflow-date.js';
 
 function resolvedRules(jurisdiction) {
   return getResolvedJurisdictionPack(jurisdiction || DEFAULT_JURISDICTION_PACK_ID).resolvedRules;
@@ -43,11 +49,16 @@ export function resolvePercentIncrease(percentIncrease, currentRent, newRent) {
 }
 
 function monthsBetween(start, end) {
-  const a = new Date(start);
-  const b = new Date(end);
-  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
-  return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth())
-    + (b.getDate() < a.getDate() ? -1 : 0);
+  const a = parseWorkflowDateParts(toWorkflowDateString(start));
+  const b = parseWorkflowDateParts(toWorkflowDateString(end));
+  if (!a || !b) return null;
+  return (b.year - a.year) * 12 + (b.month - a.month)
+    + (b.day < a.day ? -1 : 0);
+}
+
+function calendarYear(value) {
+  const parts = parseWorkflowDateParts(toWorkflowDateString(value));
+  return parts ? parts.year : new Date().getFullYear();
 }
 
 /**
@@ -72,8 +83,7 @@ export function evaluateRentIncrease({
     ? (rules.subsidizedNoticeDays ?? 30)
     : (rules.defaultNoticeDays ?? rules.monthToMonthNoticeDays ?? 90);
 
-  const year = asOfYear
-    ?? (effectiveDate ? new Date(effectiveDate).getFullYear() : new Date().getFullYear());
+  const year = asOfYear ?? (effectiveDate ? calendarYear(effectiveDate) : new Date().getFullYear());
   const maxIncreasePercent = getMaxRentIncreasePercent(packId, year);
   const exceedsCap = maxIncreasePercent != null && increase != null && increase > maxIncreasePercent;
 
@@ -255,24 +265,27 @@ function citationsForWorkflow(jurisdiction, workflowType) {
 }
 
 /**
- * Calculate effective date from notice date and notice period
- * @returns {Date}
+ * Calculate effective date from notice date and notice period.
+ * @returns {string} YYYY-MM-DD, or '' when the notice date is not a calendar date
  */
 export function calculateEffectiveDate(noticeDate, noticePeriodDays) {
-  const date = new Date(noticeDate);
-  date.setDate(date.getDate() + noticePeriodDays);
-  return date;
+  const iso = toWorkflowDateString(noticeDate);
+  if (!iso) return '';
+  return addDaysToWorkflowDate(iso, Number(noticePeriodDays) || 0);
 }
 
 /**
- * Calculate required notice date from effective date and notice period
- * @returns {Date}
+ * Calculate required notice date from effective date and notice period.
+ * Returns YYYY-MM-DD (never a UTC Date — `new Date('YYYY-MM-DD')` shifts a day
+ * west of UTC and is the usual source of 03/01 → 02/28 display bugs).
+ * @returns {string}
  */
 export function calculateRequiredNoticeDate(effectiveDate, noticePeriodDays, options = {}) {
-  const date = new Date(effectiveDate);
+  const iso = toWorkflowDateString(effectiveDate);
+  if (!iso) return '';
   const extra = options.excludeDayOfService ? 1 : Number(options.extraDays) || 0;
-  date.setDate(date.getDate() - noticePeriodDays - extra);
-  return date;
+  const days = (Number(noticePeriodDays) || 0) + extra;
+  return addDaysToWorkflowDate(iso, -days);
 }
 
 /**
@@ -280,10 +293,15 @@ export function calculateRequiredNoticeDate(effectiveDate, noticePeriodDays, opt
  * @returns {Object} - { valid: boolean, daysDifference: number, message: string }
  */
 export function validateNoticePeriod(noticeDate, effectiveDate, requiredDays) {
-  const notice = new Date(noticeDate);
-  const effective = new Date(effectiveDate);
-  const diffTime = effective - notice;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = calendarDaysBetween(noticeDate, effectiveDate);
+  if (diffDays == null) {
+    return {
+      valid: false,
+      daysDifference: 0,
+      requiredDays,
+      message: 'Notice or effective date is not a valid calendar date.',
+    };
+  }
 
   if (diffDays < requiredDays) {
     return {

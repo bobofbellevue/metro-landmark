@@ -22,7 +22,43 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(lines.some((l) => l.startsWith('Landlord:'))).toBe(false);
   });
 
-  test('omits rent lines for other notice types', () => {
+  test('puts tenant figures and Seattle language before the full disclaimer', () => {
+    const lines = buildSimpleNoticeContentLines({
+      notice_type_key: 'rent_increase',
+      tenant_names: 'Ada Lovelace',
+      property_name: 'Pine Court',
+      unit_number: 'B',
+      current_rent: '$1,200.00',
+      new_rent: '$1,300.00',
+      effective_date: '03/01/2027',
+      pack_display_name: 'City of Seattle',
+      required_notice_language: [
+        'If you need help understanding this notice, call the Renting in Seattle Helpline at (206) 684-5700.',
+      ],
+      product_name: 'Salish Landmark',
+    });
+
+    const toIndex = lines.indexOf('To: Ada Lovelace');
+    const rentIndex = lines.indexOf('Current Monthly Rent: $1,200.00');
+    const effectiveIndex = lines.indexOf('Effective Date: 03/01/2027');
+    const signatureIndex = lines.indexOf('Signature: ________________________________');
+    const officialIndex = lines.findIndex((l) =>
+      l.includes('Official forms and guidance')
+    );
+    const helplineIndexes = lines
+      .map((l, i) => (l.includes('Renting in Seattle Helpline') ? i : -1))
+      .filter((i) => i >= 0);
+
+    expect(toIndex).toBeGreaterThanOrEqual(0);
+    expect(rentIndex).toBeGreaterThan(toIndex);
+    expect(effectiveIndex).toBeGreaterThan(rentIndex);
+    expect(helplineIndexes.length).toBeGreaterThanOrEqual(2);
+    expect(helplineIndexes[0]).toBeLessThan(signatureIndex);
+    expect(officialIndex).toBeGreaterThan(signatureIndex);
+    expect(lines.some((l) => l.includes('Salish Landmark does not provide'))).toBe(
+      true
+    );
+  });
     const lines = buildSimpleNoticeContentLines({
       notice_type_key: 'eviction',
       tenant_names: 'Ada Lovelace',

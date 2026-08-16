@@ -120,21 +120,56 @@ export function evictionNoticeFingerprint(data = {}) {
 
 /**
  * @param {{ emails?: string[], propertyLabel?: string, noticeKind?: string }} opts
- * @returns {string}
+ * @returns {{ to: string, subject: string, body: string }}
  */
-export function buildNoticeMailto({
+export function buildNoticeEmailParts({
   emails = [],
   propertyLabel = 'the property',
   noticeKind = 'rent increase',
 } = {}) {
-  const to = emails.filter(Boolean).join(',');
-  const subject = encodeURIComponent(
-    `${capitalizeNoticeKind(noticeKind)} notice — ${propertyLabel}`
-  );
-  const body = encodeURIComponent(
-    `Please find the attached ${noticeKind} notice for ${propertyLabel}.\n\nAttach the downloaded PDF before sending.`
-  );
-  return `mailto:${to}?subject=${subject}&body=${body}`;
+  return {
+    to: emails.filter(Boolean).join(', '),
+    subject: `${capitalizeNoticeKind(noticeKind)} notice — ${propertyLabel}`,
+    body: `Please find the attached ${noticeKind} notice for ${propertyLabel}.\n\nAttach the downloaded PDF before sending.`,
+  };
+}
+
+/**
+ * Plain text for clipboard when the operator uses Gmail (or another webmail)
+ * in a browser instead of a mail app.
+ * @param {{ emails?: string[], propertyLabel?: string, noticeKind?: string }} opts
+ * @returns {string}
+ */
+export function buildNoticeEmailPlainText(opts = {}) {
+  const { to, subject, body } = buildNoticeEmailParts(opts);
+  return `To: ${to}\nSubject: ${subject}\n\n${body}`;
+}
+
+/**
+ * Gmail web compose URL (works without a local mail app).
+ * @param {{ emails?: string[], propertyLabel?: string, noticeKind?: string }} opts
+ * @returns {string}
+ */
+export function buildGmailComposeUrl(opts = {}) {
+  const { to, subject, body } = buildNoticeEmailParts(opts);
+  const params = new URLSearchParams({
+    view: 'cm',
+    fs: '1',
+    to,
+    su: subject,
+    body,
+  });
+  return `https://mail.google.com/mail/?${params.toString()}`;
+}
+
+/**
+ * @param {{ emails?: string[], propertyLabel?: string, noticeKind?: string }} opts
+ * @returns {string}
+ */
+export function buildNoticeMailto(opts = {}) {
+  const { to, subject, body } = buildNoticeEmailParts(opts);
+  const mailtoTo = to.replace(/, /g, ',');
+  return `mailto:${mailtoTo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 /**

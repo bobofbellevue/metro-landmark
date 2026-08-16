@@ -12,6 +12,7 @@ import {
   resolvePercentIncrease,
   validateNoticePeriod,
 } from '../../src/utils/compliance-calculator.js';
+import { formatWorkflowDateForLocale } from '../../src/utils/workflow-date.js';
 
 describe('resolvePercentIncrease', () => {
   test('prefers an explicit percent', () => {
@@ -103,7 +104,7 @@ describe('evaluateRentIncrease / calculateRentIncreaseNoticePeriod', () => {
     const latestServe = calculateRequiredNoticeDate('2026-06-01', 180, {
       excludeDayOfService: true,
     });
-    expect(latestServe.toISOString().slice(0, 10)).toBe('2025-12-02');
+    expect(latestServe).toBe('2025-12-02');
   });
 });
 
@@ -191,15 +192,15 @@ describe('termination, eviction, deposit, and entry', () => {
 });
 
 describe('date helpers', () => {
-  test('effective and required notice dates offset by whole days', () => {
-    const notice = calculateEffectiveDate('2026-08-01T12:00:00', 90);
-    expect(notice.getFullYear()).toBe(2026);
-    expect(notice.getMonth()).toBe(9);
-    expect(notice.getDate()).toBe(30);
+  test('effective and required notice dates offset by whole calendar days', () => {
+    expect(calculateEffectiveDate('2026-08-01', 90)).toBe('2026-10-30');
+    expect(calculateRequiredNoticeDate('2026-11-01', 90)).toBe('2026-08-03');
+  });
 
-    const latest = calculateRequiredNoticeDate('2026-11-01T12:00:00', 90);
-    expect(latest.getMonth()).toBe(7);
-    expect(latest.getDate()).toBe(3);
+  test('ISO date-only strings do not shift a day west of UTC', () => {
+    expect(calculateRequiredNoticeDate('2027-03-01', 180, { excludeDayOfService: true }))
+      .toBe('2026-08-31');
+    expect(formatWorkflowDateForLocale('2027-03-01', 'en-US')).toBe('03/01/2027');
   });
 
   test('validateNoticePeriod accepts exact and longer windows', () => {
@@ -263,7 +264,25 @@ describe('noticePeriodDaysFromPack / calculateNoticePeriod', () => {
     expect(result.citations.map((c) => c.id)).toContain('RCW_59.18.140');
     expect(result.rules[0].rule_name).toBe('stale 30-day rent increase');
     expect(result.evaluation.noticePeriodDays).toBe(90);
-    expect(result.requiredNoticeDate).toBeInstanceOf(Date);
+    expect(result.requiredNoticeDate).toBe('2026-09-02');
+  });
+
+  test('Seattle 180-day overlay keeps 2027-03-01 on the local calendar', async () => {
+    globalThis.fetch = async () => ({ ok: false });
+
+    const result = await calculateNoticePeriod({
+      workflowType: 'rent_increase',
+      leaseType: 'month_to_month',
+      jurisdiction: 'seattle',
+      context: { currentRent: 1000, newRent: 1050, effectiveDate: '2027-03-01' },
+    });
+
+    expect(result.noticePeriodDays).toBe(180);
+    expect(result.effectiveDate).toBe('2027-03-01');
+    expect(result.requiredNoticeDate).toBe('2026-08-31');
+    expect(formatWorkflowDateForLocale(result.effectiveDate, 'en-US')).toBe(
+      '03/01/2027'
+    );
   });
 
   test('calculateNoticePeriod still returns pack days when fetch fails', async () => {

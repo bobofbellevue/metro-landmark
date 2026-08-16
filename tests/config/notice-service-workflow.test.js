@@ -1,5 +1,7 @@
 import {
   buildNoticeMailto,
+  buildGmailComposeUrl,
+  buildNoticeEmailPlainText,
   evictionNoticeFingerprint,
   isAwaitingNoticeService,
   rentIncreaseNoticeFingerprint,
@@ -147,6 +149,25 @@ describe('fingerprints and mailto', () => {
     expect(href.startsWith('mailto:a@example.com,b@example.com?')).toBe(true);
     expect(href).toContain(encodeURIComponent('Rent increase notice — Oak St #2'));
     expect(href).toContain(encodeURIComponent('Attach the downloaded PDF'));
+  });
+
+  test('copy-text and Gmail compose share the same subject and body', () => {
+    const opts = {
+      emails: ['a@example.com', 'b@example.com'],
+      propertyLabel: 'Oak St #2',
+      noticeKind: 'rent increase',
+    };
+    const text = buildNoticeEmailPlainText(opts);
+    expect(text).toContain('To: a@example.com, b@example.com');
+    expect(text).toContain('Subject: Rent increase notice — Oak St #2');
+    expect(text).toContain('Attach the downloaded PDF');
+
+    const gmail = buildGmailComposeUrl(opts);
+    expect(gmail.startsWith('https://mail.google.com/mail/?')).toBe(true);
+    expect(gmail).toContain('view=cm');
+    expect(gmail).toContain('a%40example.com');
+    expect(gmail).toContain('b%40example.com');
+    expect(gmail).toContain('Rent+increase+notice');
   });
 
   test('tenantEmailsFromLeaseClients de-dupes nested user emails', () => {

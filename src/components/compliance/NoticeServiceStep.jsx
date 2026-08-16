@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Printer, Mail, Copy, Check, AlertCircle } from 'lucide-react';
+import { Printer, Mail, Copy, Check, AlertCircle, ExternalLink, FileText } from 'lucide-react';
 import WorkflowDateInput from '../WorkflowDateInput.jsx';
 import WorkflowFileField from '../WorkflowFileField.jsx';
 import { readResponseJson } from '../../utils/read-response-json.js';
 import {
   NOTICE_SERVICE_METHODS,
+  buildGmailComposeUrl,
+  buildNoticeEmailPlainText,
   buildNoticeMailto,
   normalizeNoticeServiceMethods,
 } from '../../utils/notice-service-workflow.js';
@@ -33,18 +35,20 @@ export default function NoticeServiceStep({
 }) {
   const [docError, setDocError] = useState('');
   const [opening, setOpening] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState('');
   const methods = normalizeNoticeServiceMethods(serviceMethods);
 
   const method = methods.find(
     (m) => m.value === workflowData.served_method
   );
   const needsPrint = !method || method.needsPrint;
-  const mailto = buildNoticeMailto({
+  const emailOpts = {
     emails: tenantEmails,
     propertyLabel: propertyLabel || 'the property',
     noticeKind,
-  });
+  };
+  const mailto = buildNoticeMailto(emailOpts);
+  const gmailUrl = buildGmailComposeUrl(emailOpts);
 
   const openPdf = async () => {
     if (!documentId) {
@@ -72,15 +76,30 @@ export default function NoticeServiceStep({
     }
   };
 
+  const markCopied = (key) => {
+    setCopied(key);
+    setTimeout(() => setCopied(''), 2000);
+  };
+
   const copyEmails = async () => {
     const text = tenantEmails.join(', ');
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      markCopied('emails');
     } catch {
       setDocError('Could not copy email addresses');
+    }
+  };
+
+  const copyEmailText = async () => {
+    const text = buildNoticeEmailPlainText(emailOpts);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      markCopied('emailText');
+    } catch {
+      setDocError('Could not copy notice email text');
     }
   };
 
@@ -107,13 +126,36 @@ export default function NoticeServiceStep({
             {opening ? 'Opening…' : 'Print / Download PDF'}
           </button>
           {tenantEmails.length > 0 ? (
-            <a
-              href={mailto}
-              className="inline-flex items-center gap-2 rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-50"
-            >
-              <Mail className="h-4 w-4" />
-              Email notice
-            </a>
+            <>
+              <a
+                href={mailto}
+                className="inline-flex items-center gap-2 rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-50"
+              >
+                <Mail className="h-4 w-4" />
+                Email notice in mail app
+              </a>
+              <a
+                href={gmailUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-800 hover:bg-indigo-50"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Open Gmail in browser
+              </a>
+              <button
+                type="button"
+                onClick={copyEmailText}
+                className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                {copied === 'emailText' ? (
+                  <Check className="h-4 w-4 text-green-600" />
+                ) : (
+                  <FileText className="h-4 w-4" />
+                )}
+                {copied === 'emailText' ? 'Copied email text' : 'Copy notice email text'}
+              </button>
+            </>
           ) : (
             <button
               type="button"
@@ -122,7 +164,7 @@ export default function NoticeServiceStep({
               title="No tenant email on file"
             >
               <Mail className="h-4 w-4" />
-              Email notice
+              Email notice in mail app
             </button>
           )}
           {tenantEmails.length > 0 && (
@@ -131,21 +173,24 @@ export default function NoticeServiceStep({
               onClick={copyEmails}
               className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              {copied ? (
+              {copied === 'emails' ? (
                 <Check className="h-4 w-4 text-green-600" />
               ) : (
                 <Copy className="h-4 w-4" />
               )}
-              {copied ? 'Copied' : 'Copy emails'}
+              {copied === 'emails' ? 'Copied' : 'Copy tenant email addresses'}
             </button>
           )}
         </div>
         {tenantEmails.length > 0 ? (
           <p className="mt-3 text-xs text-indigo-800">
             Tenant email{tenantEmails.length === 1 ? '' : 's'}:{' '}
-            {tenantEmails.join(', ')}. Email opens your mail client — attach the
-            downloaded PDF before sending. Emailing may not constitute legal
-            service depending on the lease and jurisdiction.
+            {tenantEmails.join(', ')}. Email notice in mail app needs a desktop
+            or phone mail program. If you use Gmail in a browser, use Open Gmail
+            in browser or Copy notice email text and paste it into Gmail. Attach
+            the downloaded PDF before sending. Copy tenant email addresses copies
+            only the addresses. Emailing may not constitute legal service
+            depending on the lease and jurisdiction.
           </p>
         ) : (
           <p className="mt-3 text-xs text-indigo-800">
