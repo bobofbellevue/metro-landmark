@@ -89,6 +89,7 @@ export function evaluateRentIncrease({
     maxIncreasePercent,
     exceedsCap,
     firstTwelveMonthsBlocked,
+    excludeDayOfService: !!rules.excludeDayOfService,
     subsidized: !!subsidized,
     leaseType: leaseType || null,
     jurisdiction: packId,
@@ -267,9 +268,10 @@ export function calculateEffectiveDate(noticeDate, noticePeriodDays) {
  * Calculate required notice date from effective date and notice period
  * @returns {Date}
  */
-export function calculateRequiredNoticeDate(effectiveDate, noticePeriodDays) {
+export function calculateRequiredNoticeDate(effectiveDate, noticePeriodDays, options = {}) {
   const date = new Date(effectiveDate);
-  date.setDate(date.getDate() - noticePeriodDays);
+  const extra = options.excludeDayOfService ? 1 : Number(options.extraDays) || 0;
+  date.setDate(date.getDate() - noticePeriodDays - extra);
   return date;
 }
 
@@ -366,7 +368,15 @@ export async function calculateNoticePeriod({
 
   let requiredNoticeDate = null;
   if (context.effectiveDate) {
-    requiredNoticeDate = calculateRequiredNoticeDate(context.effectiveDate, noticePeriodDays);
+    const rentRules = resolvedRules(detectedJurisdiction).rentIncrease || {};
+    requiredNoticeDate = calculateRequiredNoticeDate(
+      context.effectiveDate,
+      noticePeriodDays,
+      {
+        excludeDayOfService:
+          workflowType === 'rent_increase' && !!rentRules.excludeDayOfService,
+      }
+    );
   }
 
   const result = {

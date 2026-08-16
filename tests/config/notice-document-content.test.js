@@ -18,6 +18,7 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(lines).toContain('New Monthly Rent: $1,300.00');
     expect(lines).toContain('Increase: 8.3%');
     expect(lines).toContain('Effective Date: 11/01/2026');
+    expect(lines.some((l) => l.includes('not the statutory'))).toBe(true);
     expect(lines.some((l) => l.startsWith('Landlord:'))).toBe(false);
   });
 

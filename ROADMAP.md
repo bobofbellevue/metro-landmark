@@ -11,7 +11,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 | Core PMS ops | Properties, units, leases, tenants, applicants, landlords, PMCs, maintenance |
 | Config seams | Brand, locale display, WA/Seattle jurisdiction packs, shared VAPI/maintenance phone |
 | Operator hygiene | Example DB env file, documented secrets handling, no silent hardcoded client Supabase fallbacks |
-| E1 WA/Seattle pack + calculator tests | 2025/2026 RCW 59.18 notice math, statute citations, pack-driven calculator coverage. The 30-day subsidized rent-increase path is encoded in the pack only — we do not yet track subsidy on leases or units (E11). |
+| E1 WA/Seattle pack + calculator tests | 2025/2026 RCW 59.18 notice math, Seattle **180-day** housing-cost overlay (SMC 7.24.030), statute citations, pack-driven calculator coverage. The 30-day subsidized rent-increase path is encoded in the pack only — we do not yet track subsidy on leases or units (E11). |
 
 ## Partial
 
@@ -30,12 +30,13 @@ This list is intentionally short. Finish or cut items before expanding it.
 | E3 | Phone number resources + IVR purposes | Multi-number / purpose model |
 | E4 | Payments | e.g. Stripe — rent, deposits, fees |
 | E5 | Listing syndication | Export vacancies to major channels |
-| E6 | Second jurisdiction pack | Only when a real operator needs it |
+| E6 | Additional city packs | Tacoma, Bellingham, Federal Way, Olympia (and others) as **child packs of WA**, only when official citations exist and an operator needs them. Do not copy RHAWA PDFs. Design: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#rent-increase-completeness--seattle-cities-forms-exemptions-2026-08-16) |
 | E7 | Auth hardening | Verified sessions/tokens; stop trusting client role headers; tighten RLS/CORS |
 | E8 | Contextual documents for landlords & maintenance | Mount `DocumentManagement` on landlord property/lease/maintenance views (bids, work authorizations, etc.) |
 | E9 | Audience-aware document lists in portals | Tenant / landlord / vendor portals show only related docs (catalog audiences + FK scoping) |
 | E10 | Expand template kinds | Template types beyond Application / Lease as new packs and notice/maintenance templates land |
 | E11 | Subsidy / low-income program tracking | Record *that* a tenancy or unit is subsidized, plus **jurisdiction** and **program**. Lease-level (subsidized tenant) and unit-level (reserved for low-income occupancy) are distinct. Unblocks the RCW 59.18.140(3)(b) 30-day rent-increase path. Design notes: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#subsidy--low-income-program-tracking-2026-08-15) |
+| E12 | Rent-increase exemptions + statutory form template | Property/unit exemption flags (RCW 59.18.710 / Seattle list), fillable RCW 59.18.720 notice + Seattle helpline addendum. Worksheet+links shipped; serving the worksheet as the notice is not compliant. [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#rent-increase-completeness--seattle-cities-forms-exemptions-2026-08-16) |
 
 ## Out of scope (near term)
 
@@ -50,5 +51,5 @@ Consulting and adaptation for custom packs, branding, or production hardening: R
 
 ## Parking lot
 
-Longer design notes and deferred ideas: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md) — parked template/doc-creation reliability directions, plus the E11 subsidy / low-income program sketch.
+Longer design notes and deferred ideas: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md) — parked template/doc-creation reliability, E11 subsidy tracking, notice-service automation, and rent-increase city/form/exemption completeness.
 

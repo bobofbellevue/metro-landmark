@@ -39,10 +39,25 @@ export const STATUTE_CATALOG = Object.freeze({
     label: 'RCW 59.18.700 (rent-increase cap)',
     href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.700',
   },
+  RCW_59_18_710: {
+    id: 'RCW_59.18.710',
+    label: 'RCW 59.18.710 (rent-increase cap exemptions)',
+    href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.710',
+  },
+  RCW_59_18_720: {
+    id: 'RCW_59.18.720',
+    label: 'RCW 59.18.720 (required rent-increase notice form)',
+    href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.720',
+  },
   RCW_59_12_030: {
     id: 'RCW_59.12.030',
     label: 'RCW 59.12.030 (unlawful detainer)',
     href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.12.030',
+  },
+  RCW_59_12_040: {
+    id: 'RCW_59.12.040',
+    label: 'RCW 59.12.040 (service of notice)',
+    href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.12.040',
   },
   SMC_22_206: {
     id: 'SMC_22.206',
@@ -58,6 +73,11 @@ export const STATUTE_CATALOG = Object.freeze({
     id: 'SMC_14.09',
     label: 'SMC 14.09 (use of criminal history in tenant screening)',
     href: 'https://library.municode.com/wa/seattle/codes/municipal_code?nodeId=TIT14HURI',
+  },
+  SMC_7_24_030: {
+    id: 'SMC_7.24.030',
+    label: 'SMC 7.24.030 (Seattle housing cost increase notice)',
+    href: 'https://library.municode.com/wa/seattle/codes/municipal_code?nodeId=TIT7COPR_CH7.24REAGRE',
   },
 });
 

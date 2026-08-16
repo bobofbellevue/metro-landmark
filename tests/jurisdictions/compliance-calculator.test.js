@@ -29,7 +29,7 @@ describe('resolvePercentIncrease', () => {
 });
 
 describe('evaluateRentIncrease / calculateRentIncreaseNoticePeriod', () => {
-  test('ordinary tenancies require 90 days in both packs', () => {
+  test('ordinary tenancies require 90 days statewide and 180 days in Seattle', () => {
     expect(
       calculateRentIncreaseNoticePeriod({
         leaseType: 'month_to_month',
@@ -45,7 +45,7 @@ describe('evaluateRentIncrease / calculateRentIncreaseNoticePeriod', () => {
         jurisdiction: 'seattle',
         percentIncrease: 5,
       })
-    ).toBe(90);
+    ).toBe(180);
   });
 
   test('subsidized income-based tenancies require 30 days', () => {
@@ -89,6 +89,21 @@ describe('evaluateRentIncrease / calculateRentIncreaseNoticePeriod', () => {
       effectiveDate: '2026-08-15',
     });
     expect(allowed.firstTwelveMonthsBlocked).toBe(false);
+  });
+
+  test('Seattle 180-day clock excludes the day of service', () => {
+    const seattle = evaluateRentIncrease({
+      jurisdiction: 'seattle',
+      currentRent: 1000,
+      newRent: 1050,
+    });
+    expect(seattle.noticePeriodDays).toBe(180);
+    expect(seattle.excludeDayOfService).toBe(true);
+
+    const latestServe = calculateRequiredNoticeDate('2026-06-01', 180, {
+      excludeDayOfService: true,
+    });
+    expect(latestServe.toISOString().slice(0, 10)).toBe('2025-12-02');
   });
 });
 

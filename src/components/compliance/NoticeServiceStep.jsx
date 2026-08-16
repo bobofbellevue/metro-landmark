@@ -6,6 +6,7 @@ import { readResponseJson } from '../../utils/read-response-json.js';
 import {
   NOTICE_SERVICE_METHODS,
   buildNoticeMailto,
+  normalizeNoticeServiceMethods,
 } from '../../utils/notice-service-workflow.js';
 import { PROOF_OF_SERVICE_DOCUMENT_TYPE } from '../../utils/proof-of-service-file.js';
 
@@ -26,12 +27,16 @@ export default function NoticeServiceStep({
   unitId,
   workflowId,
   userId,
+  serviceMethods = NOTICE_SERVICE_METHODS,
+  serviceNotes = '',
+  preferredMethodIds = [],
 }) {
   const [docError, setDocError] = useState('');
   const [opening, setOpening] = useState(false);
   const [copied, setCopied] = useState(false);
+  const methods = normalizeNoticeServiceMethods(serviceMethods);
 
-  const method = NOTICE_SERVICE_METHODS.find(
+  const method = methods.find(
     (m) => m.value === workflowData.served_method
   );
   const needsPrint = !method || method.needsPrint;
@@ -84,10 +89,13 @@ export default function NoticeServiceStep({
       <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
         <h4 className="mb-1 font-semibold text-indigo-900">Serve the notice</h4>
         <p className="text-sm text-indigo-800">
-          Print a copy for in-person delivery, posting, or certified mail — or
-          email it to the tenant. Then record service below, or choose Service
-          Later if you have not served it yet.
+          Print a copy for in-person delivery, posting, or mail — or email it
+          to the tenant. Then record service below, or choose Service Later if
+          you have not served it yet.
         </p>
+        {serviceNotes ? (
+          <p className="mt-2 text-sm font-medium text-indigo-900">{serviceNotes}</p>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
@@ -142,13 +150,19 @@ export default function NoticeServiceStep({
         ) : (
           <p className="mt-3 text-xs text-indigo-800">
             No tenant email on file. Download the PDF and send it yourself, or
-            use in-person, posting, or certified mail.
+            use in-person, posting, or first class mail.
           </p>
         )}
         {needsPrint && method && (
           <p className="mt-2 text-xs font-medium text-indigo-900">
             {method.label} usually needs a printed copy. Use Print / Download
             PDF first.
+          </p>
+        )}
+        {method?.compound && (
+          <p className="mt-2 text-xs font-medium text-indigo-900">
+            This method is two acts (for example posting and mailing). Keep
+            proof of both.
           </p>
         )}
         {docError && (
@@ -185,9 +199,10 @@ export default function NoticeServiceStep({
             }`}
           >
             <option value="">Select…</option>
-            {NOTICE_SERVICE_METHODS.map((option) => (
+            {methods.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
+                {preferredMethodIds.includes(option.value) ? ' (typical here)' : ''}
               </option>
             ))}
           </select>

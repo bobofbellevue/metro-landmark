@@ -5,6 +5,8 @@ import {
   getMaxRentIncreasePercent,
   getResolvedJurisdictionPack,
   getRuleCitations,
+  getNoticeServiceMethods,
+  getRentIncreaseNoticeResources,
   isRentControlEnabled,
   listJurisdictionPacks,
   requiresJustCauseForNoCauseTermination,
@@ -50,11 +52,13 @@ describe('jurisdiction packs', () => {
     );
   });
 
-  test('Seattle pack inherits WA numbers and overlays just-cause / screening', () => {
+  test('Seattle pack overlays 180-day housing-cost notice on WA numbers', () => {
     const seattle = getResolvedJurisdictionPack('seattle');
     expect(seattle.parentPackId).toBe('washington_state');
     expect(seattle.resolvedRules.depositReturnDays).toBe(30);
-    expect(seattle.resolvedRules.rentIncrease.defaultNoticeDays).toBe(90);
+    expect(seattle.resolvedRules.rentIncrease.defaultNoticeDays).toBe(180);
+    expect(seattle.resolvedRules.rentIncrease.excludeDayOfService).toBe(true);
+    expect(seattle.resolvedRules.rentIncrease.subsidizedNoticeDays).toBe(30);
     expect(seattle.resolvedRules.entryNoticeHours).toBe(48);
     expect(seattle.resolvedRules.rentControl.enabled).toBe(true);
     expect(seattle.resolvedRules.termination.requiresJustCauseForNoCauseMonthToMonth).toBe(true);
@@ -63,8 +67,14 @@ describe('jurisdiction packs', () => {
     expect(seattle.resolvedRules.termination.renewalOfferMinDaysBeforeEnd).toBe(60);
     expect(seattle.resolvedRules.screening.firstQualifiedApplicant).toBe(true);
     expect(seattle.resolvedStatuteRefs.map((r) => r.id)).toEqual(
-      expect.arrayContaining(['RCW_59.18.140', 'SMC_22.206.160', 'SMC_14.09'])
+      expect.arrayContaining(['RCW_59.18.140', 'SMC_22.206.160', 'SMC_14.09', 'SMC_7.24.030'])
     );
+    expect(seattle.resolvedRules.noticeService.preferredMethodIds).toEqual(
+      expect.arrayContaining(['in_person', 'posting_and_first_class_mail'])
+    );
+    expect(
+      seattle.resolvedRules.noticeService.methods.map((m) => m.id)
+    ).toEqual(expect.arrayContaining(['first_class_mail', 'posting_and_first_class_mail']));
   });
 
   test('helpers expose pack flags, cap, and display names', () => {
@@ -75,6 +85,7 @@ describe('jurisdiction packs', () => {
     expect(requiresRenewalOffer('washington_state')).toBe(false);
     expect(getMaxRentIncreasePercent('washington_state', 2025)).toBe(10);
     expect(getMaxRentIncreasePercent('seattle', 2026)).toBe(9.683);
+    expect(getMaxRentIncreasePercent('washington_state', 2027)).toBe(10);
     expect(getMaxRentIncreasePercent('washington_state', 2099)).toBe(10);
     expect(getJurisdictionDisplayName('seattle')).toBe('City of Seattle');
   });
@@ -82,11 +93,23 @@ describe('jurisdiction packs', () => {
   test('rule citations resolve official labels', () => {
     const rent = getRuleCitations('washington_state', 'rentIncrease');
     expect(rent.map((c) => c.id)).toEqual(
-      expect.arrayContaining(['RCW_59.18.140', 'RCW_59.18.700'])
+      expect.arrayContaining(['RCW_59.18.140', 'RCW_59.18.700', 'RCW_59.18.720'])
     );
     expect(rent.every((c) => c.href && c.label)).toBe(true);
 
     const screening = getRuleCitations('seattle', 'screening');
     expect(screening.map((c) => c.id)).toContain('SMC_14.09');
+  });
+
+  test('pack-driven service methods and official form URLs', () => {
+    const methods = getNoticeServiceMethods('seattle').map((m) => m.id);
+    expect(methods).toEqual(
+      expect.arrayContaining(['in_person', 'first_class_mail', 'posting_and_first_class_mail', 'other'])
+    );
+    const resources = getRentIncreaseNoticeResources('seattle');
+    expect(resources.excludeDayOfService).toBe(true);
+    expect(resources.requiredNoticeLanguage[0]).toMatch(/Renting in Seattle Helpline/);
+    expect(resources.officialFormUrls.some((u) => u.href.includes('59.18.720'))).toBe(true);
+    expect(resources.officialFormUrls.some((u) => u.href.includes('seattle.gov'))).toBe(true);
   });
 });

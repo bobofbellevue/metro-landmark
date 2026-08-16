@@ -14,6 +14,20 @@ export const washingtonStatePack = {
   cityMatchers: [],
   defaultForUnmatchedInState: true,
   stateCode: 'WA',
+  sourceUrls: [
+    {
+      label: 'RCW 59.18.140 (notice period)',
+      href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.140',
+    },
+    {
+      label: 'RCW 59.18.720 (required rent-increase form)',
+      href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.720',
+    },
+    {
+      label: 'WA Dept. of Commerce HB 1217 Landlord Resource Center',
+      href: 'https://www.commerce.wa.gov/housing-policy/hb1217-landlord-resource-center/',
+    },
+  ],
   statuteRefIds: [
     'RCW_59.18',
     'RCW_59.18.140',
@@ -22,7 +36,10 @@ export const washingtonStatePack = {
     'RCW_59.18.280',
     'RCW_59.18.650',
     'RCW_59.18.700',
+    'RCW_59.18.710',
+    'RCW_59.18.720',
     'RCW_59.12.030',
+    'RCW_59.12.040',
   ],
   rules: {
     rentIncrease: {
@@ -36,7 +53,34 @@ export const washingtonStatePack = {
       highIncreasePercentThreshold: null,
       fixedTermNoticeDays: 90,
       firstTwelveMonthsNoIncrease: true,
-      citationIds: ['RCW_59.18.140', 'RCW_59.18.700'],
+      citationIds: ['RCW_59.18.140', 'RCW_59.18.700', 'RCW_59.18.720'],
+      officialFormUrls: [
+        {
+          label: 'RCW 59.18.720 (required notice form text)',
+          href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.720',
+        },
+        {
+          label: 'WA Dept. of Commerce HB 1217 Landlord Resource Center',
+          href: 'https://www.commerce.wa.gov/housing-policy/hb1217-landlord-resource-center/',
+        },
+      ],
+    },
+    noticeService: {
+      methods: [
+        { id: 'in_person', label: 'In Person', needsPrint: true },
+        { id: 'first_class_mail', label: 'First Class Mail', needsPrint: true },
+        { id: 'certified_mail', label: 'Certified Mail', needsPrint: true },
+        { id: 'posting', label: 'Posting on Door', needsPrint: true },
+        {
+          id: 'posting_and_first_class_mail',
+          label: 'Posting and First Class Mail',
+          needsPrint: true,
+          compound: true,
+        },
+        { id: 'email', label: 'Email', needsPrint: false },
+        { id: 'other', label: 'Other (describe in notes)', needsPrint: true },
+      ],
+      citationIds: ['RCW_59.12.040'],
     },
     termination: {
       tenantMonthToMonthNoticeDays: 20,
@@ -76,10 +120,11 @@ export const washingtonStatePack = {
       annualMaxIncreasePercentByYear: {
         2025: 10,
         2026: 9.683,
+        2027: 10,
       },
       defaultMaxIncreasePercent: 10,
       notes:
-        'Statewide cap under RCW 59.18.700. Commerce publishes the calendar-year figure.',
+        'Statewide cap under RCW 59.18.700. Commerce publishes the calendar-year figure (2026: 9.683%; 2027: 10%).',
       citationIds: ['RCW_59.18.700'],
     },
     screening: {

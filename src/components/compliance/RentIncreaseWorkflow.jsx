@@ -6,7 +6,11 @@ import LeaseSelectionPicker from '../LeaseSelectionPicker';
 import WorkflowDateInput from '../WorkflowDateInput';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
-import { DEFAULT_JURISDICTION_PACK_ID } from '../../jurisdictions/index.js';
+import {
+  DEFAULT_JURISDICTION_PACK_ID,
+  getNoticeServiceMethods,
+  getRentIncreaseNoticeResources,
+} from '../../jurisdictions/index.js';
 import {
   formatWorkflowDateForLocale,
   isCompleteWorkflowDate,
@@ -156,6 +160,8 @@ export default function RentIncreaseWorkflow({
     const property = lease?.units?.properties;
     const jurisdiction = property ? detectJurisdiction(property) : DEFAULT_JURISDICTION_PACK_ID;
     const leaseType = lease?.end_date ? 'fixed_term' : 'month_to_month';
+    const noticeResources = getRentIncreaseNoticeResources(jurisdiction);
+    const serviceMethods = getNoticeServiceMethods(jurisdiction);
 
     return [
       {
@@ -401,14 +407,43 @@ export default function RentIncreaseWorkflow({
                 )}
               </div>
             </div>
-            <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="bg-blue-50 p-4 rounded-lg space-y-2">
               <p className="text-sm text-blue-800">
                 {workflowData.notice_document_id &&
                 workflowData.notice_fingerprint ===
                   rentIncreaseNoticeFingerprint(workflowData)
-                  ? 'This notice PDF was already generated. Click Next to print, email, or record service. Changing rent details will create a new PDF.'
-                  : 'Click Next to generate the rent increase notice. You will print, email, or otherwise serve it on the next step.'}
+                  ? 'This PDF was already generated. Click Next to print, email, or record service. Changing rent details will create a new PDF.'
+                  : 'Click Next to generate a worksheet with the figures for this increase. You will print, email, or otherwise serve on the next step.'}
               </p>
+              <p className="text-sm text-blue-900">
+                Washington requires a notice substantially the same as the{' '}
+                <a
+                  href="https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.720"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  RCW 59.18.720 form
+                </a>
+                . A template-less PDF is a worksheet, not the statutory notice — use the
+                official form (Commerce sample or RCW text) before serving.
+              </p>
+              {noticeResources.officialFormUrls.length > 0 && (
+                <ul className="list-disc pl-5 text-sm text-blue-900 space-y-1">
+                  {noticeResources.officialFormUrls.map((entry) => (
+                    <li key={entry.href}>
+                      <a
+                        href={entry.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline"
+                      >
+                        {entry.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         )
@@ -446,6 +481,9 @@ export default function RentIncreaseWorkflow({
                 .join(' — ')
             }
             noticeKind="rent increase"
+            serviceMethods={serviceMethods}
+            serviceNotes={noticeResources.serviceNotes || ''}
+            preferredMethodIds={noticeResources.preferredMethodIds}
             leaseId={workflowData.lease_id}
             propertyId={property?.property_id}
             unitId={lease?.units?.unit_id}

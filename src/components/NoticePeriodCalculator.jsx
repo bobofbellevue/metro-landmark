@@ -204,6 +204,13 @@ export default function NoticePeriodCalculator({
           Pack rule: no rent increase during the first 12 months of the tenancy.
         </div>
       )}
+      {evaluation?.excludeDayOfService && (
+        <p className="text-xs text-blue-800">
+          Latest serve date counts a full notice period that does not include the
+          day of service (Seattle housing-cost example: June 1 increase → served
+          by December 2).
+        </p>
+      )}
 
       {requiredNoticeDate && (
         <div className={`p-4 border rounded-lg ${

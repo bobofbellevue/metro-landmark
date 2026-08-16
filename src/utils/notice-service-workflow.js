@@ -5,17 +5,36 @@
  * immediately or deferred ("Service Later") while the workflow stays open.
  */
 
+import { DEFAULT_NOTICE_SERVICE_METHODS } from '../jurisdictions/index.js';
+
 export const GENERATE_THEN_SERVE_WORKFLOW_TYPES = new Set([
   'rent_increase',
   'eviction',
 ]);
 
-export const NOTICE_SERVICE_METHODS = [
-  { value: 'in_person', label: 'In Person', needsPrint: true },
-  { value: 'certified_mail', label: 'Certified Mail', needsPrint: true },
-  { value: 'posting', label: 'Posting on Door', needsPrint: true },
-  { value: 'email', label: 'Email', needsPrint: false },
-];
+/**
+ * Fallback list when a pack has not configured methods.
+ * Prefer getNoticeServiceMethods(packId) at call sites.
+ */
+export const NOTICE_SERVICE_METHODS = DEFAULT_NOTICE_SERVICE_METHODS.map((method) => ({
+  value: method.id,
+  label: method.label,
+  needsPrint: method.needsPrint !== false,
+  compound: !!method.compound,
+}));
+
+/**
+ * @param {Array<{ id?: string, value?: string, label: string, needsPrint?: boolean, compound?: boolean }>|null|undefined} methods
+ */
+export function normalizeNoticeServiceMethods(methods) {
+  const list = Array.isArray(methods) && methods.length ? methods : DEFAULT_NOTICE_SERVICE_METHODS;
+  return list.map((method) => ({
+    value: method.value || method.id,
+    label: method.label,
+    needsPrint: method.needsPrint !== false,
+    compound: !!method.compound,
+  }));
+}
 
 /**
  * @param {object|null|undefined} workflow

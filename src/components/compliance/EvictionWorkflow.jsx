@@ -5,7 +5,7 @@ import LeaseSelectionPicker from '../LeaseSelectionPicker';
 import WorkflowDateInput from '../WorkflowDateInput';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
-import { DEFAULT_JURISDICTION_PACK_ID } from '../../jurisdictions/index.js';
+import { DEFAULT_JURISDICTION_PACK_ID, getNoticeServiceMethods } from '../../jurisdictions/index.js';
 import { isCompleteWorkflowDate } from '../../utils/workflow-date.js';
 import NoticeServiceStep from './NoticeServiceStep.jsx';
 import { readResponseJson } from '../../utils/read-response-json.js';
@@ -120,6 +120,7 @@ export default function EvictionWorkflow({
     const property = lease?.units?.properties;
     const jurisdiction = property ? detectJurisdiction(property) : DEFAULT_JURISDICTION_PACK_ID;
     const leaseType = lease?.end_date ? 'fixed_term' : 'month_to_month';
+    const serviceMethods = getNoticeServiceMethods(jurisdiction);
 
     return [
       {
@@ -323,6 +324,7 @@ export default function EvictionWorkflow({
                 .join(' — ')
             }
             noticeKind="eviction"
+            serviceMethods={serviceMethods}
             leaseId={workflowData.lease_id}
             propertyId={property?.property_id}
             unitId={lease?.units?.unit_id}

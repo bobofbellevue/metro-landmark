@@ -101,6 +101,10 @@ export function getResolvedJurisdictionPack(packId) {
         parent.resolvedRules.screening,
         pack.rules.screening
       ),
+      noticeService: mergeRuleSection(
+        parent.resolvedRules.noticeService,
+        pack.rules.noticeService
+      ),
     },
     resolvedStatuteRefs: resolveStatuteRefs(
       mergeStatuteRefIds(parent.statuteRefIds, pack.statuteRefIds)
@@ -163,9 +167,72 @@ export function getRuleCitations(packId, section) {
     entry: rules.entryCitationIds,
     rentControl: rules.rentControl?.citationIds,
     screening: rules.screening?.citationIds,
+    noticeService: rules.noticeService?.citationIds,
   }[section];
   if (sectionIds?.length) return resolveStatuteRefs(sectionIds);
   return resolved.resolvedStatuteRefs || [];
 }
 
 export { resolveStatuteRefs } from './statute-catalog.js';
+
+export const DEFAULT_NOTICE_SERVICE_METHODS = Object.freeze([
+  { id: 'in_person', label: 'In Person', needsPrint: true },
+  { id: 'first_class_mail', label: 'First Class Mail', needsPrint: true },
+  { id: 'certified_mail', label: 'Certified Mail', needsPrint: true },
+  { id: 'posting', label: 'Posting on Door', needsPrint: true },
+  {
+    id: 'posting_and_first_class_mail',
+    label: 'Posting and First Class Mail',
+    needsPrint: true,
+    compound: true,
+  },
+  { id: 'email', label: 'Email', needsPrint: false },
+  { id: 'other', label: 'Other (describe in notes)', needsPrint: true },
+]);
+
+/**
+ * Pack-configured service methods (falls back to the default WA list).
+ * @param {string} packId
+ * @returns {Array<{ id: string, label: string, needsPrint?: boolean, compound?: boolean }>}
+ */
+export function getNoticeServiceMethods(packId) {
+  const methods =
+    getResolvedJurisdictionPack(packId).resolvedRules.noticeService?.methods;
+  if (Array.isArray(methods) && methods.length > 0) return methods;
+  return DEFAULT_NOTICE_SERVICE_METHODS;
+}
+
+/**
+ * Official form URLs and required local language for a rent-increase notice.
+ * @param {string} packId
+ * @returns {{ officialFormUrls: Array<{label: string, href: string}>, requiredNoticeLanguage: string[], excludeDayOfService: boolean, serviceNotes: string|null, preferredMethodIds: string[] }}
+ */
+export function getRentIncreaseNoticeResources(packId) {
+  const resolved = getResolvedJurisdictionPack(packId);
+  const rent = resolved.resolvedRules.rentIncrease || {};
+  const service = resolved.resolvedRules.noticeService || {};
+  const packUrls = Array.isArray(resolved.sourceUrls) ? resolved.sourceUrls : [];
+  const formUrls = Array.isArray(rent.officialFormUrls) ? rent.officialFormUrls : [];
+  const seen = new Set();
+  const officialFormUrls = [];
+  for (const entry of [...formUrls, ...packUrls]) {
+    const href = entry?.href;
+    if (!href || seen.has(href)) continue;
+    seen.add(href);
+    officialFormUrls.push({
+      label: entry.label || href,
+      href,
+    });
+  }
+  return {
+    officialFormUrls,
+    requiredNoticeLanguage: Array.isArray(rent.requiredNoticeLanguage)
+      ? rent.requiredNoticeLanguage
+      : [],
+    excludeDayOfService: !!rent.excludeDayOfService,
+    serviceNotes: service.notes || null,
+    preferredMethodIds: Array.isArray(service.preferredMethodIds)
+      ? service.preferredMethodIds
+      : [],
+  };
+}

@@ -25,6 +25,12 @@ import {
   convertDateToOrdinalWord,
   describeLeaseTerm,
 } from '../src/utils/date-ordinal.js';
+import {
+  detectJurisdictionPackId,
+  getJurisdictionDisplayName,
+  getRentIncreaseNoticeResources,
+} from '../src/jurisdictions/index.js';
+import { buildOfficialFormReferralLines, wrapNoticeText } from '../src/utils/notice-official-resources.js';
 
 /**
  * Format date as MM/DD/YYYY (timezone-safe for YYYY-MM-DD strings).
@@ -927,7 +933,7 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
   if (propertyId) {
     const { data: propertyRow } = await supabase
       .from('properties')
-      .select('property_id, property_name, manager_id, pmc_id, landlord_id')
+      .select('property_id, property_name, manager_id, pmc_id, landlord_id, city_of_jurisdiction')
       .eq('property_id', propertyId)
       .maybeSingle();
     if (propertyRow) {
@@ -1057,6 +1063,12 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
   const percentIncreaseRaw =
     additional_data.percent_increase ?? additional_data.percentIncrease ?? null;
 
+  const packId = detectJurisdictionPackId(property);
+  const noticeResources =
+    notice_type === 'rent_increase'
+      ? getRentIncreaseNoticeResources(packId)
+      : { officialFormUrls: [], requiredNoticeLanguage: [] };
+
   const formData = {
     notice_type: notice_type.replace(/_/g, ' ').toUpperCase(),
     notice_type_key: notice_type,
@@ -1113,6 +1125,10 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
       ensuredQuestionsContact?.phone || additional_data.questions_phone || '',
     questions_email:
       ensuredQuestionsContact?.email || additional_data.questions_email || '',
+    pack_id: packId,
+    pack_display_name: getJurisdictionDisplayName(packId),
+    official_form_urls: noticeResources.officialFormUrls,
+    required_notice_language: noticeResources.requiredNoticeLanguage,
   };
 
   // Prefer a Notice template with stored field positions (same path as lease/renewal).
@@ -1154,10 +1170,11 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     Object.assign(diagnostics, positioned.diagnostics || {});
     if (positioned.pdfBytes) {
       console.log('[RENDER_DIAG] generateNoticeDocument positioned OK', diagnostics);
-      const pdfBytes = await appendQuestionsContactPage(
+      let pdfBytes = await appendQuestionsContactPage(
         positioned.pdfBytes,
         formData.questions_contact
       );
+      pdfBytes = await appendOfficialFormReferralPage(pdfBytes, formData);
       return { pdfBytes, diagnostics };
     }
     diagnostics.fallback_reason =
@@ -1201,12 +1218,15 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
   y -= 30;
 
   for (const line of buildSimpleNoticeContentLines(formData)) {
-    if (y < 100) {
-      page = pdfDoc.addPage([612, 792]);
-      y = height - 50;
+    const wrapped = line === '' ? [''] : wrapNoticeText(line);
+    for (const part of wrapped) {
+      if (y < 100) {
+        page = pdfDoc.addPage([612, 792]);
+        y = height - 50;
+      }
+      page.drawText(part, { x: margin, y, size: 11, font: helveticaFont });
+      y -= 16;
     }
-    page.drawText(line, { x: margin, y, size: 12, font: helveticaFont });
-    y -= 20;
   }
 
   const pdfBytes = await pdfDoc.save();
@@ -1252,6 +1272,13 @@ export function buildSimpleNoticeContentLines(formData = {}) {
     if (formData.current_rent || formData.new_rent) {
       lines.push('');
     }
+    lines.push(
+      ...buildOfficialFormReferralLines({
+        officialFormUrls: formData.official_form_urls,
+        requiredNoticeLanguage: formData.required_notice_language,
+        packDisplayName: formData.pack_display_name,
+      })
+    );
   }
 
   lines.push(`Effective Date: ${formData.effective_date || ''}`);
@@ -1309,6 +1336,43 @@ async function appendQuestionsContactPage(pdfBytes, questionsContact) {
   for (const line of lines) {
     page.drawText(line, { x: 50, y, size: 12, font });
     y -= 20;
+  }
+  return pdfDoc.save();
+}
+
+/**
+ * Append official-form referral and required local language (e.g. Seattle helpline).
+ * @param {Uint8Array} pdfBytes
+ * @param {object} formData
+ * @returns {Promise<Uint8Array>}
+ */
+async function appendOfficialFormReferralPage(pdfBytes, formData) {
+  if (formData?.notice_type_key !== 'rent_increase') return pdfBytes;
+  const lines = buildOfficialFormReferralLines({
+    officialFormUrls: formData.official_form_urls,
+    requiredNoticeLanguage: formData.required_notice_language,
+    packDisplayName: formData.pack_display_name,
+  });
+  if (!lines.length) return pdfBytes;
+
+  const { PDFDocument, StandardFonts } = await import('pdf-lib');
+  const pdfDoc = await PDFDocument.load(pdfBytes);
+  const page = pdfDoc.addPage([612, 792]);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const { height } = page.getSize();
+  let y = height - 72;
+  page.drawText('Official form required', {
+    x: 50,
+    y,
+    size: 14,
+    font: bold,
+  });
+  y -= 28;
+  for (const line of lines) {
+    if (y < 60) break;
+    page.drawText(line, { x: 50, y, size: 11, font });
+    y -= 16;
   }
   return pdfDoc.save();
 }

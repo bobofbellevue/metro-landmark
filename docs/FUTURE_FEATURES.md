@@ -121,6 +121,56 @@ Do not block day-to-day notice workflows on these. Legal service rules still dep
 
 ---
 
+## Rent-increase completeness — Seattle, cities, forms, exemptions (2026-08-16)
+
+**Context:** Seattle’s [Housing Cost Increases](https://www.seattle.gov/rentinginseattle/housing-providers/managing-the-rental-relationship/housing-cost-increases) page and RHAWA’s city-specific notice list show that statewide RCW 59.18 is not enough. City overlays stack on the state form, service rules, and cap. Packs are already **state parent + city child** (`washington_state` → `seattle`). That shape is right; the inventory of cities and of Seattle-only rules is not.
+
+**Shipped in this pass (pack math + worksheet honesty)**
+
+- Seattle **180-day** housing-cost notice (SMC 7.24.030 as amended; seattle.gov since 2021-11-09), with **day of service excluded** from the 180-day count.
+- Pack-driven **service methods**, including first class mail, posting **and** first class mail, and Other.
+- Official form URLs on packs (RCW 59.18.720, Commerce HB 1217 Landlord Resource Center, Seattle housing-cost page).
+- Template-less PDF labeled as a **worksheet**, not the statutory notice, with those URLs and Seattle helpline language when the pack requires it.
+- Commerce **2027** statewide cap of 10% stored on the WA pack.
+
+**Do not copy RHAWA PDFs.** Those forms are copyrighted and paywalled. Use RHAWA’s *city list* as a catalog of jurisdictions to research from **official** sources (RCW, Commerce, city pages, municipal code). Paying for RHAWA membership to *read* forms as a human is fine; scraping or redistributing them is not.
+
+### Gaps vs Seattle.gov (not encoded)
+
+| Rule | Status |
+| --- | --- |
+| No increase in first 12 months | Pack + calculator warning. Does not hard-block Generate. |
+| 90-day WA / 180-day Seattle notice | Encoded. Subsidized income-based path still 30 days (E11 not wired). |
+| No increase mid-fixed-term; only at MTM or renewal | Not enforced. |
+| Housing costs include parking, storage, other periodic fees | We only store `monthly_rent_amount`. |
+| 5% max difference between MTM rent and lease rent | Not encoded. |
+| Increase must start on a rental-period boundary | Not encoded. |
+| EDRA at ≥10% in 12 months (attach EDRA notice; possible 3 months assistance) | Not encoded. |
+| RRIO inspection defects can hold the increase | Not encoded. |
+| Cap exemptions (new construction ≤12 years, PHA/nonprofit, owner-occupied share/SFR/2–4 plex) | No exemption field. Overlaps RCW 59.18.710 and Seattle’s list. |
+| Dual service as two recorded acts with two proofs | One compound method (`posting_and_first_class_mail`) only. |
+| Statutory fillable template of RCW 59.18.720 + Seattle addendum | Worksheet + links only. |
+
+### City packs beyond Seattle
+
+RHAWA currently publishes separate rent-increase notices for **Bellingham, Federal Way, Olympia, Seattle, Tacoma**, plus a WA State default. Tacoma also requires extra city forms. Kirkland / Kenmore / Shoreline / Auburn (and others) appear in secondary roundups with different notice-day tiers. Add a city pack when we have official citations and an operator who needs it — not from the RHAWA PDF.
+
+### Regulation “scan” button (idea)
+
+Store `sourceUrls` on each pack (now). A later Admin action can fetch those public pages, diff against the last snapshot, and flag “Commerce published a new cap” or “Seattle page changed.” Do **not** fetch RHAWA member forms. A human still edits the pack; the scanner is a reminder, not an auto-lawyer.
+
+### Suggested now vs later
+
+**Now (this pass):** Seattle 180-day + exclude service day; pack service methods; official-form referrals on the worksheet; 2027 cap.
+
+**Next when an operator hits it:** exemption flag on property/unit (shared with E11 subsidy facts); statutory RCW 59.18.720 system template + Seattle required-language addendum; EDRA attachment when increase ≥10%; block Generate on first-12-months / mid-lease if we choose to be strict.
+
+**Later:** Tacoma / Bellingham / Federal Way / Olympia packs; housing-cost line items; rental-period snap; MTM vs lease 5% parity; dual-service two-proof UI; Admin-editable method lists; regulation scan from `sourceUrls`; manufactured-home lot form (Commerce has a second notice).
+
+**Status:** partial (Seattle 180-day shipped; remainder idea / planned with E11)
+
+---
+
 ## How to use this file
 
 - Add dated sections for new parking-lot themes.
