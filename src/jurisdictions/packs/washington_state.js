@@ -14,6 +14,19 @@ export const washingtonStatePack = {
   cityMatchers: [],
   defaultForUnmatchedInState: true,
   stateCode: 'WA',
+  /**
+   * WA pack favors RHAWA as the landlord-association template source.
+   * Operators join and import forms themselves. No in-app association picker;
+   * a different association means a source-code fork / custom pack.
+   */
+  preferredLandlordAssociation: {
+    id: 'rhawa',
+    name: 'Rental Housing Association of Washington (RHAWA)',
+    membershipUrl: 'https://www.rhawa.org/',
+    formsUrl: 'https://www.rhawa.org/rent-increase-notices',
+    recommendation:
+      'Join RHAWA and import their current city-specific rent-increase templates into Documents. We do not ship their copyrighted forms.',
+  },
   sourceUrls: [
     {
       label: 'RCW 59.18.140 (notice period)',

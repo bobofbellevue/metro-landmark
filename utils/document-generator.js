@@ -1129,6 +1129,7 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     pack_display_name: getJurisdictionDisplayName(packId),
     official_form_urls: noticeResources.officialFormUrls,
     required_notice_language: noticeResources.requiredNoticeLanguage,
+    preferred_landlord_association: noticeResources.preferredLandlordAssociation,
   };
 
   // Prefer a Notice template with stored field positions (same path as lease/renewal).
@@ -1277,6 +1278,7 @@ export function buildSimpleNoticeContentLines(formData = {}) {
         officialFormUrls: formData.official_form_urls,
         requiredNoticeLanguage: formData.required_notice_language,
         packDisplayName: formData.pack_display_name,
+        preferredLandlordAssociation: formData.preferred_landlord_association,
       })
     );
   }
@@ -1352,6 +1354,7 @@ async function appendOfficialFormReferralPage(pdfBytes, formData) {
     officialFormUrls: formData.official_form_urls,
     requiredNoticeLanguage: formData.required_notice_language,
     packDisplayName: formData.pack_display_name,
+    preferredLandlordAssociation: formData.preferred_landlord_association,
   });
   if (!lines.length) return pdfBytes;
 

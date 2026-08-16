@@ -58,6 +58,22 @@ export function buildOfficialFormReferralLines(resources = {}) {
     }
     lines.push('');
   }
+  const association = resources.preferredLandlordAssociation;
+  if (association?.name) {
+    lines.push(
+      ...wrapNoticeText(
+        association.recommendation ||
+          `Recommended fillable templates: join ${association.name} and import their current forms.`
+      )
+    );
+    if (association.membershipUrl) {
+      lines.push(...wrapNoticeText(association.membershipUrl));
+    }
+    if (association.formsUrl && association.formsUrl !== association.membershipUrl) {
+      lines.push(...wrapNoticeText(association.formsUrl));
+    }
+    lines.push('');
+  }
   const required = Array.isArray(resources.requiredNoticeLanguage)
     ? resources.requiredNoticeLanguage
     : [];

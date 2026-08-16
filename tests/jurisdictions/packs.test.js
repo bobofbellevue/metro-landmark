@@ -111,5 +111,9 @@ describe('jurisdiction packs', () => {
     expect(resources.requiredNoticeLanguage[0]).toMatch(/Renting in Seattle Helpline/);
     expect(resources.officialFormUrls.some((u) => u.href.includes('59.18.720'))).toBe(true);
     expect(resources.officialFormUrls.some((u) => u.href.includes('seattle.gov'))).toBe(true);
+    expect(resources.preferredLandlordAssociation?.id).toBe('rhawa');
+    expect(getResolvedJurisdictionPack('seattle').preferredLandlordAssociation?.id).toBe(
+      'rhawa'
+    );
   });
 });

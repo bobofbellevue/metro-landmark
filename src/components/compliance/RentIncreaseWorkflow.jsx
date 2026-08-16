@@ -444,6 +444,39 @@ export default function RentIncreaseWorkflow({
                   ))}
                 </ul>
               )}
+              {noticeResources.preferredLandlordAssociation && (
+                <p className="text-sm text-blue-900">
+                  For fillable, city-specific templates we recommend{' '}
+                  <a
+                    href={
+                      noticeResources.preferredLandlordAssociation.membershipUrl
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    {noticeResources.preferredLandlordAssociation.name}
+                  </a>
+                  : join and import their current rent-increase forms into
+                  Documents. We do not ship those copyrighted forms.
+                  {noticeResources.preferredLandlordAssociation.formsUrl ? (
+                    <>
+                      {' '}
+                      <a
+                        href={
+                          noticeResources.preferredLandlordAssociation.formsUrl
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline"
+                      >
+                        Rent increase notice list
+                      </a>
+                      .
+                    </>
+                  ) : null}
+                </p>
+              )}
             </div>
           </div>
         )

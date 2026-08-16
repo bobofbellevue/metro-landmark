@@ -78,6 +78,10 @@ export function getResolvedJurisdictionPack(packId) {
   const parent = getResolvedJurisdictionPack(pack.parentPackId);
   return {
     ...pack,
+    preferredLandlordAssociation:
+      pack.preferredLandlordAssociation ||
+      parent.preferredLandlordAssociation ||
+      null,
     resolvedRules: {
       ...parent.resolvedRules,
       ...pack.rules,
@@ -234,5 +238,6 @@ export function getRentIncreaseNoticeResources(packId) {
     preferredMethodIds: Array.isArray(service.preferredMethodIds)
       ? service.preferredMethodIds
       : [],
+    preferredLandlordAssociation: resolved.preferredLandlordAssociation || null,
   };
 }

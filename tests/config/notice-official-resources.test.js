@@ -35,4 +35,19 @@ describe('buildOfficialFormReferralLines', () => {
       true
     );
   });
+
+  test('recommends joining the pack preferred landlord association', () => {
+    const lines = buildOfficialFormReferralLines({
+      preferredLandlordAssociation: {
+        id: 'rhawa',
+        name: 'Rental Housing Association of Washington (RHAWA)',
+        membershipUrl: 'https://www.rhawa.org/',
+        formsUrl: 'https://www.rhawa.org/rent-increase-notices',
+        recommendation:
+          'Join RHAWA and import their current city-specific rent-increase templates into Documents. We do not ship their copyrighted forms.',
+      },
+    });
+    expect(lines.some((l) => l.includes('Join RHAWA'))).toBe(true);
+    expect(lines.some((l) => l.includes('rhawa.org'))).toBe(true);
+  });
 });

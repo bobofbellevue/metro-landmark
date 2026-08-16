@@ -97,6 +97,15 @@ A reserved unit may be vacant; a subsidized lease may sit in a unit that is not 
 
 Suggested shape when we build it: a small program catalog (jurisdiction + program id/name) plus optional FKs or rows on `leases` and `units`. Do not invent `is_subsidized` without program/jurisdiction — the 30-day notice path is specifically *income-based subsidized* tenancies, which is a program fact, not a vibe.
 
+**Portable voucher vs income-based rent (why program type matters)**
+
+RCW 59.18.720(2) skips the statutory rent-increase *form* only when the rental agreement is a subsidized tenancy whose **rent amount is based on the tenant’s income** (or similar household-specific circumstances). It then says that does **not** include:
+
+- **Portable tenant-based vouchers** (and similar portable assistance through a housing authority) — typical **Section 8 Housing Choice Voucher / HCV**. The subsidy follows the *household*. The landlord still has a contract rent; the housing authority pays part of it. That tenancy still uses the RCW 59.18.720 form and the ordinary notice/cap path unless another exemption applies.
+- Affordable units whose **maximum** rent is AMI-capped but the tenant’s base rent does **not** change when income changes.
+
+So “the tenant has a voucher” is not the same as “this is an income-based subsidized tenancy.” E11 must store program type, not a single subsidized checkbox. Portable voucher → lease-level subsidy, often in a market unit. Income-based / project-based formula rent → may unlock the 30-day notice path and skip the 720 form.
+
 **Consumers later**
 
 - Rent-increase calculator (E1 hook already exists).
@@ -133,7 +142,7 @@ Do not block day-to-day notice workflows on these. Legal service rules still dep
 - Template-less PDF labeled as a **worksheet**, not the statutory notice, with those URLs and Seattle helpline language when the pack requires it.
 - Commerce **2027** statewide cap of 10% stored on the WA pack.
 
-**Do not copy RHAWA PDFs.** Those forms are copyrighted and paywalled. Use RHAWA’s *city list* as a catalog of jurisdictions to research from **official** sources (RCW, Commerce, city pages, municipal code). Paying for RHAWA membership to *read* forms as a human is fine; scraping or redistributing them is not.
+**Do not copy RHAWA PDFs.** Those forms are copyrighted and paywalled. The WA pack **favors RHAWA** as the recommended association: tell operators to join and **import** current city-specific templates themselves. There is no in-app picker for a competing association; a different favorite means a source-code fork or custom pack. Use RHAWA’s *city list* as a catalog of jurisdictions to research from **official** sources (RCW, Commerce, city pages, municipal code). The regulation scanner must not fetch member-only forms.
 
 ### Gaps vs Seattle.gov (not encoded)
 
