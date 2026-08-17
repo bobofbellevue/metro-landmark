@@ -17,7 +17,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 
 | Item | Notes |
 |------|--------|
-| Compliance Center | Workflows use pack notice math and citations; more workflow UI still needed |
+| Compliance Center | Rent Increase, Lease Renewal, Eviction, Lease Termination, and Tenant Screening are operator-ready. Remaining catalog tiles are leftover stubs (E13–E17). |
 | Documents | Staff registry + type catalog exist; contextual panels incomplete across landlord/maintenance/portals |
 | Voice / chat maintenance | Works with Vapi/OpenAI when configured; single shared number model |
 | Auth | Login exists; API authorization is not hardened for hostile multi-tenant internet deploy (E7) |
@@ -37,6 +37,11 @@ This list is intentionally short. Finish or cut items before expanding it.
 | E10 | Expand template kinds | Template types beyond Application / Lease as new packs and notice/maintenance templates land |
 | E11 | Subsidy / low-income program tracking | Record *that* a tenancy or unit is subsidized, plus **jurisdiction** and **program**. Lease-level (subsidized tenant) and unit-level (reserved for low-income occupancy) are distinct. Unblocks the RCW 59.18.140(3)(b) 30-day rent-increase path. Design notes: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#subsidy--low-income-program-tracking-2026-08-15) |
 | E12 | Rent-increase exemptions + statutory form template | Property/unit exemption flags (RCW 59.18.710 / Seattle list), fillable RCW 59.18.720 notice + Seattle helpline addendum. Worksheet+links shipped; serving the worksheet as the notice is not compliant. [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#rent-increase-completeness--seattle-cities-forms-exemptions-2026-08-16) |
+| E13 | Move-in, move-out, and security deposit return | Replace leftover stubs. Move-out inspection should feed itemized deposit deductions. Pack clock is **30 days after termination and vacation** (RCW 59.18.280) in WA and Seattle — not a notice-before-effective-date widget. Generate an itemized statement PDF into Documents. [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#remaining-compliance-center-stubs-2026-08-17) |
+| E14 | Collections process | Replace leftover stub. Late-rent / pay-or-vacate path should reuse Eviction generate-then-serve where the notice type already exists; keep FDCPA and pack citations in view. Do not copy RHAWA forms. |
+| E15 | Lease violation notices | Replace leftover stub. Pick lease, violation type, cure period from pack/eviction notice days where they apply, generate-then-serve a worksheet. |
+| E16 | Habitability | Replace leftover stub. Record issue, pack repair timeline if encoded, link to maintenance where a work order exists. Document outcome; not a legal opinion. |
+| E17 | Entry notices | Replace leftover stub. Pack already has two-day written notice and one-day showing (RCW 59.18.150). Generate/record notice with emergency exception. |
 
 ## Out of scope (near term)
 
@@ -51,5 +56,5 @@ Consulting and adaptation for custom packs, branding, or production hardening: R
 
 ## Parking lot
 
-Longer design notes and deferred ideas: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md) — parked template/doc-creation reliability, E11 subsidy tracking, notice-service automation, and rent-increase city/form/exemption completeness.
+Longer design notes and deferred ideas: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md) — parked template/doc-creation reliability, E11 subsidy tracking, notice-service automation, rent-increase city/form/exemption completeness, and remaining Compliance Center stubs (E13–E17).
 

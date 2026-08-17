@@ -180,6 +180,26 @@ Store `sourceUrls` on each pack (now). A later Admin action can fetch those publ
 
 ---
 
+## Remaining Compliance Center stubs (2026-08-17)
+
+**Status:** planned (roadmap **E13–E17**).
+
+An older pass left catalog tiles with `getWorkflowSteps` shells and a last step that says “generate …” without generating anything. That was not a deliberate hold (unlike E11 subsidy). The bar for finishing them is the same as Rent Increase / Lease Termination / Tenant Screening: real pickers (no typed internal IDs), pack math, a document or recorded outcome. Do **not** copy RHAWA forms. Pack numbers are reference math, not legal advice.
+
+| Catalog tile | Roadmap | First useful slice |
+| --- | --- | --- |
+| Move-In Process | E13 | Condition report / checklist PDF from the selected lease; store in Documents. |
+| Move-Out Process | E13 | Inspection + damage line items that can feed deposit deductions. |
+| Security Deposit Return | E13 | Itemized deductions, 30-day clock from termination/vacation (RCW 59.18.280; same in Seattle pack), statement PDF. `security_deposits` / `deposit_deductions` tables exist and are unused. Do not reuse the rent-increase notice-period widget — this is a deadline *after* move-out. |
+| Collections Process | E14 | Amount owed + notice type; 3-day pay-or-vacate can hand off to Eviction generate-then-serve. |
+| Lease Violation Notices | E15 | Violation type, pack cure/notice days, generate-then-serve worksheet. |
+| Habitability Issues | E16 | Issue record + timeline; optional link to an existing maintenance request. |
+| Entry Notices | E17 | Two-day written notice, one-day showing, emergency exception (RCW 59.18.150 already in the pack). |
+
+Suggested order when executing: **E17** (smallest pack hook), then **E13** (deposit is what operators will miss), then E15 / E14, then E16.
+
+---
+
 ## How to use this file
 
 - Add dated sections for new parking-lot themes.
