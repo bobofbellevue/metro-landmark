@@ -118,6 +118,17 @@ describe('hydrateWorkflowData', () => {
     expect(
       hydrateWorkflowData({ lease_id: 7, workflow_data: { new_rent: 1800 } }, {})
     ).toEqual({ lease_id: 7, new_rent: 1800 });
+    expect(
+      hydrateWorkflowData(
+        {
+          lease_id: 7,
+          unit_id: 3,
+          property_id: 8,
+          workflow_data: { new_rent: 1800 },
+        },
+        {}
+      )
+    ).toEqual({ lease_id: 7, unit_id: 3, property_id: 8, new_rent: 1800 });
   });
 });
 

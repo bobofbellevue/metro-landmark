@@ -24,6 +24,7 @@ import {
 } from '../../utils/template-field-filter.js';
 import { parseTemplateData } from '../../utils/template-data.js';
 import { mapLeaseLikeDataToTemplate } from '../../../utils/map-template-fields.js';
+import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 
 function formatMoney(amount) {
   if (amount == null || amount === '') return '—';
@@ -286,7 +287,7 @@ export default function LeaseRenewalWorkflow({
             showRent
             emptyMessage="No active, pending, or future leases found to renew."
             onChange={(leaseId, selected) => {
-              updateField('lease_id', leaseId);
+              stampLeaseSelection(updateField, leaseId, selected);
               updateField('document_data', {});
               setSelectedLeaseMeta(selected || null);
               setShowMoreFields(false);

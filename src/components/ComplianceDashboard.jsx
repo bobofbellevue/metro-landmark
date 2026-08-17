@@ -6,6 +6,7 @@ import {
   Clock, CheckCircle, AlertCircle, Calendar, FileText 
 } from 'lucide-react';
 import { isAwaitingNoticeService } from '../utils/notice-service-workflow.js';
+import { activeWorkflowLocationLabel } from '../utils/workflow-lease-context.js';
 
 /**
  * ComplianceDashboard - Dashboard view for compliance workflows
@@ -58,6 +59,15 @@ export default function ComplianceDashboard() {
           required_notice_date,
           effective_date,
           status,
+          lease_id,
+          lease:leases(
+            lease_id,
+            units(
+              unit_id,
+              unit_number,
+              properties(property_id, property_name)
+            )
+          ),
           property:properties(property_name),
           unit:units(unit_number)
         `)
@@ -84,7 +94,16 @@ export default function ComplianceDashboard() {
           workflow_type,
           status,
           created_at,
+          lease_id,
           workflow_data,
+          lease:leases(
+            lease_id,
+            units(
+              unit_id,
+              unit_number,
+              properties(property_id, property_name)
+            )
+          ),
           property:properties(property_name),
           unit:units(unit_number)
         `)
@@ -97,7 +116,16 @@ export default function ComplianceDashboard() {
           workflow_id,
           workflow_type,
           status,
+          lease_id,
           workflow_data,
+          lease:leases(
+            lease_id,
+            units(
+              unit_id,
+              unit_number,
+              properties(property_id, property_name)
+            )
+          ),
           property:properties(property_name),
           unit:units(unit_number)
         `)
@@ -239,7 +267,7 @@ export default function ComplianceDashboard() {
                       {getWorkflowTypeLabel(workflow.workflow_type)}
                     </p>
                     <p className="text-xs text-gray-600">
-                      {workflow.property?.property_name} - Unit {workflow.unit?.unit_number}
+                      {activeWorkflowLocationLabel(workflow)}
                     </p>
                   </div>
                   <span className="px-2 py-1 text-xs rounded bg-amber-100 text-amber-800">
@@ -267,7 +295,7 @@ export default function ComplianceDashboard() {
                       {getWorkflowTypeLabel(workflow.workflow_type)}
                     </p>
                     <p className="text-xs text-gray-600">
-                      {workflow.property?.property_name} - Unit {workflow.unit?.unit_number}
+                      {activeWorkflowLocationLabel(workflow)}
                     </p>
                   </div>
                   <div className="text-right">
@@ -300,7 +328,7 @@ export default function ComplianceDashboard() {
                       {getWorkflowTypeLabel(workflow.workflow_type)}
                     </p>
                     <p className="text-xs text-gray-600">
-                      {workflow.property?.property_name} - Unit {workflow.unit?.unit_number}
+                      {activeWorkflowLocationLabel(workflow)}
                     </p>
                   </div>
                   <div className="text-right">

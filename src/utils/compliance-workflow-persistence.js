@@ -101,7 +101,7 @@ export function definedRecord(value) {
 
 /**
  * Merge a saved workflow row with caller initialData for resume.
- * Prefer workflow_data, then the lease_id column if the blob omitted it.
+ * Prefer workflow_data, then lease/unit/property columns if the blob omitted them.
  *
  * @param {{ workflow_data?: Record<string, unknown>, lease_id?: number | string | null } | null | undefined} workflow
  * @param {Record<string, unknown> | null | undefined} [initialData]
@@ -116,12 +116,14 @@ export function hydrateWorkflowData(workflow = {}, initialData = {}) {
     ...blob,
     ...definedRecord(initialData),
   };
-  if (
-    (data.lease_id == null || data.lease_id === '') &&
-    workflow?.lease_id != null &&
-    workflow.lease_id !== ''
-  ) {
-    data.lease_id = workflow.lease_id;
+  for (const key of ['lease_id', 'unit_id', 'property_id', 'landlord_id']) {
+    if (
+      (data[key] == null || data[key] === '') &&
+      workflow?.[key] != null &&
+      workflow[key] !== ''
+    ) {
+      data[key] = workflow[key];
+    }
   }
   return data;
 }

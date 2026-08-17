@@ -5,6 +5,7 @@ import NoticePeriodCalculator from '../NoticePeriodCalculator';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import { DEFAULT_JURISDICTION_PACK_ID } from '../../jurisdictions/index.js';
+import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 
 export default function LeaseTerminationWorkflow({ initialData = {}, workflowId = null, onComplete, onCancel, onWorkflowCreated }) {
   const [lease, setLease] = useState(null);
@@ -37,8 +38,8 @@ export default function LeaseTerminationWorkflow({ initialData = {}, workflowId 
             statuses={['active']}
             showRent
             emptyMessage="No active leases found."
-            onChange={(leaseId) => {
-              updateField('lease_id', leaseId);
+            onChange={(leaseId, selected) => {
+              stampLeaseSelection(updateField, leaseId, selected);
               if (leaseId) fetchLeaseDetails(leaseId);
               else setLease(null);
             }}

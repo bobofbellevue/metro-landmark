@@ -10,6 +10,10 @@ import { Card, ConfirmationModal } from '../components/ui';
 import { supabase } from '../lib/supabase';
 import { readResponseJson } from '../utils/read-response-json.js';
 import { isAwaitingNoticeService, GENERATE_THEN_SERVE_WORKFLOW_TYPES } from '../utils/notice-service-workflow.js';
+import {
+  ACTIVE_WORKFLOW_LIST_SELECT,
+  activeWorkflowLocationLabel,
+} from '../utils/workflow-lease-context.js';
 
 // Import workflow components
 import RentIncreaseWorkflow from '../components/compliance/RentIncreaseWorkflow';
@@ -166,12 +170,7 @@ export default function CompliancePage() {
     try {
       const { data, error } = await supabase
         .from('compliance_workflows')
-        .select(`
-          *,
-          lease:leases(lease_id, monthly_rent_amount),
-          unit:units(unit_id, unit_number),
-          property:properties(property_id, property_name)
-        `)
+        .select(ACTIVE_WORKFLOW_LIST_SELECT)
         .in('status', ['draft', 'in_progress'])
         .order('created_at', { ascending: false })
         .limit(40);
@@ -374,9 +373,7 @@ export default function CompliancePage() {
                       {workflowLabel(workflow)}
                     </p>
                     <p className="text-xs text-gray-600">
-                      {workflow.property?.property_name
-                        ? `${workflow.property.property_name} - Unit ${workflow.unit?.unit_number ?? '—'}`
-                        : 'No lease selected yet'}
+                      {activeWorkflowLocationLabel(workflow)}
                       {workflow.required_notice_date && ` • Notice due: ${new Date(workflow.required_notice_date).toLocaleDateString()}`}
                     </p>
                   </div>
