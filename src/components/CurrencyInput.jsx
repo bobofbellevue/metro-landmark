@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { formatCurrency as formatCurrencyAmount, localeContextFromBrowser } from '../config/locale.js';
+import { formatCurrency as formatCurrencyAmount, formatCurrencyNumber, localeContextFromBrowser } from '../config/locale.js';
 
 /**
  * CurrencyInput component
  * - Edits as plain number when focused
- * - Displays as formatted currency when blurred
+ * - Blurred value is grouped with cents; the grey prefix is the only $
  * - Uses product/org/property locale resolution (defaults USD / en-US)
  */
 export default function CurrencyInput({
@@ -26,7 +26,8 @@ export default function CurrencyInput({
     if (num === null || num === undefined || num === '') return '';
     const numValue = typeof num === 'string' ? parseFloat(num.replace(/[^0-9.-]/g, '')) : num;
     if (isNaN(numValue)) return '';
-    return formatCurrencyAmount(numValue, resolvedLocale, {
+    // Prefix already shows the currency symbol; do not include another in the value.
+    return formatCurrencyNumber(numValue, resolvedLocale, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
