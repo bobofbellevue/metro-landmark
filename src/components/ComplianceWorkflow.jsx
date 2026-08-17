@@ -18,6 +18,7 @@ import {
 import { readResponseJson } from '../utils/read-response-json.js';
 import {
   GENERATE_THEN_SERVE_WORKFLOW_TYPES,
+  hasWorkflowResumeSeed,
   resumeStepIndex,
 } from '../utils/notice-service-workflow.js';
 
@@ -48,10 +49,21 @@ export default function ComplianceWorkflow({
   onWorkflowLoaded,
 }) {
   const { user } = useContext(AuthContext);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(() => {
+    const loadedSteps = getSteps ? (getSteps() || []) : getWorkflowSteps(workflowType) || [];
+    const totalSteps = loadedSteps.length || Number(initialData.total_steps) || 1;
+    return resumeStepIndex({
+      currentStep: initialData.current_step,
+      totalSteps,
+      workflowData: initialData,
+      generateThenServe: GENERATE_THEN_SERVE_WORKFLOW_TYPES.has(workflowType),
+    });
+  });
   const [workflowData, setWorkflowData] = useState(initialData);
   const [steps, setSteps] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(
+    () => Boolean(workflowId) && !hasWorkflowResumeSeed(workflowId, initialData)
+  );
   const [errors, setErrors] = useState({});
   const [workflowRecord, setWorkflowRecord] = useState(null);
   const [policy, setPolicy] = useState(null);
@@ -74,33 +86,50 @@ export default function ComplianceWorkflow({
     loadWorkflowData();
   }, [workflowType, workflowId]);
 
+  const resumeFromData = (data, totalStepsHint) => {
+    const loadedSteps = getSteps ? (getSteps() || []) : getWorkflowSteps(workflowType) || [];
+    const totalSteps = loadedSteps.length || totalStepsHint || 1;
+    return resumeStepIndex({
+      currentStep: data?.current_step,
+      totalSteps,
+      workflowData: data,
+      generateThenServe: GENERATE_THEN_SERVE_WORKFLOW_TYPES.has(workflowType),
+    });
+  };
+
   const loadWorkflowData = async () => {
-    setIsLoading(true);
+    const hasSeed = hasWorkflowResumeSeed(workflowId, initialData);
+    if (hasSeed) {
+      setWorkflowData(initialData);
+      setCurrentStep(resumeFromData(initialData));
+    } else {
+      setIsLoading(true);
+    }
     try {
       if (workflowId) {
         const response = await fetch(`/api/compliance/workflows?id=${workflowId}`);
         const parsed = await readResponseJson(response);
         const result = parsed.data;
-        if (parsed.ok && result?.success && result.workflow) {
+        if (result?.success && result.workflow) {
           const loadedData = hydrateWorkflowData(result.workflow, initialData);
-          const loadedSteps = getSteps ? (getSteps() || []) : getWorkflowSteps(workflowType) || [];
-          const totalSteps = loadedSteps.length || result.workflow.total_steps || 1;
           setWorkflowRecord(result.workflow);
           if (result.workflow.workflow_id != null) {
             loadedWorkflowIdRef.current = result.workflow.workflow_id;
           }
-          setCurrentStep(
-            resumeStepIndex({
-              currentStep: result.workflow.current_step || loadedData.current_step || 1,
-              totalSteps,
-              workflowData: loadedData,
-              generateThenServe: GENERATE_THEN_SERVE_WORKFLOW_TYPES.has(workflowType),
-            })
-          );
+          setCurrentStep(resumeFromData(loadedData, result.workflow.total_steps));
           setWorkflowData(loadedData);
           if (typeof onWorkflowLoaded === 'function') {
             onWorkflowLoaded(result.workflow);
           }
+        } else if (!hasSeed) {
+          setErrors({
+            general: parsed.error || result?.error || 'Could not load the saved workflow.',
+          });
+        } else if (typeof onWorkflowLoaded === 'function') {
+          onWorkflowLoaded({
+            lease_id: initialData.lease_id,
+            workflow_data: initialData,
+          });
         }
       }
 

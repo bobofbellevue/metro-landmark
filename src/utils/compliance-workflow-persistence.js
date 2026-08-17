@@ -125,6 +125,12 @@ export function hydrateWorkflowData(workflow = {}, initialData = {}) {
       data[key] = workflow[key];
     }
   }
+  const stepCandidates = [data.current_step, workflow?.current_step]
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (stepCandidates.length > 0) {
+    data.current_step = Math.max(...stepCandidates);
+  }
   return data;
 }
 

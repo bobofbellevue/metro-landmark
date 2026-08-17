@@ -10,6 +10,7 @@ import {
   openWorkflowsByLeaseId,
   rentIncreaseNoticeFingerprint,
   resumeStepIndex,
+  hasWorkflowResumeSeed,
   tenantEmailsFromLeaseClients,
   validateNoticeService,
   workflowLeaseId,
@@ -170,6 +171,15 @@ describe('resumeStepIndex', () => {
         generateThenServe: true,
       })
     ).toBe(4);
+  });
+});
+
+describe('hasWorkflowResumeSeed', () => {
+  test('is true when a saved workflow already has a lease or step', () => {
+    expect(hasWorkflowResumeSeed(12, { lease_id: 42 })).toBe(true);
+    expect(hasWorkflowResumeSeed(12, { current_step: 2 })).toBe(true);
+    expect(hasWorkflowResumeSeed(12, {})).toBe(false);
+    expect(hasWorkflowResumeSeed(null, { lease_id: 42 })).toBe(false);
   });
 });
 

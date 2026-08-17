@@ -5,7 +5,7 @@ import {
   resolveWorkflowPostAction,
   workflowProgressStatus,
 } from '../../src/utils/compliance-workflow-persistence.js';
-import { fillWorkflowLeaseScope } from '../../src/utils/workflow-lease-context.js';
+import { COMPLIANCE_WORKFLOW_DETAIL_SELECT, fillWorkflowLeaseScope } from '../../src/utils/workflow-lease-context.js';
 
 async function scopeFromLeaseId(supabase, fields) {
   const leaseId = fields?.lease_id;
@@ -66,15 +66,7 @@ export default async function handler(req, res) {
         // Get single workflow
         const { data, error } = await supabase
           .from('compliance_workflows')
-          .select(`
-            *,
-            lease:leases(*),
-            unit:units(*),
-            property:properties(*),
-            tenant:users(*),
-            landlord:landlords(*),
-            created_by:users(*)
-          `)
+          .select(COMPLIANCE_WORKFLOW_DETAIL_SELECT)
           .eq('workflow_id', id)
           .single();
 
@@ -88,12 +80,7 @@ export default async function handler(req, res) {
         const { lease_id, status, workflow_type, jurisdiction } = req.query;
         let query = supabase
           .from('compliance_workflows')
-          .select(`
-            *,
-            lease:leases(*),
-            unit:units(*),
-            property:properties(*)
-          `)
+          .select(COMPLIANCE_WORKFLOW_DETAIL_SELECT)
           .order('created_at', { ascending: false });
 
         if (lease_id) query = query.eq('lease_id', lease_id);

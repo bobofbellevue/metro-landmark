@@ -1,4 +1,6 @@
 import {
+  ACTIVE_WORKFLOW_LIST_SELECT,
+  COMPLIANCE_WORKFLOW_DETAIL_SELECT,
   activeWorkflowLocationLabel,
   fillWorkflowLeaseScope,
   leaseScopeFields,
@@ -107,5 +109,13 @@ describe('activeWorkflowLocationLabel', () => {
   test('does not claim no lease when lease_id is set but joins are empty', () => {
     expect(activeWorkflowLocationLabel({ lease_id: 42 })).toBe('Lease selected');
     expect(activeWorkflowLocationLabel({})).toBe('No lease selected yet');
+  });
+});
+
+describe('COMPLIANCE_WORKFLOW_DETAIL_SELECT', () => {
+  test('does not embed users twice (PostgREST rejects tenant + created_by)', () => {
+    expect(COMPLIANCE_WORKFLOW_DETAIL_SELECT).toBe(ACTIVE_WORKFLOW_LIST_SELECT);
+    expect(COMPLIANCE_WORKFLOW_DETAIL_SELECT).not.toMatch(/users\s*\(/);
+    expect(COMPLIANCE_WORKFLOW_DETAIL_SELECT).not.toMatch(/landlords\s*\(/);
   });
 });
