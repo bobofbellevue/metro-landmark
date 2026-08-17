@@ -1,6 +1,6 @@
 /**
  * Space activates <button> on keyup. If Next is disabled mid-press, focus can
- * move to Cancel and the same Space fires Cancel. Use aria-disabled + a sync
+ * move to Close and the same Space fires Close. Use aria-disabled + a sync
  * lock instead of the disabled attribute while an action is in flight.
  */
 

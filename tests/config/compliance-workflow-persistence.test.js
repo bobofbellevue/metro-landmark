@@ -3,6 +3,7 @@ import {
   LEASE_SCOPED_WORKFLOW_TYPES,
   resolveWorkflowPostAction,
   shouldReloadWorkflowRecord,
+  workflowCloseAction,
   workflowProgressStatus,
 } from '../../src/utils/compliance-workflow-persistence.js';
 
@@ -23,6 +24,22 @@ describe('hasMeaningfulWorkflowProgress', () => {
 
   test('other filled fields are meaningful', () => {
     expect(hasMeaningfulWorkflowProgress({ new_rent: 2000 })).toBe(true);
+  });
+});
+
+describe('workflowCloseAction', () => {
+  test('saves when a lease is selected so the workflow can be resumed', () => {
+    expect(workflowCloseAction({ lease_id: 42 }, null)).toBe('save');
+    expect(
+      workflowCloseAction({ lease_id: 42 }, { workflow_id: 9, current_step: 2 })
+    ).toBe('save');
+  });
+
+  test('discards an empty saved row and leaves when nothing was saved', () => {
+    expect(workflowCloseAction({}, { workflow_id: 9, current_step: 1 })).toBe(
+      'discard'
+    );
+    expect(workflowCloseAction({ jurisdiction: 'seattle' }, null)).toBe('leave');
   });
 });
 

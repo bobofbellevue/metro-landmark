@@ -4,7 +4,7 @@ import {
 } from '../../src/utils/workflow-action-guard.js';
 
 describe('workflow-action-guard', () => {
-  test('blocks Cancel while Next holds the action lock (spacebar focus steal)', () => {
+  test('blocks Close while Next holds the action lock (spacebar focus steal)', () => {
     expect(shouldIgnoreWorkflowCancel({ actionLocked: true, busy: false })).toBe(
       true
     );

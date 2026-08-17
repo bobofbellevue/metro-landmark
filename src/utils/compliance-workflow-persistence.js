@@ -40,6 +40,21 @@ export function hasMeaningfulWorkflowProgress(workflowData = {}, record = null) 
 }
 
 /**
+ * What Close should do: persist an in-progress row, discard an empty one, or
+ * just leave if nothing was ever saved.
+ *
+ * @param {Record<string, unknown> | null | undefined} workflowData
+ * @param {{ workflow_id?: number | string | null, lease_id?: number | string | null, current_step?: number | null } | null} [record]
+ * @returns {'save' | 'discard' | 'leave'}
+ */
+export function workflowCloseAction(workflowData = {}, record = null) {
+  if (hasMeaningfulWorkflowProgress(workflowData, record)) return 'save';
+  const id = record?.workflow_id;
+  if (id != null && String(id).trim() !== '') return 'discard';
+  return 'leave';
+}
+
+/**
  * Workflow types that must not be inserted without a lease_id.
  */
 export const LEASE_SCOPED_WORKFLOW_TYPES = new Set([

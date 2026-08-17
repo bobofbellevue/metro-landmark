@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { CheckCircle, Circle, ArrowRight, ArrowLeft, AlertCircle, Shield, Save } from 'lucide-react';
+import { CheckCircle, Circle, ArrowRight, ArrowLeft, AlertCircle, Shield } from 'lucide-react';
 import { Card } from './ui';
 import DateInput from './DateInput';
 import WorkflowFileField from './WorkflowFileField';
 import { AuthContext } from '../contexts';
-import { hasMeaningfulWorkflowProgress, shouldReloadWorkflowRecord, workflowProgressStatus } from '../utils/compliance-workflow-persistence.js';
+import { hasMeaningfulWorkflowProgress, shouldReloadWorkflowRecord, workflowCloseAction, workflowProgressStatus } from '../utils/compliance-workflow-persistence.js';
 import {
   shouldIgnoreWorkflowCancel,
   shouldIgnoreWorkflowNext,
@@ -19,7 +19,7 @@ import {
  * ComplianceWorkflow - Guided workflow component for compliance processes
  *
  * Space activates a <button> on keyup. If Next uses disabled={busy}, focus can
- * jump to Cancel before keyup and the same Space fires Cancel. Buttons use
+ * jump to Close before keyup and the same Space fires Close. Buttons use
  * aria-disabled + a sync action lock instead.
  *
  * @param {string} workflowType - Type of workflow (rent_increase, eviction, etc.)
@@ -221,7 +221,7 @@ export default function ComplianceWorkflow({
         lease_id: dataToSave.lease_id ?? workflowRecord?.lease_id,
       });
 
-      // Do not create empty drafts (e.g. Save Progress on step 1 with no lease).
+      // Do not create empty drafts (e.g. Close on step 1 with no lease).
       if (!existingId && !meaningful) {
         setErrors({
           general:
@@ -292,9 +292,9 @@ export default function ComplianceWorkflow({
     }
   };
 
-  const handleCancel = async () => {
-    // Space on Next can disable Next and move focus here before keyup —
-    // ignore Cancel while Next/Complete/Save already holds the lock.
+  const handleClose = async () => {
+    // Space on Next can move focus here before keyup —
+    // ignore Close while Next/Complete already holds the lock.
     if (
       shouldIgnoreWorkflowCancel({
         actionLocked: actionLockRef.current,
@@ -307,23 +307,25 @@ export default function ComplianceWorkflow({
     setIsCancelling(true);
     try {
       const id = workflowId || workflowRecord?.workflow_id;
-      if (id) {
-        const meaningful = hasMeaningfulWorkflowProgress(workflowData, workflowRecord);
-        if (!meaningful) {
-          await fetch(`/api/compliance/workflows?id=${id}`, { method: 'DELETE' });
-        } else {
-          await fetch(`/api/compliance/workflows?id=${id}&action=cancel`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
+      const action = workflowCloseAction(workflowData, {
+        ...(workflowRecord || {}),
+        workflow_id: id,
+        lease_id: workflowData.lease_id ?? workflowRecord?.lease_id,
+        current_step: currentStep,
+      });
+      if (action === 'save') {
+        const saved = await saveProgress(currentStep);
+        if (!saved) return;
+      } else if (action === 'discard' && id) {
+        await fetch(`/api/compliance/workflows?id=${id}`, { method: 'DELETE' });
       }
+      if (onCancel) onCancel();
     } catch (error) {
-      console.error('Error cancelling workflow:', error);
+      console.error('Error closing workflow:', error);
+      setErrors({ general: error.message || 'Could not close the workflow.' });
     } finally {
       setIsCancelling(false);
       actionLockRef.current = false;
-      if (onCancel) onCancel();
     }
   };
 
@@ -714,7 +716,7 @@ export default function ComplianceWorkflow({
                   e.preventDefault();
                   return;
                 }
-                handleCancel();
+                handleClose();
               }}
               onKeyDown={(e) => {
                 if (
@@ -729,35 +731,9 @@ export default function ComplianceWorkflow({
                 busy ? 'opacity-50 cursor-wait' : ''
               }`}
             >
-              {isCancelling ? 'Cancelling...' : 'Cancel'}
+              {isSaving || isCancelling ? 'Saving…' : 'Close'}
             </button>
           )}
-          <button
-            type="button"
-            aria-disabled={busy ? 'true' : undefined}
-            onClick={(e) => {
-              if (busy || actionLockRef.current) {
-                e.preventDefault();
-                return;
-              }
-              saveProgress();
-            }}
-            onKeyDown={(e) => {
-              if (
-                (busy || actionLockRef.current) &&
-                (e.key === ' ' || e.key === 'Enter')
-              ) {
-                e.preventDefault();
-                e.stopPropagation();
-              }
-            }}
-            className={`px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2 ${
-              busy ? 'opacity-50 cursor-wait' : ''
-            }`}
-          >
-            <Save className="w-4 h-4" />
-            {isSaving ? 'Saving...' : 'Save Progress'}
-          </button>
         </div>
         <div className="flex gap-2">
           {currentStep > 1 && (
