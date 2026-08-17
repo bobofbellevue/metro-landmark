@@ -16,8 +16,7 @@ const POLICY_TYPES = [
   'lease_termination',
   'habitability',
   'entry_notice',
-  'tenant_screening',
-  'rent_control'
+  'tenant_screening'
 ];
 
 const POLICY_LEVELS = [

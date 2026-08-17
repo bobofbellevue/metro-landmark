@@ -69,7 +69,6 @@ export const LEASE_SCOPED_WORKFLOW_TYPES = new Set([
   'lease_termination',
   'habitability',
   'entry_notice',
-  'rent_control',
 ]);
 
 /**

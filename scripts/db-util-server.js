@@ -2613,8 +2613,7 @@ async function initializeCompliancePolicies(sql) {
       'lease_termination',
       'habitability',
       'entry_notice',
-      'tenant_screening',
-      'rent_control'
+      'tenant_screening'
     ];
 
     for (const policyType of policyTypes) {

@@ -329,7 +329,6 @@ export default function PolicyEditor({
                       <option value="habitability">Habitability</option>
                       <option value="entry_notice">Entry Notice</option>
                       <option value="tenant_screening">Tenant Screening</option>
-                      <option value="rent_control">Rent Control</option>
                     </select>
                   </div>
 

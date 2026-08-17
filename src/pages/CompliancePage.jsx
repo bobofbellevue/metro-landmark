@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { 
   Shield, FileText, Banknote, Home, ArrowRight, 
   UserCheck, Calendar, AlertTriangle, Key, DoorOpen,
-  ClipboardCheck, DollarSign, Gavel, Ban, Wrench,
+  ClipboardCheck, DollarSign, Gavel, Wrench,
   Lock, Search, TrendingUp, Clock, CheckCircle, Trash2
 } from 'lucide-react';
 import { AuthContext, SidebarContext } from '../contexts';
@@ -29,7 +29,6 @@ import LeaseTerminationWorkflow from '../components/compliance/LeaseTerminationW
 import HabitabilityWorkflow from '../components/compliance/HabitabilityWorkflow';
 import EntryNoticesWorkflow from '../components/compliance/EntryNoticesWorkflow';
 import TenantScreeningWorkflow from '../components/compliance/TenantScreeningWorkflow';
-import RentControlWorkflow from '../components/compliance/RentControlWorkflow';
 
 // Compliance process definitions
 const COMPLIANCE_PROCESSES = [
@@ -126,14 +125,6 @@ const COMPLIANCE_PROCESSES = [
     title: 'Tenant Screening Compliance',
     description: 'Fair Housing Act compliance and screening criteria documentation.',
     icon: <UserCheck className="w-8 h-8 text-teal-500" />,
-    priority: 'low',
-    category: 'additional'
-  },
-  {
-    id: 'rent_control',
-    title: 'Rent Control / Rent-Cap Compliance',
-    description: 'Statewide rent-increase cap plus Seattle just-cause and renewal-offer overlay.',
-    icon: <Ban className="w-8 h-8 text-pink-500" />,
     priority: 'low',
     category: 'additional'
   }
@@ -290,7 +281,15 @@ export default function CompliancePage() {
       case 'tenant_screening':
         return <TenantScreeningWorkflow {...workflowProps} />;
       case 'rent_control':
-        return <RentControlWorkflow {...workflowProps} />;
+        return (
+          <Card title="Process removed">
+            <p className="text-sm text-gray-600">
+              Rent-cap checks run inside Rent Increase Notice. This saved row is
+              from a process that was removed. Delete it from Active Workflows if
+              you no longer need it.
+            </p>
+          </Card>
+        );
       default:
         return null;
     }
@@ -311,9 +310,15 @@ export default function CompliancePage() {
     );
   }
 
-  const workflowLabel = (workflow) =>
-    COMPLIANCE_PROCESSES.find((p) => p.id === workflow.workflow_type)?.title ||
-    workflow.workflow_type;
+  const workflowLabel = (workflow) => {
+    if (workflow.workflow_type === 'rent_control') {
+      return 'Rent Control (removed)';
+    }
+    return (
+      COMPLIANCE_PROCESSES.find((p) => p.id === workflow.workflow_type)?.title ||
+      workflow.workflow_type
+    );
+  };
 
   const isAdmin = user?.role === 'global_admin' || user?.role === 'company_admin';
 

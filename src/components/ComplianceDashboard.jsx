@@ -167,8 +167,7 @@ export default function ComplianceDashboard() {
       lease_termination: 'Lease Termination',
       habitability: 'Habitability',
       entry_notice: 'Entry Notice',
-      tenant_screening: 'Tenant Screening',
-      rent_control: 'Rent Control'
+      tenant_screening: 'Tenant Screening'
     };
     return labels[type] || type;
   };

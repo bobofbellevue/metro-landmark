@@ -50,6 +50,7 @@ describe('LEASE_SCOPED_WORKFLOW_TYPES', () => {
   test('includes lease renewal and rent increase', () => {
     expect(LEASE_SCOPED_WORKFLOW_TYPES.has('lease_renewal')).toBe(true);
     expect(LEASE_SCOPED_WORKFLOW_TYPES.has('rent_increase')).toBe(true);
+    expect(LEASE_SCOPED_WORKFLOW_TYPES.has('rent_control')).toBe(false);
   });
 });
 
