@@ -148,6 +148,26 @@ export function formatCurrency(amount, ctx = {}, options = {}) {
   }).format(Number(amount));
 }
 
+/**
+ * Format an amount for a currency text input that already shows a symbol prefix.
+ * Uses grouping and 2 fraction digits, without a second currency sign.
+ *
+ * @param {number} amount
+ * @param {LocaleContext} [ctx]
+ * @param {Intl.NumberFormatOptions} [options]
+ * @returns {string}
+ */
+export function formatCurrencyNumber(amount, ctx = {}, options = {}) {
+  if (amount == null || Number.isNaN(Number(amount))) return '';
+  const locale = resolveFormattingLocale(ctx);
+  return new Intl.NumberFormat(locale, {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    ...options,
+  }).format(Number(amount));
+}
+
 function isSet(value) {
   return value != null && value !== '';
 }

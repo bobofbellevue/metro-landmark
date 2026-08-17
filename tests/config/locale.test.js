@@ -3,6 +3,7 @@ import {
   resolveLocaleField,
   resolveFormattingLocale,
   formatCurrency,
+  formatCurrencyNumber,
 } from '../../src/config/locale.js';
 
 describe('locale resolution', () => {
@@ -35,5 +36,13 @@ describe('locale resolution', () => {
     });
     expect(formatted).toContain('12.50');
     expect(formatted).toMatch(/\$/);
+  });
+
+  test('formatCurrencyNumber omits the currency symbol for prefixed inputs', () => {
+    const formatted = formatCurrencyNumber(2100, {
+      organization: { locale: 'en-US', currency: 'USD' },
+    });
+    expect(formatted).toBe('2,100.00');
+    expect(formatted).not.toMatch(/\$/);
   });
 });
