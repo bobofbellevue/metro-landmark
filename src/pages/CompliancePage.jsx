@@ -10,6 +10,7 @@ import { Card, ConfirmationModal } from '../components/ui';
 import { supabase } from '../lib/supabase';
 import { readResponseJson } from '../utils/read-response-json.js';
 import { isAwaitingNoticeService, GENERATE_THEN_SERVE_WORKFLOW_TYPES } from '../utils/notice-service-workflow.js';
+import { hydrateWorkflowData } from '../utils/compliance-workflow-persistence.js';
 import {
   ACTIVE_WORKFLOW_LIST_SELECT,
   activeWorkflowLocationLabel,
@@ -145,6 +146,7 @@ export default function CompliancePage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProcess, setSelectedProcess] = useState(null);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState(null);
+  const [selectedWorkflowRecord, setSelectedWorkflowRecord] = useState(null);
   const [activeWorkflows, setActiveWorkflows] = useState([]);
   const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true);
   const [workflowPendingDelete, setWorkflowPendingDelete] = useState(null);
@@ -184,14 +186,16 @@ export default function CompliancePage() {
     }
   };
 
-  const handleStartWorkflow = (processId, workflowId = null) => {
+  const handleStartWorkflow = (processId, workflowId = null, workflow = null) => {
     setSelectedProcess(processId);
     setSelectedWorkflowId(workflowId);
+    setSelectedWorkflowRecord(workflow || null);
   };
 
   const handleWorkflowComplete = (_data, generationResult = null) => {
     setSelectedProcess(null);
     setSelectedWorkflowId(null);
+    setSelectedWorkflowRecord(null);
     fetchActiveWorkflows();
     if (generationResult && generationResult.status && generationResult.status !== 'skipped') {
       setCompletionNotice(generationResult);
@@ -201,6 +205,7 @@ export default function CompliancePage() {
   const handleWorkflowCancel = () => {
     setSelectedProcess(null);
     setSelectedWorkflowId(null);
+    setSelectedWorkflowRecord(null);
     fetchActiveWorkflows();
   };
 
@@ -232,7 +237,9 @@ export default function CompliancePage() {
 
   const renderWorkflowComponent = () => {
     const workflowProps = {
-      initialData: {},
+      initialData: selectedWorkflowRecord
+        ? hydrateWorkflowData(selectedWorkflowRecord)
+        : {},
       workflowId: selectedWorkflowId,
       onComplete: handleWorkflowComplete,
       onCancel: handleWorkflowCancel,
@@ -251,7 +258,13 @@ export default function CompliancePage() {
             openWorkflows={activeWorkflows.filter(
               (workflow) => workflow.workflow_type === 'rent_increase'
             )}
-            onResumeWorkflow={(id) => setSelectedWorkflowId(id)}
+            onResumeWorkflow={(id) => {
+              const row = activeWorkflows.find(
+                (workflow) => String(workflow.workflow_id) === String(id)
+              );
+              setSelectedWorkflowRecord(row || null);
+              setSelectedWorkflowId(id);
+            }}
           />
         );
       case 'lease_renewal':
@@ -355,7 +368,7 @@ export default function CompliancePage() {
                 <button
                   type="button"
                   className="flex items-center gap-3 text-left flex-1 min-w-0"
-                  onClick={() => handleStartWorkflow(workflow.workflow_type, workflow.workflow_id)}
+                  onClick={() => handleStartWorkflow(workflow.workflow_type, workflow.workflow_id, workflow)}
                 >
                   <div className={`p-2 rounded-full ${
                     isAwaitingNoticeService(workflow)

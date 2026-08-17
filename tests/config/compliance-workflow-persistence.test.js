@@ -130,6 +130,19 @@ describe('hydrateWorkflowData', () => {
       )
     ).toEqual({ lease_id: 7, unit_id: 3, property_id: 8, new_rent: 1800 });
   });
+
+  test('prefers the higher current_step from the row column', () => {
+    expect(
+      hydrateWorkflowData(
+        {
+          current_step: 2,
+          lease_id: 1,
+          workflow_data: { lease_id: 1, current_step: 1, new_rent: 2100 },
+        },
+        {}
+      )
+    ).toMatchObject({ lease_id: 1, current_step: 2, new_rent: 2100 });
+  });
 });
 
 describe('buildWorkflowSavePayload', () => {

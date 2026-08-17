@@ -120,6 +120,21 @@ export function resumeStepIndex({
 }
 
 /**
+ * Whether the wizard can open onto the saved step from already-loaded row data
+ * without waiting on GET.
+ *
+ * @param {number|string|null|undefined} workflowId
+ * @param {Record<string, unknown> | null | undefined} initialData
+ * @returns {boolean}
+ */
+export function hasWorkflowResumeSeed(workflowId, initialData = {}) {
+  if (workflowId == null || workflowId === '') return false;
+  const leaseId = initialData?.lease_id;
+  if (leaseId != null && String(leaseId).trim() !== '') return true;
+  return Number(initialData?.current_step) > 1;
+}
+
+/**
  * @param {Record<string, unknown>} data
  * @returns {string}
  */

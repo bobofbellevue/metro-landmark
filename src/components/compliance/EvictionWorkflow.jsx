@@ -342,9 +342,11 @@ export default function EvictionWorkflow({
       workflowType="eviction"
       initialData={{
         ...initialData,
-        property_id: lease?.units?.properties?.property_id,
-        unit_id: lease?.units?.unit_id,
-        jurisdiction: lease?.units?.properties ? detectJurisdiction(lease.units.properties) : DEFAULT_JURISDICTION_PACK_ID
+        property_id: lease?.units?.properties?.property_id ?? initialData.property_id,
+        unit_id: lease?.units?.unit_id ?? initialData.unit_id,
+        jurisdiction: lease?.units?.properties
+          ? detectJurisdiction(lease.units.properties)
+          : initialData.jurisdiction || DEFAULT_JURISDICTION_PACK_ID
       }}
       workflowId={workflowId}
       getSteps={getWorkflowSteps}

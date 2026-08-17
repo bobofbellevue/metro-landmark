@@ -24,6 +24,12 @@ export const ACTIVE_WORKFLOW_LIST_SELECT = `
   property:properties(property_id, property_name)
 `;
 
+/**
+ * Detail GET must not embed users twice (tenant_user_id + created_by_user_id)
+ * or PostgREST rejects the row and resume stays on Select Lease.
+ */
+export const COMPLIANCE_WORKFLOW_DETAIL_SELECT = ACTIVE_WORKFLOW_LIST_SELECT;
+
 function firstRelation(value) {
   if (Array.isArray(value)) return value[0] || null;
   return value && typeof value === 'object' ? value : null;
