@@ -5,6 +5,7 @@ import NoticePeriodCalculator from '../NoticePeriodCalculator';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import { DEFAULT_JURISDICTION_PACK_ID } from '../../jurisdictions/index.js';
+import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 
 export default function SecurityDepositReturnWorkflow({ initialData = {}, workflowId = null, onComplete, onCancel, onWorkflowCreated }) {
   const [lease, setLease] = useState(null);
@@ -37,7 +38,7 @@ export default function SecurityDepositReturnWorkflow({ initialData = {}, workfl
             showDeposit
             emptyMessage="No active or terminated leases found."
             onChange={(leaseId, selected) => {
-              updateField('lease_id', leaseId);
+              stampLeaseSelection(updateField, leaseId, selected);
               updateField(
                 'original_deposit',
                 selected?.security_deposit_amount != null

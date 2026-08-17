@@ -5,6 +5,36 @@ import {
   resolveWorkflowPostAction,
   workflowProgressStatus,
 } from '../../src/utils/compliance-workflow-persistence.js';
+import { fillWorkflowLeaseScope } from '../../src/utils/workflow-lease-context.js';
+
+async function scopeFromLeaseId(supabase, fields) {
+  const leaseId = fields?.lease_id;
+  if (leaseId == null || leaseId === '') {
+    return fillWorkflowLeaseScope(fields, null);
+  }
+  if (fields.unit_id && fields.property_id) {
+    return fillWorkflowLeaseScope(fields, null);
+  }
+  const { data: lease } = await supabase
+    .from('leases')
+    .select('lease_id, unit_id, landlord_id')
+    .eq('lease_id', leaseId)
+    .maybeSingle();
+  if (!lease) {
+    return fillWorkflowLeaseScope(fields, null);
+  }
+  let unit = null;
+  const unitId = fields.unit_id || lease.unit_id;
+  if (unitId && !fields.property_id) {
+    const { data: unitRow } = await supabase
+      .from('units')
+      .select('unit_id, property_id')
+      .eq('unit_id', unitId)
+      .maybeSingle();
+    unit = unitRow;
+  }
+  return fillWorkflowLeaseScope(fields, { ...lease, units: unit });
+}
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -175,15 +205,21 @@ export default async function handler(req, res) {
       }
 
       const step = Number(current_step);
+      const scoped = await scopeFromLeaseId(supabase, {
+        lease_id,
+        unit_id,
+        property_id,
+        landlord_id,
+      });
       const { data, error } = await supabase
         .from('compliance_workflows')
         .insert({
           workflow_type,
-          lease_id: lease_id || null,
-          unit_id: unit_id || null,
-          property_id: property_id || null,
+          lease_id: scoped.lease_id,
+          unit_id: scoped.unit_id,
+          property_id: scoped.property_id,
           tenant_user_id: tenant_user_id || null,
-          landlord_id: landlord_id || null,
+          landlord_id: scoped.landlord_id,
           jurisdiction: jurisdiction || 'washington_state',
           total_steps,
           current_step:
@@ -218,8 +254,12 @@ export default async function handler(req, res) {
         served_method,
         proof_of_service,
         workflow_data,
-        completed_at
-      } = req.body;
+        completed_at,
+        lease_id,
+        unit_id,
+        property_id,
+        landlord_id,
+      } = req.body || {};
 
       const updateData = {};
       if (status !== undefined) updateData.status = status;
@@ -232,6 +272,20 @@ export default async function handler(req, res) {
       if (proof_of_service !== undefined) updateData.proof_of_service = proof_of_service;
       if (workflow_data !== undefined) updateData.workflow_data = workflow_data;
       if (completed_at !== undefined) updateData.completed_at = completed_at;
+
+      const leaseId = lease_id ?? workflow_data?.lease_id;
+      if (leaseId != null && leaseId !== '') {
+        const scoped = await scopeFromLeaseId(supabase, {
+          lease_id: leaseId,
+          unit_id,
+          property_id,
+          landlord_id,
+        });
+        updateData.lease_id = scoped.lease_id;
+        updateData.unit_id = scoped.unit_id;
+        updateData.property_id = scoped.property_id;
+        if (scoped.landlord_id != null) updateData.landlord_id = scoped.landlord_id;
+      }
 
       const { data, error } = await supabase
         .from('compliance_workflows')

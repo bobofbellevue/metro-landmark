@@ -14,6 +14,7 @@ import {
   tenantEmailsFromLeaseClients,
   validateNoticeService,
 } from '../../utils/notice-service-workflow.js';
+import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 
 /**
  * EvictionWorkflow - Multi-step guided workflow for eviction process
@@ -141,8 +142,8 @@ export default function EvictionWorkflow({
             statuses={['active', 'pending']}
             showRent
             emptyMessage="No active or pending leases found."
-            onChange={(leaseId) => {
-              updateField('lease_id', leaseId);
+            onChange={(leaseId, selected) => {
+              stampLeaseSelection(updateField, leaseId, selected);
               if (leaseId) fetchLeaseDetails(leaseId);
               else setLease(null);
             }}

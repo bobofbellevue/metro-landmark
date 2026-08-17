@@ -31,6 +31,7 @@ import {
   tenantEmailsFromLeaseClients,
   validateNoticeService,
 } from '../../utils/notice-service-workflow.js';
+import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 
 /**
  * RentIncreaseWorkflow - Guided workflow for rent increase notices
@@ -217,7 +218,7 @@ export default function RentIncreaseWorkflow({
             leaseAnnotations={leaseAnnotations}
             onChange={(leaseId, selected) => {
               if (leaseId == null) {
-                updateField('lease_id', null);
+                stampLeaseSelection(updateField, null, null);
                 setLease(null);
                 return;
               }
@@ -230,7 +231,7 @@ export default function RentIncreaseWorkflow({
                 onResumeWorkflow(existing.workflow_id);
                 return;
               }
-              updateField('lease_id', leaseId);
+              stampLeaseSelection(updateField, leaseId, selected);
               updateField(
                 'current_rent',
                 selected?.monthly_rent_amount != null

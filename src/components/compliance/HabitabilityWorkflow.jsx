@@ -1,6 +1,7 @@
 import React from 'react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
 import LeaseSelectionPicker from '../LeaseSelectionPicker';
+import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 
 export default function HabitabilityWorkflow({ initialData = {}, workflowId = null, onComplete, onCancel, onWorkflowCreated }) {
   const getWorkflowSteps = () => [
@@ -15,7 +16,7 @@ export default function HabitabilityWorkflow({ initialData = {}, workflowId = nu
           statuses={['active']}
           showRent
           emptyMessage="No active leases found."
-          onChange={(leaseId) => updateField('lease_id', leaseId)}
+          onChange={(leaseId, selected) => stampLeaseSelection(updateField, leaseId, selected)}
         />
       )
     },

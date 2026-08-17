@@ -8,6 +8,7 @@ import {
   getMaxRentIncreasePercent,
   isRentControlEnabled,
 } from '../../jurisdictions/index.js';
+import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 
 export default function RentControlWorkflow({ initialData = {}, workflowId = null, onComplete, onCancel, onWorkflowCreated }) {
   const [lease, setLease] = useState(null);
@@ -42,7 +43,7 @@ export default function RentControlWorkflow({ initialData = {}, workflowId = nul
             showRent
             emptyMessage="No active leases found."
             onChange={(leaseId, selected) => {
-              updateField('lease_id', leaseId);
+              stampLeaseSelection(updateField, leaseId, selected);
               updateField(
                 'current_rent',
                 selected?.monthly_rent_amount != null
