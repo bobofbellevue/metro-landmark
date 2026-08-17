@@ -9,6 +9,11 @@ import {
   buildDocumentTypeFilterOptions,
   formatDocumentTypeLabel,
 } from '../config/document-types.js';
+import {
+  DOCUMENT_LIST_SELECT,
+  attachDocumentTenantContacts,
+  formatDocumentEntityLabel,
+} from '../utils/document-entity-label.js';
 
 export default function DocumentsPage() {
   const { user } = useContext(AuthContext);
@@ -55,51 +60,100 @@ export default function DocumentsPage() {
   const fetchDocuments = async () => {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from('documents')
-        .select('*');
+      const applyFilters = (query) => {
+        if (!showArchived) {
+          query = query.or('is_archived.is.null,is_archived.eq.false');
+        }
+        if (filterType !== 'all') {
+          query = query.eq('document_type', filterType);
+        }
+        if (filterStatus === 'signed') {
+          query = query.eq('is_signed', true);
+        } else if (filterStatus === 'unsigned') {
+          query = query.eq('is_signed', false);
+        }
+        if (filterDateFrom) {
+          query = query.gte('created_at', filterDateFrom);
+        }
+        if (filterDateTo) {
+          query = query.lte('created_at', filterDateTo);
+        }
+        const orderColumn =
+          sortBy === 'date'
+            ? 'created_at'
+            : sortBy === 'type'
+              ? 'document_type'
+              : sortBy === 'status'
+                ? 'is_signed'
+                : 'file_name';
+        return query.order(orderColumn, { ascending: sortOrder === 'asc' });
+      };
 
-      // Soft-archived documents hidden unless Show Archived is on
-      if (!showArchived) {
-        query = query.or('is_archived.is.null,is_archived.eq.false');
+      let { data, error } = await applyFilters(
+        supabase.from('documents').select(DOCUMENT_LIST_SELECT)
+      );
+      if (error) {
+        console.warn(
+          'Documents nested select failed, retrying without joins:',
+          error.message || error
+        );
+        ({ data, error } = await applyFilters(
+          supabase.from('documents').select('*')
+        ));
       }
-
-      // Apply filters
-      if (filterType !== 'all') {
-        query = query.eq('document_type', filterType);
-      }
-
-      // Filter by document type instead of documentable_type
-      // The documentable_type filter has been removed as the table no longer uses that column
-
-      if (filterStatus === 'signed') {
-        query = query.eq('is_signed', true);
-      } else if (filterStatus === 'unsigned') {
-        query = query.eq('is_signed', false);
-      }
-
-      // Date range filter
-      if (filterDateFrom) {
-        query = query.gte('created_at', filterDateFrom);
-      }
-      if (filterDateTo) {
-        query = query.lte('created_at', filterDateTo);
-      }
-
-      // Apply sorting
-      const orderColumn = sortBy === 'date' ? 'created_at' : 
-                         sortBy === 'type' ? 'document_type' :
-                         sortBy === 'status' ? 'is_signed' :
-                         'file_name';
-      query = query.order(orderColumn, { ascending: sortOrder === 'asc' });
-
-      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching documents:', error);
         setDocuments([]);
       } else {
-        setDocuments(data || []);
+        const rows = data || [];
+        const userIds = [
+          ...new Set(
+            rows
+              .map((doc) => doc.tenant_user_id)
+              .filter((id) => id != null && id !== '')
+          ),
+        ];
+        let contacts = [];
+        if (userIds.length > 0) {
+          const { data: userContacts } = await supabase
+            .from('contacts')
+            .select('contactable_id, first_name, middle_name, last_name')
+            .eq('contactable_type', 'user')
+            .in('contactable_id', userIds);
+          contacts = userContacts || [];
+          const found = new Set(contacts.map((c) => String(c.contactable_id)));
+          const missing = userIds.filter((id) => !found.has(String(id)));
+          if (missing.length > 0) {
+            const { data: clients } = await supabase
+              .from('clients')
+              .select('client_id, user_id')
+              .in('user_id', missing);
+            const clientIds = (clients || [])
+              .map((client) => client.client_id)
+              .filter((id) => id != null);
+            if (clientIds.length > 0) {
+              const { data: clientContacts } = await supabase
+                .from('contacts')
+                .select('contactable_id, first_name, middle_name, last_name')
+                .eq('contactable_type', 'client')
+                .in('contactable_id', clientIds);
+              const userIdByClientId = new Map(
+                (clients || []).map((client) => [
+                  String(client.client_id),
+                  client.user_id,
+                ])
+              );
+              for (const contact of clientContacts || []) {
+                const userId = userIdByClientId.get(String(contact.contactable_id));
+                if (userId != null) {
+                  contacts.push({ ...contact, contactable_id: userId });
+                }
+              }
+            }
+          }
+        }
+        setDocuments(attachDocumentTenantContacts(rows, contacts));
         setCurrentPage(1); // Reset to first page when filters change
       }
     } catch (error) {
@@ -113,9 +167,11 @@ export default function DocumentsPage() {
   const filteredDocuments = documents.filter(doc => {
     if (!searchTerm.trim()) return true;
     const searchLower = searchTerm.toLowerCase();
+    const entityLabel = formatDocumentEntityLabel(doc).toLowerCase();
     return (
       doc.file_name?.toLowerCase().includes(searchLower) ||
-      doc.document_type?.toLowerCase().includes(searchLower)
+      doc.document_type?.toLowerCase().includes(searchLower) ||
+      entityLabel.includes(searchLower)
     );
   });
 
@@ -706,15 +762,8 @@ export default function DocumentsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">
-                          {formatDocumentTypeLabel(doc.document_type)}
+                          {formatDocumentEntityLabel(doc) || '—'}
                         </span>
-                        {(doc.lease_id || doc.tenant_user_id || doc.property_id) && (
-                          <span className="text-xs text-gray-500 ml-1">
-                            {doc.lease_id && `(Lease: ${doc.lease_id})`}
-                            {doc.tenant_user_id && `(User: ${doc.tenant_user_id})`}
-                            {doc.property_id && `(Property: ${doc.property_id})`}
-                          </span>
-                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatFileSize(doc.file_size)}
