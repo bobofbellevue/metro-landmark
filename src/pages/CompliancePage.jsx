@@ -248,7 +248,6 @@ export default function CompliancePage() {
       case 'rent_increase':
         return (
           <RentIncreaseWorkflow
-            key={selectedWorkflowId ?? 'new'}
             {...workflowProps}
             openWorkflows={activeWorkflows.filter(
               (workflow) => workflow.workflow_type === 'rent_increase'

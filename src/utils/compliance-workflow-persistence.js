@@ -71,6 +71,25 @@ export function workflowProgressStatus(stepToSave, totalSteps, markCompleted = f
 }
 
 /**
+ * Whether changing the parent workflowId should refetch the row.
+ * Skip when the parent just caught up to an id this session already created
+ * (otherwise Next remounts/reloads onto Select Lease).
+ *
+ * @param {number|string|null|undefined} requestedId
+ * @param {number|string|null|undefined} loadedId
+ * @returns {boolean}
+ */
+export function shouldReloadWorkflowRecord(requestedId, loadedId) {
+  const requested =
+    requestedId == null || requestedId === '' ? null : String(requestedId);
+  const loaded = loadedId == null || loadedId === '' ? null : String(loadedId);
+  if (requested == null) {
+    return loaded == null;
+  }
+  return requested !== loaded;
+}
+
+/**
  * Route POST /api/compliance/workflows based on query params.
  * Complete/cancel must win over create (same HTTP method).
  *

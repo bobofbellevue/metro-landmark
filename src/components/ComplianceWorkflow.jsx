@@ -4,7 +4,7 @@ import { Card } from './ui';
 import DateInput from './DateInput';
 import WorkflowFileField from './WorkflowFileField';
 import { AuthContext } from '../contexts';
-import { hasMeaningfulWorkflowProgress, workflowProgressStatus } from '../utils/compliance-workflow-persistence.js';
+import { hasMeaningfulWorkflowProgress, shouldReloadWorkflowRecord, workflowProgressStatus } from '../utils/compliance-workflow-persistence.js';
 import {
   shouldIgnoreWorkflowCancel,
   shouldIgnoreWorkflowNext,
@@ -55,8 +55,16 @@ export default function ComplianceWorkflow({
   const [isAdvancing, setIsAdvancing] = useState(false);
   // Sync lock so Space keyup cannot cancel after Next has already started.
   const actionLockRef = useRef(false);
+  const loadedWorkflowIdRef = useRef(null);
 
   useEffect(() => {
+    loadedWorkflowIdRef.current = workflowRecord?.workflow_id ?? null;
+  }, [workflowRecord]);
+
+  useEffect(() => {
+    if (!shouldReloadWorkflowRecord(workflowId, loadedWorkflowIdRef.current)) {
+      return;
+    }
     loadWorkflowData();
   }, [workflowType, workflowId]);
 
@@ -75,6 +83,9 @@ export default function ComplianceWorkflow({
           const loadedSteps = getSteps ? (getSteps() || []) : getWorkflowSteps(workflowType) || [];
           const totalSteps = loadedSteps.length || result.workflow.total_steps || 1;
           setWorkflowRecord(result.workflow);
+          if (result.workflow.workflow_id != null) {
+            loadedWorkflowIdRef.current = result.workflow.workflow_id;
+          }
           setCurrentStep(
             resumeStepIndex({
               currentStep: result.workflow.current_step || 1,
@@ -259,6 +270,9 @@ export default function ComplianceWorkflow({
 
       if (result.workflow) {
         setWorkflowRecord(result.workflow);
+        if (result.workflow.workflow_id != null) {
+          loadedWorkflowIdRef.current = result.workflow.workflow_id;
+        }
         if (!existingId && typeof onWorkflowCreated === 'function') {
           onWorkflowCreated(result.workflow);
         }

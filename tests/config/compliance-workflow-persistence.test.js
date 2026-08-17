@@ -2,6 +2,7 @@ import {
   hasMeaningfulWorkflowProgress,
   LEASE_SCOPED_WORKFLOW_TYPES,
   resolveWorkflowPostAction,
+  shouldReloadWorkflowRecord,
   workflowProgressStatus,
 } from '../../src/utils/compliance-workflow-persistence.js';
 
@@ -42,6 +43,19 @@ describe('resolveWorkflowPostAction', () => {
     );
     expect(resolveWorkflowPostAction({})).toBe('create');
     expect(resolveWorkflowPostAction({ action: 'complete' })).toBe('create');
+  });
+});
+
+describe('shouldReloadWorkflowRecord', () => {
+  test('loads on a fresh mount and when switching ids', () => {
+    expect(shouldReloadWorkflowRecord(null, null)).toBe(true);
+    expect(shouldReloadWorkflowRecord(12, null)).toBe(true);
+    expect(shouldReloadWorkflowRecord(12, 7)).toBe(true);
+  });
+
+  test('does not reload when the parent catches up to the created row', () => {
+    expect(shouldReloadWorkflowRecord(12, 12)).toBe(false);
+    expect(shouldReloadWorkflowRecord('12', 12)).toBe(false);
   });
 });
 
