@@ -1,6 +1,7 @@
 /* eslint-env node */
 import { createClient } from '@supabase/supabase-js';
 import { generateNoticeDocument } from '../../../utils/document-generator.js';
+import { fetchFirstTenantUserId } from '../../../src/utils/lease-tenants.js';
 
 /**
  * Vercel serverless function to generate legal notices
@@ -175,17 +176,8 @@ export default async function handler(req, res) {
       .join(' ');
 
     // Link notice docs to a tenant user when possible (helps Review Documents / filters)
-    let tenantUserId = null;
     const noticeLeaseId = lease_id || noticeRecord.lease_id || null;
-    if (noticeLeaseId) {
-      const { data: leaseClients } = await supabase
-        .from('lease_clients')
-        .select('client_id, clients!inner(user_id)')
-        .eq('lease_id', noticeLeaseId)
-        .limit(1);
-      const firstClient = leaseClients?.[0]?.clients;
-      tenantUserId = firstClient?.user_id || null;
-    }
+    const tenantUserId = await fetchFirstTenantUserId(supabase, noticeLeaseId);
 
     // documents has no notice_id column — link via metadata (same as upload.js).
     const insertPayload = {

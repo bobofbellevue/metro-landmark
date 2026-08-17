@@ -4,6 +4,7 @@
  */
 
 import { formatPersonDisplayName } from './lease-display.js';
+import { flattenLeaseClientRows } from './lease-tenants.js';
 
 function firstRelation(value) {
   if (Array.isArray(value)) return value[0] || null;
@@ -206,22 +207,22 @@ export function documentLandlordId(doc = {}) {
 
 /**
  * Map lease_clients + client contacts to tenant name lists keyed by lease_id.
+ * Contacts may be keyed by client_id or by user_id (TenantsPage uses user_id).
  *
- * @param {Array<{ lease_id?: unknown, client_id?: unknown }>} leaseClients
+ * @param {Array<{ lease_id?: unknown, client_id?: unknown, user_id?: unknown, clients?: unknown }>} leaseClients
  * @param {Array<Record<string, unknown>>} clientContacts
  * @returns {Record<string, string[]>}
  */
 export function tenantNamesByLeaseId(leaseClients = [], clientContacts = []) {
-  const contactByClientId = new Map();
-  for (const contact of clientContacts || []) {
-    if (contact?.contactable_id == null) continue;
-    contactByClientId.set(String(contact.contactable_id), contact);
-  }
+  const contactById = indexContactsById(clientContacts);
   const namesByLease = {};
-  for (const row of leaseClients || []) {
+  for (const row of flattenLeaseClientRows(leaseClients)) {
     if (row?.lease_id == null) continue;
     const key = String(row.lease_id);
-    const contact = contactByClientId.get(String(row.client_id));
+    const contact =
+      (row.client_id != null && contactById[String(row.client_id)]) ||
+      (row.user_id != null && contactById[String(row.user_id)]) ||
+      null;
     const name = formatPersonDisplayName(contact);
     if (!name) continue;
     if (!namesByLease[key]) namesByLease[key] = [];

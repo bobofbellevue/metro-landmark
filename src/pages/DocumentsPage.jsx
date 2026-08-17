@@ -19,6 +19,10 @@ import {
   tenantNamesByLeaseId,
   uniqueIds,
 } from '../utils/document-entity-label.js';
+import {
+  fetchLeaseClientTenantRefs,
+  leaseTenantContactableIds,
+} from '../utils/lease-tenants.js';
 
 export default function DocumentsPage() {
   const { user } = useContext(AuthContext);
@@ -118,23 +122,30 @@ export default function DocumentsPage() {
 
         let tenantsByLeaseId = {};
         if (leaseIds.length > 0) {
-          const { data: leaseClients } = await supabase
-            .from('lease_clients')
-            .select('lease_id, client_id')
-            .in('lease_id', leaseIds);
-          const clientIds = uniqueIds(
-            (leaseClients || []).map((row) => row.client_id)
+          const leaseTenantRefs = await fetchLeaseClientTenantRefs(
+            supabase,
+            leaseIds
           );
+          const contactableIds = leaseTenantContactableIds(leaseTenantRefs);
           let clientContacts = [];
-          if (clientIds.length > 0) {
-            const { data: contactRows } = await supabase
+          if (contactableIds.length > 0) {
+            const { data: contactRows, error: tenantContactError } = await supabase
               .from('contacts')
               .select('contactable_id, first_name, middle_name, last_name')
               .eq('contactable_type', 'client')
-              .in('contactable_id', clientIds);
+              .in('contactable_id', contactableIds);
+            if (tenantContactError) {
+              console.warn(
+                'Documents tenant contacts select failed:',
+                tenantContactError.message || tenantContactError
+              );
+            }
             clientContacts = contactRows || [];
           }
-          tenantsByLeaseId = tenantNamesByLeaseId(leaseClients || [], clientContacts);
+          tenantsByLeaseId = tenantNamesByLeaseId(
+            leaseTenantRefs,
+            clientContacts
+          );
         }
 
         let landlordContactsById = {};
@@ -149,19 +160,34 @@ export default function DocumentsPage() {
 
         let tenantContactsByUserId = {};
         if (tenantUserIds.length > 0) {
-          const { data: userContacts } = await supabase
+          // TenantsPage stores tenant contacts as type=client, contactable_id=user_id.
+          const { data: clientByUser } = await supabase
             .from('contacts')
             .select('contactable_id, first_name, middle_name, last_name')
-            .eq('contactable_type', 'user')
+            .eq('contactable_type', 'client')
             .in('contactable_id', tenantUserIds);
-          tenantContactsByUserId = indexContactsById(userContacts || []);
+          tenantContactsByUserId = indexContactsById(clientByUser || []);
           const found = new Set(Object.keys(tenantContactsByUserId));
           const missing = tenantUserIds.filter((id) => !found.has(String(id)));
           if (missing.length > 0) {
+            const { data: userContacts } = await supabase
+              .from('contacts')
+              .select('contactable_id, first_name, middle_name, last_name')
+              .eq('contactable_type', 'user')
+              .in('contactable_id', missing);
+            Object.assign(
+              tenantContactsByUserId,
+              indexContactsById(userContacts || [])
+            );
+          }
+          const stillMissing = tenantUserIds.filter(
+            (id) => !tenantContactsByUserId[String(id)]
+          );
+          if (stillMissing.length > 0) {
             const { data: clients } = await supabase
               .from('clients')
               .select('client_id, user_id')
-              .in('user_id', missing);
+              .in('user_id', stillMissing);
             const clientIds = uniqueIds(
               (clients || []).map((client) => client.client_id)
             );

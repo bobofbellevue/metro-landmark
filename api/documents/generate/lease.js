@@ -1,6 +1,7 @@
 /* eslint-env node */
 import { createClient } from '@supabase/supabase-js';
 import { generateLeaseDocument } from '../../../utils/document-generator.js';
+import { fetchFirstTenantUserId } from '../../../src/utils/lease-tenants.js';
 
 /**
  * Vercel serverless function to generate lease documents
@@ -137,10 +138,10 @@ export default async function handler(req, res) {
       templateId = defaultTemplate?.template_id;
     }
 
+    const tenantUserId = await fetchFirstTenantUserId(supabase, lease_id);
+
     // Create document record
-    const { data: documentData, error: dbError } = await supabase
-      .from('documents')
-      .insert({
+    const insertPayload = {
         lease_id: lease_id,
         document_name: `Lease Agreement - Lease #${lease_id}`, // Required field
         file_name: fileName,
@@ -154,7 +155,14 @@ export default async function handler(req, res) {
           template_id: templateId,
           generated_at: new Date().toISOString()
         }
-      })
+    };
+    if (tenantUserId) {
+      insertPayload.tenant_user_id = tenantUserId;
+    }
+
+    const { data: documentData, error: dbError } = await supabase
+      .from('documents')
+      .insert(insertPayload)
       .select()
       .single();
 

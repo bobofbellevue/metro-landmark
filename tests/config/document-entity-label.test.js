@@ -80,6 +80,21 @@ describe('tenantNamesByLeaseId', () => {
       )
     ).toEqual({ 72: ['Jane Smith', 'John Doe'] });
   });
+
+  test('matches contacts keyed by tenant user_id as well as client_id', () => {
+    expect(
+      tenantNamesByLeaseId(
+        [
+          {
+            lease_id: 72,
+            client_id: 1,
+            clients: { client_id: 1, user_id: 19 },
+          },
+        ],
+        [{ contactable_id: 19, first_name: 'Jane', last_name: 'Smith' }]
+      )
+    ).toEqual({ 72: ['Jane Smith'] });
+  });
 });
 
 describe('attachDocumentTenantContacts', () => {

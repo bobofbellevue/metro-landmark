@@ -15,6 +15,7 @@ import {
   collectOriginalLeaseClientIds,
 } from '../../../src/utils/renewal-lease-record.js';
 import { stripInternalIdFieldsFromDocumentData } from '../../../src/utils/template-field-filter.js';
+import { firstTenantUserId } from '../../../src/utils/lease-tenants.js';
 
 /**
  * Vercel serverless function to generate lease renewal documents
@@ -113,7 +114,7 @@ export default async function handler(req, res) {
         *,
         lease_clients(
           client_id,
-          clients(client_id)
+          clients(client_id, user_id)
         )
       `
       )
@@ -260,9 +261,9 @@ export default async function handler(req, res) {
       });
     }
 
-    const { data: documentRow, error: dbError } = await supabase
-      .from('documents')
-      .insert({
+    const tenantUserId = firstTenantUserId(originalLease.lease_clients);
+
+    const renewalInsert = {
         lease_id: documentLeaseId,
         document_name: renewalEndDate
           ? `Lease Renewal (${renewalStartDate} – ${renewalEndDate})`
@@ -283,7 +284,14 @@ export default async function handler(req, res) {
           new_lease_id: newLeaseId,
           render: renderDiagnostics,
         },
-      })
+    };
+    if (tenantUserId) {
+      renewalInsert.tenant_user_id = tenantUserId;
+    }
+
+    const { data: documentRow, error: dbError } = await supabase
+      .from('documents')
+      .insert(renewalInsert)
       .select()
       .single();
 
