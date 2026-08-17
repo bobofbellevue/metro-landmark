@@ -21,6 +21,11 @@ describe('hasMeaningfulWorkflowProgress', () => {
     expect(hasMeaningfulWorkflowProgress({}, { lease_id: 42 })).toBe(true);
   });
 
+  test('property id is meaningful', () => {
+    expect(hasMeaningfulWorkflowProgress({ property_id: 8 })).toBe(true);
+    expect(hasMeaningfulWorkflowProgress({}, { property_id: 8 })).toBe(true);
+  });
+
   test('step > 1 is meaningful', () => {
     expect(hasMeaningfulWorkflowProgress({}, { current_step: 2 })).toBe(true);
   });
@@ -51,6 +56,7 @@ describe('LEASE_SCOPED_WORKFLOW_TYPES', () => {
     expect(LEASE_SCOPED_WORKFLOW_TYPES.has('lease_renewal')).toBe(true);
     expect(LEASE_SCOPED_WORKFLOW_TYPES.has('rent_increase')).toBe(true);
     expect(LEASE_SCOPED_WORKFLOW_TYPES.has('rent_control')).toBe(false);
+    expect(LEASE_SCOPED_WORKFLOW_TYPES.has('tenant_screening')).toBe(false);
   });
 });
 

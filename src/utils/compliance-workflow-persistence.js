@@ -20,6 +20,14 @@ export function hasMeaningfulWorkflowProgress(workflowData = {}, record = null) 
     return true;
   }
 
+  const propertyId =
+    workflowData?.property_id ??
+    record?.property_id ??
+    null;
+  if (propertyId != null && String(propertyId).trim() !== '') {
+    return true;
+  }
+
   const step = Number(record?.current_step || workflowData?.current_step || 1);
   if (step > 1) {
     return true;

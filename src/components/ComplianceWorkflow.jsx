@@ -262,7 +262,7 @@ export default function ComplianceWorkflow({
       if (!existingId && !meaningful) {
         setErrors({
           general:
-            'Select a lease (or complete the first step) before saving. Nothing was saved yet.',
+            'Complete the first step before saving. Nothing was saved yet.',
         });
         return false;
       }

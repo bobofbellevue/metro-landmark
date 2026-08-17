@@ -3,6 +3,7 @@ import {
   buildGmailComposeUrl,
   buildNoticeEmailPlainText,
   evictionNoticeFingerprint,
+  leaseTerminationNoticeFingerprint,
   isAwaitingNoticeService,
   NOTICE_PICKER_GROUP_GENERATE,
   NOTICE_PICKER_GROUP_RECORD_SERVICE,
@@ -29,6 +30,13 @@ describe('isAwaitingNoticeService', () => {
       isAwaitingNoticeService({
         ...base,
         workflow_data: { notice_document_id: 99, service_status: 'pending' },
+      })
+    ).toBe(true);
+    expect(
+      isAwaitingNoticeService({
+        status: 'in_progress',
+        workflow_type: 'lease_termination',
+        workflow_data: { notice_document_id: 12 },
       })
     ).toBe(true);
   });
@@ -276,5 +284,23 @@ describe('notice picker lease grouping', () => {
       NOTICE_PICKER_GROUP_GENERATE
     );
     expect(noticePickerAnnotation(null)).toBeNull();
+  });
+});
+
+describe('leaseTerminationNoticeFingerprint', () => {
+  test('changes when cause or reason changes', () => {
+    const base = {
+      lease_id: 7,
+      initiated_by: 'landlord',
+      has_cause: 'yes',
+      effective_date: '2026-11-01',
+      termination_reason: 'Cause A',
+    };
+    expect(leaseTerminationNoticeFingerprint(base)).not.toBe(
+      leaseTerminationNoticeFingerprint({ ...base, has_cause: 'no' })
+    );
+    expect(leaseTerminationNoticeFingerprint(base)).not.toBe(
+      leaseTerminationNoticeFingerprint({ ...base, termination_reason: 'Cause B' })
+    );
   });
 });

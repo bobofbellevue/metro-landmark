@@ -99,7 +99,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'lease_termination',
     title: 'Lease Termination Notices',
-    description: 'Tenant or landlord-initiated termination with proper notice periods.',
+    description: 'End a tenancy with pack notice days, just-cause / renewal-offer checks, then generate a worksheet and record service.',
     icon: <FileText className="w-8 h-8 text-gray-500" />,
     priority: 'medium',
     category: 'notices'
@@ -123,7 +123,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'tenant_screening',
     title: 'Tenant Screening Compliance',
-    description: 'Fair Housing Act compliance and screening criteria documentation.',
+    description: 'Screen the applicant queue in received order. Seattle first-qualified: decide earlier pending applications first.',
     icon: <UserCheck className="w-8 h-8 text-teal-500" />,
     priority: 'low',
     category: 'additional'

@@ -18,6 +18,7 @@ import {
   addDaysToWorkflowDate,
   calendarDaysBetween,
   parseWorkflowDateParts,
+  todayWorkflowDate,
   toWorkflowDateString,
 } from './workflow-date.js';
 
@@ -162,6 +163,90 @@ export function calculateTerminationNoticePeriod({
   }
 
   return rules.landlordNoCauseMonthToMonthNoticeDays;
+}
+
+/**
+ * Whether a lease looks fixed-term (has an end date) vs month-to-month.
+ * @param {{ end_date?: unknown }|null|undefined} lease
+ * @returns {'fixed_term'|'month_to_month'}
+ */
+export function leaseTypeFromLease(lease) {
+  const end = lease?.end_date;
+  return end != null && String(end).trim() !== '' ? 'fixed_term' : 'month_to_month';
+}
+
+/**
+ * Pack evaluation for ending a tenancy (just cause / Seattle renewal-offer overlay).
+ * @returns {object}
+ */
+export function evaluateLeaseTermination({
+  leaseType,
+  jurisdiction,
+  initiatedBy = 'landlord',
+  hasCause = false,
+  leaseEndDate = null,
+  asOfDate = null,
+} = {}) {
+  const packId = resolvedPackId(jurisdiction);
+  const rules = resolvedRules(packId).termination || {};
+  const noticePeriodDays = calculateTerminationNoticePeriod({
+    leaseType,
+    jurisdiction: packId,
+    initiatedBy,
+    hasCause,
+  });
+
+  const landlord = initiatedBy === 'landlord';
+  const noCause = !hasCause;
+  const monthToMonth = leaseType === 'month_to_month';
+  const fixedTerm = leaseType === 'fixed_term';
+
+  const justCauseRequiredForPath =
+    landlord &&
+    noCause &&
+    ((monthToMonth && !!rules.requiresJustCauseForNoCauseMonthToMonth) ||
+      (fixedTerm && !!rules.requiresJustCauseForFixedTermNonrenewal));
+
+  const renewalOfferRequired =
+    landlord && noCause && fixedTerm && !!rules.requiresRenewalOffer;
+
+  const blocked = justCauseRequiredForPath || renewalOfferRequired;
+  let blockReason = '';
+  if (renewalOfferRequired) {
+    blockReason =
+      'This pack requires a renewal offer unless there is just cause for non-renewal. Use Lease Renewal, or mark this as for-cause.';
+  } else if (justCauseRequiredForPath) {
+    blockReason =
+      'This pack requires just cause to end this tenancy except limited statutory paths.';
+  }
+
+  const minDays = rules.renewalOfferMinDaysBeforeEnd ?? null;
+  const maxDays = rules.renewalOfferMaxDaysBeforeEnd ?? null;
+  const asOf = asOfDate || todayWorkflowDate();
+  const daysUntilLeaseEnd = leaseEndDate
+    ? calendarDaysBetween(asOf, leaseEndDate)
+    : null;
+  const inRenewalOfferWindow =
+    daysUntilLeaseEnd != null &&
+    minDays != null &&
+    maxDays != null &&
+    daysUntilLeaseEnd >= minDays &&
+    daysUntilLeaseEnd <= maxDays;
+
+  return {
+    noticePeriodDays,
+    justCauseRequiredForPath,
+    renewalOfferRequired,
+    blocked,
+    blockReason,
+    renewalOfferMinDaysBeforeEnd: minDays,
+    renewalOfferMaxDaysBeforeEnd: maxDays,
+    daysUntilLeaseEnd,
+    inRenewalOfferWindow,
+    leaseType: leaseType || null,
+    jurisdiction: packId,
+    citations: getRuleCitations(packId, 'termination'),
+  };
 }
 
 /**

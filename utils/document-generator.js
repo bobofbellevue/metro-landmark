@@ -1335,6 +1335,17 @@ export function buildSimpleNoticeTenantLines(formData = {}) {
 
   lines.push(`Effective Date: ${formData.effective_date || ''}`);
 
+  if (formData.notice_type_key === 'lease_termination') {
+    if (formData.initiated_by) {
+      lines.push(`Initiated by: ${String(formData.initiated_by).replace(/_/g, ' ')}`);
+    }
+    if (formData.has_cause === 'yes' || formData.has_cause === true) {
+      lines.push('Just cause: yes (operator-confirmed)');
+    } else if (formData.has_cause === 'no' || formData.has_cause === false) {
+      lines.push('Just cause: no');
+    }
+  }
+
   if (formData.additional_text) {
     lines.push('', formData.additional_text);
   }
@@ -1391,7 +1402,10 @@ export function buildSimpleNoticeResourceLines(formData = {}) {
  * @returns {string[]}
  */
 export function buildSimpleNoticeContentLines(formData = {}) {
-  if (formData.notice_type_key === 'rent_increase') {
+  if (
+    formData.notice_type_key === 'rent_increase' ||
+    formData.notice_type_key === 'lease_termination'
+  ) {
     return [
       simpleNoticeWorksheetDisclaimerLine(),
       '',

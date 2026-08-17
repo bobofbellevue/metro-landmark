@@ -10,6 +10,7 @@ import { DEFAULT_NOTICE_SERVICE_METHODS } from '../jurisdictions/index.js';
 export const GENERATE_THEN_SERVE_WORKFLOW_TYPES = new Set([
   'rent_increase',
   'eviction',
+  'lease_termination',
 ]);
 
 /**
@@ -148,6 +149,20 @@ export function rentIncreaseNoticeFingerprint(data = {}) {
  */
 export function evictionNoticeFingerprint(data = {}) {
   return [data.lease_id, data.notice_type, data.effective_date].join('|');
+}
+
+/**
+ * @param {Record<string, unknown>} data
+ * @returns {string}
+ */
+export function leaseTerminationNoticeFingerprint(data = {}) {
+  return [
+    data.lease_id,
+    data.initiated_by,
+    data.has_cause,
+    data.effective_date,
+    data.termination_reason,
+  ].join('|');
 }
 
 /**

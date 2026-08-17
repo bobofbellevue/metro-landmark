@@ -130,13 +130,18 @@ export function activeWorkflowLocationLabel(workflow) {
   const unitNumber =
     workflow?.unit?.unit_number || nestedUnit?.unit_number || null;
 
-  if (propertyName) {
-    return `${propertyName} - Unit ${unitNumber ?? '—'}`;
+  if (propertyName && present(unitNumber)) {
+    return `${propertyName} - Unit ${unitNumber}`;
   }
+  if (propertyName) return String(propertyName);
 
   const leaseId = workflow?.lease_id ?? workflow?.workflow_data?.lease_id;
   if (present(leaseId)) {
     return unitNumber ? `Unit ${unitNumber}` : 'Lease selected';
+  }
+  const propertyId = workflow?.property_id ?? workflow?.workflow_data?.property_id;
+  if (present(propertyId)) {
+    return 'Property selected';
   }
   return 'No lease selected yet';
 }

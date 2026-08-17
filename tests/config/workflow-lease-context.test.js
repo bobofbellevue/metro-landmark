@@ -110,6 +110,17 @@ describe('activeWorkflowLocationLabel', () => {
     expect(activeWorkflowLocationLabel({ lease_id: 42 })).toBe('Lease selected');
     expect(activeWorkflowLocationLabel({})).toBe('No lease selected yet');
   });
+
+  test('labels a property-only screening row without inventing a unit', () => {
+    expect(
+      activeWorkflowLocationLabel({
+        property: { property_name: 'Oak Street' },
+      })
+    ).toBe('Oak Street');
+    expect(activeWorkflowLocationLabel({ property_id: 8 })).toBe(
+      'Property selected'
+    );
+  });
 });
 
 describe('COMPLIANCE_WORKFLOW_DETAIL_SELECT', () => {

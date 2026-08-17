@@ -92,6 +92,23 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(lines).toContain('Effective Date: 11/01/2026');
   });
 
+  test('includes initiator and cause on lease termination worksheets', () => {
+    const lines = buildSimpleNoticeContentLines({
+      notice_type_key: 'lease_termination',
+      tenant_names: 'Ada Lovelace',
+      property_name: 'Pine Court',
+      unit_number: 'B',
+      effective_date: '11/01/2026',
+      initiated_by: 'landlord',
+      has_cause: 'yes',
+      additional_text: 'Nonpayment after notice.',
+    });
+    expect(lines).toContain('Initiated by: landlord');
+    expect(lines).toContain('Just cause: yes (operator-confirmed)');
+    expect(lines).toContain('Nonpayment after notice.');
+    expect(lines.some((l) => l.includes('not the statutory'))).toBe(true);
+  });
+
   test('shows the assigned property manager, not the landlord or PMC header', () => {
     const lines = buildSimpleNoticeContentLines({
       notice_type_key: 'rent_increase',

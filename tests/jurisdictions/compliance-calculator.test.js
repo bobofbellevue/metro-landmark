@@ -7,6 +7,7 @@ import {
   calculateRentIncreaseNoticePeriod,
   calculateRequiredNoticeDate,
   calculateTerminationNoticePeriod,
+  evaluateLeaseTermination,
   evaluateRentIncrease,
   noticePeriodDaysFromPack,
   resolvePercentIncrease,
@@ -152,6 +153,55 @@ describe('termination, eviction, deposit, and entry', () => {
         hasCause: true,
       })
     ).toBe(20);
+  });
+
+  test('just-cause and Seattle renewal-offer overlays gate landlord no-cause endings', () => {
+    const waMtm = evaluateLeaseTermination({
+      leaseType: 'month_to_month',
+      jurisdiction: 'washington_state',
+      initiatedBy: 'landlord',
+      hasCause: false,
+    });
+    expect(waMtm.blocked).toBe(true);
+    expect(waMtm.justCauseRequiredForPath).toBe(true);
+    expect(waMtm.renewalOfferRequired).toBe(false);
+
+    const waFixed = evaluateLeaseTermination({
+      leaseType: 'fixed_term',
+      jurisdiction: 'washington_state',
+      initiatedBy: 'landlord',
+      hasCause: false,
+    });
+    expect(waFixed.blocked).toBe(false);
+    expect(waFixed.noticePeriodDays).toBe(60);
+
+    const seattleFixed = evaluateLeaseTermination({
+      leaseType: 'fixed_term',
+      jurisdiction: 'seattle',
+      initiatedBy: 'landlord',
+      hasCause: false,
+      leaseEndDate: '2026-12-01',
+      asOfDate: '2026-09-15',
+    });
+    expect(seattleFixed.blocked).toBe(true);
+    expect(seattleFixed.renewalOfferRequired).toBe(true);
+    expect(seattleFixed.inRenewalOfferWindow).toBe(true);
+
+    const seattleCause = evaluateLeaseTermination({
+      leaseType: 'fixed_term',
+      jurisdiction: 'seattle',
+      initiatedBy: 'landlord',
+      hasCause: true,
+    });
+    expect(seattleCause.blocked).toBe(false);
+
+    const tenantEnd = evaluateLeaseTermination({
+      leaseType: 'month_to_month',
+      jurisdiction: 'seattle',
+      initiatedBy: 'tenant',
+      hasCause: false,
+    });
+    expect(tenantEnd.blocked).toBe(false);
   });
 
   test('eviction notice types match pack days', () => {
