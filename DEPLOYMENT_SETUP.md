@@ -220,6 +220,8 @@ After a correct Salish setup, `GET /api/brand-config` should look like:
 }
 ```
 
+Per-org colors are separate from that deploy brand. After operators sign in, a company admin can set a primary color (and an optional sidebar logo URL) under **Settings → Company appearance**. That restyles the indigo chrome for that PM company only. It does **not** change `VITE_PRODUCT_NAME` or the login screen. Storage is `pm_companies.theme` (migration `scripts/migrations/010_add_pm_companies_theme.sql`).
+
 ---
 
 ## Database Utility (db-util) Setup

@@ -12,6 +12,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 | Config seams | Brand, locale display, WA/Seattle jurisdiction packs, shared VAPI/maintenance phone |
 | Operator hygiene | Example DB env file, documented secrets handling, no silent hardcoded client Supabase fallbacks |
 | E1 WA/Seattle pack + calculator tests | 2025/2026 RCW 59.18 notice math, Seattle **180-day** housing-cost overlay (SMC 7.24.030), statute citations, pack-driven calculator coverage. The 30-day subsidized rent-increase path is encoded in the pack only — we do not yet track subsidy on leases or units (E11). |
+| E2 Per-org themes | After login, a PM company’s primary color restyles the existing indigo chrome; optional logo URL overrides the sidebar mark. Login and `VITE_PRODUCT_NAME` stay deploy-wide. Settings → Company appearance (company/global admin with a `pmc_id`). |
 
 ## Partial
 
@@ -26,7 +27,6 @@ This list is intentionally short. Finish or cut items before expanding it.
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| E2 | Brand / white-label polish | Per-org themes beyond env overrides |
 | E3 | Phone number resources + IVR purposes | Multi-number / purpose model |
 | E4 | Payments | e.g. Stripe — rent, deposits, fees |
 | E5 | Listing syndication | Export vacancies to major channels |

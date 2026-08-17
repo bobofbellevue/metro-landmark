@@ -26,6 +26,7 @@ dotenv.config();
 // Import real API handlers (only import what exists)
 import loginHandler from './api/login.js';
 import brandConfigHandler from './api/brand-config.js';
+import orgThemeHandler from './api/org-theme.js';
 import convertPDFHandler from './api/documents/convert-pdf-to-json.js';
 import convertDocHandler from './api/documents/convert-doc-to-images.js';
 import measureFieldPositionsHandler from './api/documents/measure-field-positions.js';
@@ -40,6 +41,24 @@ app.get('/api/brand-config', async (req, res) => {
     await brandConfigHandler(req, res);
   } catch (error) {
     console.error('Brand config error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.get('/api/org-theme', async (req, res) => {
+  try {
+    await orgThemeHandler(req, res);
+  } catch (error) {
+    console.error('Org theme error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.put('/api/org-theme', async (req, res) => {
+  try {
+    await orgThemeHandler(req, res);
+  } catch (error) {
+    console.error('Org theme error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });

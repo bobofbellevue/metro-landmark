@@ -88,6 +88,7 @@ Integration tests under `tests/integration/` need database credentials and the s
 | Concern | Module |
 |---------|--------|
 | Brand | `src/config/brand.js`, `src/config/brand-derive.js`, `api/utils/brand.js` |
+| Per-org chrome theme | `src/utils/org-theme.js`, `api/org-theme.js` |
 | Locale / currency display | `src/config/locale.js` |
 | Jurisdiction packs (WA + Seattle) | `src/jurisdictions/` |
 | Voice / maintenance phone | `src/config/phones.js`, `api/utils/phones.js` |

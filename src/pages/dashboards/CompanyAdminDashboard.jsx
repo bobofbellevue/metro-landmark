@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
-import { Building2, Home, FileText, Wrench, Users, TrendingUp, AlertCircle, Clock } from 'lucide-react';
+import { Building2, Home, FileText, Wrench, Users, TrendingUp, AlertCircle, Clock, Palette } from 'lucide-react';
 import { supabase } from '../../lib/supabase.js';
 import { AuthContext, SidebarContext } from '../../contexts';
 import { Card } from '../../components/ui';
@@ -183,6 +183,21 @@ export default function CompanyAdminDashboard() {
                 <StatCard icon={<Clock />} title="Upcoming Renewals" value={stats?.upcomingRenewals || 0} page="Leases" color="yellow" />
                 <StatCard icon={<TrendingUp />} title="Total Maintenance" value={stats?.totalMaintenance || 0} page="Maintenance" color="blue" />
             </div>
+
+            <Card title="Company appearance">
+                <p className="text-sm text-gray-600">
+                    Set this company&apos;s colors and optional sidebar logo. Login art and the
+                    product name stay deploy-wide.
+                </p>
+                <button
+                    type="button"
+                    onClick={() => setActivePage('Settings')}
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700"
+                >
+                    <Palette size={16} />
+                    Edit appearance
+                </button>
+            </Card>
 
             {/* Company Overview */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

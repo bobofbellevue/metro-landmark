@@ -23,6 +23,10 @@
  *   /brand/salish-landmark-background.jpg
  *
  * Restart the Vite dev server after changing local VITE_* values.
+ *
+ * Per-org chrome (colors / optional sidebar logo) is stored on
+ * `pm_companies.theme` and applied after login — see `src/utils/org-theme.js`.
+ * That does not change the product name.
  */
 import defaultBackground from '../assets/metro-landmark-background.jpg';
 import defaultLogo from '../assets/metro-landmark-logo.png';

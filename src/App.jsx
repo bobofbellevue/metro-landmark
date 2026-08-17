@@ -11,6 +11,8 @@ import {
   writeStoredAuthUser,
   clearStoredAuthUser,
 } from './config/brand.js';
+import { api } from './api.js';
+import { applyOrgTheme, clearOrgTheme } from './utils/org-theme.js';
 
 // Import page-level components (Admin)
 import AdminPage from './pages/AdminPage';
@@ -43,6 +45,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authAttempted, setAuthAttempted] = useState(false);
   const [userType, setUserType] = useState(null); // 'tenant', 'applicant', or 'admin'
+  const [orgTheme, setOrgTheme] = useState(null);
 
   useEffect(() => {
     document.title = brand.productName;
@@ -210,6 +213,38 @@ export default function App() {
     enrichUserProfile();
   }, [user?.user_id, user?.email]); // Only re-run if user_id or email changes
 
+  useEffect(() => {
+    if (!user?.pmc_id) {
+      clearOrgTheme();
+      setOrgTheme(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const loadOrgTheme = async () => {
+      try {
+        const data = await api.get('/org-theme', user);
+        if (cancelled) return;
+        if (data?.success && data.theme) {
+          setOrgTheme(data.theme);
+          applyOrgTheme(data.theme);
+        } else {
+          setOrgTheme(null);
+          clearOrgTheme();
+        }
+      } catch {
+        if (!cancelled) {
+          setOrgTheme(null);
+          clearOrgTheme();
+        }
+      }
+    };
+    loadOrgTheme();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const handleLoginSuccess = async (userData, supabaseSession) => {
     setUser(userData);
     writeStoredAuthUser(JSON.stringify(userData));
@@ -235,17 +270,21 @@ export default function App() {
   const handleLogout = async () => {
     setUser(null);
     setUserType(null);
+    setOrgTheme(null);
+    clearOrgTheme();
     clearStoredAuthUser();
     // Sign out from Supabase Auth as well
     await supabase.auth.signOut();
   };
+
+  const authValue = { user, logout: handleLogout, orgTheme, setOrgTheme };
 
   if (!authAttempted) return null;
 
   // Show loading state while determining user type
   if (user && userType === null) {
     return (
-      <AuthContext.Provider value={{ user, logout: handleLogout }}>
+      <AuthContext.Provider value={authValue}>
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
@@ -257,7 +296,7 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ user, logout: handleLogout }}>
+    <AuthContext.Provider value={authValue}>
       {user ? (
         userType === 'tenant' ? <TenantAppLayout /> :
         userType === 'applicant' ? <ApplicantAppLayout /> :
@@ -523,16 +562,19 @@ function Sidebar() {
 }
 function SidebarHeader() {
     const { expanded, toggleSidebar, mobileOpen } = useContext(SidebarContext);
+    const { orgTheme } = useContext(AuthContext);
+    const sidebarLogo = orgTheme?.logoUrl || brand.logoUrl;
+    const invertLogo = !orgTheme?.logoUrl;
     const isMobileDevice = () => window.innerWidth < 768;
     return (
       <div className="flex items-center justify-between p-4 pb-2">
         <div className={`flex items-center overflow-hidden transition-all ${expanded ? "gap-4" : "gap-0"}`}>
           <div className={`flex-shrink-0 transition-all duration-200 flex items-center justify-center rounded-lg ${expanded ? 'h-16 w-16 bg-indigo-500 p-2' : 'h-16 w-16 bg-indigo-500 p-1.5'}`}>
             <img 
-              src={brand.logoUrl} 
+              src={sidebarLogo} 
               alt={brand.logoAlt} 
               className="h-full w-full"
-              style={{ filter: 'brightness(0) invert(1)' }}
+              style={invertLogo ? { filter: 'brightness(0) invert(1)' } : undefined}
             />
           </div>
           <h2 className={`font-bold transition-opacity duration-200 text-sm leading-tight ${expanded ? 'opacity-100' : 'opacity-0'}`}>{brand.productStackedLine1}<br />{brand.productStackedLine2}</h2>

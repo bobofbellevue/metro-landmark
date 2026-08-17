@@ -643,7 +643,8 @@ async function createTables(sql) {
         is_archived BOOLEAN DEFAULT false,
         archived_at TIMESTAMP,
         archived_by_user_id INTEGER,
-        archive_reason TEXT
+        archive_reason TEXT,
+        theme JSONB
       )
     `;
     await sql`CREATE INDEX IF NOT EXISTS idx_pm_companies_archived ON pm_companies(is_archived, archived_at)`;
@@ -2277,6 +2278,19 @@ async function ensurePropertyJurisdictionColumns(sql) {
   }
 }
 
+async function ensurePmCompaniesThemeColumn(sql) {
+  try {
+    logDetail('Ensuring pm_companies.theme exists...');
+    await sql`ALTER TABLE pm_companies ADD COLUMN IF NOT EXISTS theme JSONB`;
+    logDetail('✅ pm_companies.theme verified/created');
+  } catch (error) {
+    logDetail(`⚠️ Could not ensure pm_companies.theme: ${error.message}`, 'error');
+    if (error.code !== '42701') {
+      throw error;
+    }
+  }
+}
+
 async function ensureVendorColumns(sql) {
   const vendorColumns = [
     {
@@ -2361,6 +2375,7 @@ async function runSchemaMigrations(sql) {
     log('🔄 Running schema migrations...');
     await ensurePropertyJurisdictionColumns(sql);
     await ensureVendorColumns(sql);
+    await ensurePmCompaniesThemeColumn(sql);
     
     // Run SQL migration files from migrations folder
     await runSQLMigrations(sql);

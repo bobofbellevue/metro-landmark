@@ -3,6 +3,7 @@ import { Card } from '../components/ui';
 import { AuthContext } from '../contexts';
 import { supabase } from '../lib/supabase';
 import NotificationPreferences from '../components/NotificationPreferences';
+import OrgThemeSettings from '../components/OrgThemeSettings';
 
 export default function SettingsPage() {
     const { user, setUser } = useContext(AuthContext);
@@ -271,6 +272,8 @@ export default function SettingsPage() {
                     </form>
                 )}
             </Card>
+
+            <OrgThemeSettings />
 
             <NotificationPreferences />
 
