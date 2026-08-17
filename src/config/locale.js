@@ -159,13 +159,50 @@ export function formatCurrency(amount, ctx = {}, options = {}) {
  */
 export function formatCurrencyNumber(amount, ctx = {}, options = {}) {
   if (amount == null || Number.isNaN(Number(amount))) return '';
+  const { number } = formatCurrencyInputParts(amount, ctx, options);
+  return number;
+}
+
+/**
+ * Split a currency amount into the symbol (for a prefix) and the grouped
+ * number (for the text field). Avoids "$" + "$2,100.00" on blur.
+ *
+ * @param {number} amount
+ * @param {LocaleContext} [ctx]
+ * @param {Intl.NumberFormatOptions} [options]
+ * @returns {{ symbol: string, number: string }}
+ */
+export function formatCurrencyInputParts(amount, ctx = {}, options = {}) {
   const locale = resolveFormattingLocale(ctx);
-  return new Intl.NumberFormat(locale, {
-    style: 'decimal',
+  const currency = String(
+    resolveLocaleField('currency', ctx, PRODUCT_LOCALE_DEFAULTS.currency)
+  );
+  const symbol =
+    new Intl.NumberFormat(locale, { style: 'currency', currency })
+      .formatToParts(0)
+      .find((part) => part.type === 'currency')?.value || '$';
+
+  if (amount == null || amount === '' || Number.isNaN(Number(amount))) {
+    return { symbol, number: '' };
+  }
+
+  const { style: _ignoredStyle, currency: _ignoredCurrency, ...rest } = options || {};
+  const parts = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-    ...options,
-  }).format(Number(amount));
+    ...rest,
+  }).formatToParts(Number(amount));
+
+  const number = parts
+    .filter((part) => part.type !== 'currency')
+    .map((part) => part.value)
+    .join('')
+    .replace(/[\p{Sc}]/gu, '')
+    .replace(/^[\s\u00a0\u202f]+|[\s\u00a0\u202f]+$/g, '');
+
+  return { symbol, number };
 }
 
 function isSet(value) {

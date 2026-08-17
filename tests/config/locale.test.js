@@ -4,6 +4,7 @@ import {
   resolveFormattingLocale,
   formatCurrency,
   formatCurrencyNumber,
+  formatCurrencyInputParts,
 } from '../../src/config/locale.js';
 
 describe('locale resolution', () => {
@@ -44,5 +45,14 @@ describe('locale resolution', () => {
     });
     expect(formatted).toBe('2,100.00');
     expect(formatted).not.toMatch(/\$/);
+  });
+
+  test('formatCurrencyInputParts keeps the symbol out of the amount', () => {
+    const parts = formatCurrencyInputParts(2100, {
+      organization: { locale: 'en-US', currency: 'USD' },
+    });
+    expect(parts.symbol).toBe('$');
+    expect(parts.number).toBe('2,100.00');
+    expect(parts.number).not.toMatch(/\$/);
   });
 });

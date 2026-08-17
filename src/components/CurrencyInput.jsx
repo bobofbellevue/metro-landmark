@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { formatCurrency as formatCurrencyAmount, formatCurrencyNumber, localeContextFromBrowser } from '../config/locale.js';
+import { formatCurrency as formatCurrencyAmount, formatCurrencyInputParts, localeContextFromBrowser } from '../config/locale.js';
 
 /**
  * CurrencyInput component
  * - Edits as plain number when focused
- * - Blurred value is grouped with cents; the grey prefix is the only $
+ * - Blurred value is grouped with cents; the prefix is the only currency sign
  * - Uses product/org/property locale resolution (defaults USD / en-US)
  */
 export default function CurrencyInput({
@@ -20,17 +20,13 @@ export default function CurrencyInput({
   const [displayValue, setDisplayValue] = useState('');
   const inputRef = useRef(null);
   const resolvedLocale = localeContext || localeContextFromBrowser();
+  const { symbol: currencySymbol } = formatCurrencyInputParts(null, resolvedLocale);
 
-  // Format number as currency
-  const formatCurrency = (num) => {
+  const formatInputAmount = (num) => {
     if (num === null || num === undefined || num === '') return '';
     const numValue = typeof num === 'string' ? parseFloat(num.replace(/[^0-9.-]/g, '')) : num;
     if (isNaN(numValue)) return '';
-    // Prefix already shows the currency symbol; do not include another in the value.
-    return formatCurrencyNumber(numValue, resolvedLocale, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+    return formatCurrencyInputParts(numValue, resolvedLocale).number;
   };
 
   // Parse currency string to number
@@ -48,7 +44,7 @@ export default function CurrencyInput({
       if (value === null || value === undefined || value === '') {
         setDisplayValue('');
       } else {
-        setDisplayValue(formatCurrency(value));
+        setDisplayValue(formatInputAmount(value));
       }
     }
   }, [value, isFocused]);
@@ -57,7 +53,8 @@ export default function CurrencyInput({
     setIsFocused(true);
     // Show raw number when focused
     if (value !== null && value !== undefined && value !== '') {
-      setDisplayValue(value.toString());
+      const raw = String(value).replace(/[^0-9.-]/g, '');
+      setDisplayValue(raw);
     } else {
       setDisplayValue('');
     }
@@ -68,7 +65,7 @@ export default function CurrencyInput({
     // Format as currency when blurred
     const numValue = parseCurrency(displayValue);
     if (numValue !== null) {
-      setDisplayValue(formatCurrency(numValue));
+      setDisplayValue(formatInputAmount(numValue));
       if (onChange) {
         onChange(numValue);
       }
@@ -132,7 +129,7 @@ export default function CurrencyInput({
       )}
       <div className="relative">
         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none">
-          $
+          {currencySymbol}
         </span>
         <input
           ref={inputRef}
