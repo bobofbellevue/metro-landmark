@@ -1,5 +1,8 @@
 import {
+  buildWorkflowSavePayload,
+  definedRecord,
   hasMeaningfulWorkflowProgress,
+  hydrateWorkflowData,
   LEASE_SCOPED_WORKFLOW_TYPES,
   resolveWorkflowPostAction,
   shouldReloadWorkflowRecord,
@@ -84,5 +87,61 @@ describe('workflowProgressStatus', () => {
 
   test('completed only when markCompleted is true', () => {
     expect(workflowProgressStatus(3, 3, true)).toBe('completed');
+  });
+});
+
+describe('definedRecord', () => {
+  test('drops undefined keys so remount initialData cannot wipe saved fields', () => {
+    expect(definedRecord({ property_id: undefined, unit_id: 3, jurisdiction: 'seattle' })).toEqual({
+      unit_id: 3,
+      jurisdiction: 'seattle',
+    });
+  });
+});
+
+describe('hydrateWorkflowData', () => {
+  test('keeps saved lease and fills lease_id from the row column', () => {
+    expect(
+      hydrateWorkflowData(
+        {
+          lease_id: 42,
+          workflow_data: { lease_id: 42, new_rent: 2100, current_step: 2 },
+        },
+        { property_id: undefined, jurisdiction: 'seattle' }
+      )
+    ).toEqual({
+      lease_id: 42,
+      new_rent: 2100,
+      current_step: 2,
+      jurisdiction: 'seattle',
+    });
+    expect(
+      hydrateWorkflowData({ lease_id: 7, workflow_data: { new_rent: 1800 } }, {})
+    ).toEqual({ lease_id: 7, new_rent: 1800 });
+  });
+});
+
+describe('buildWorkflowSavePayload', () => {
+  test('does not let a stale current_step in workflow data overwrite the step being saved', () => {
+    const payload = buildWorkflowSavePayload({
+      workflowType: 'rent_increase',
+      totalSteps: 4,
+      stepToSave: 2,
+      dataToSave: {
+        lease_id: 42,
+        current_step: 1,
+        new_rent: 2100,
+        status: 'draft',
+      },
+    });
+    expect(payload.current_step).toBe(2);
+    expect(payload.status).toBe('in_progress');
+    expect(payload.workflow_type).toBe('rent_increase');
+    expect(payload.lease_id).toBe(42);
+    expect(payload.workflow_data).toMatchObject({
+      lease_id: 42,
+      new_rent: 2100,
+      current_step: 2,
+    });
   });
 });

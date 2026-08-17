@@ -86,6 +86,92 @@ export function workflowProgressStatus(stepToSave, totalSteps, markCompleted = f
 }
 
 /**
+ * Drop undefined values so a remount's empty initialData cannot wipe
+ * lease/property fields loaded from the saved row.
+ *
+ * @param {Record<string, unknown> | null | undefined} value
+ * @returns {Record<string, unknown>}
+ */
+export function definedRecord(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== undefined)
+  );
+}
+
+/**
+ * Merge a saved workflow row with caller initialData for resume.
+ * Prefer workflow_data, then the lease_id column if the blob omitted it.
+ *
+ * @param {{ workflow_data?: Record<string, unknown>, lease_id?: number | string | null } | null | undefined} workflow
+ * @param {Record<string, unknown> | null | undefined} [initialData]
+ * @returns {Record<string, unknown>}
+ */
+export function hydrateWorkflowData(workflow = {}, initialData = {}) {
+  const blob =
+    workflow?.workflow_data && typeof workflow.workflow_data === 'object'
+      ? workflow.workflow_data
+      : {};
+  const data = {
+    ...blob,
+    ...definedRecord(initialData),
+  };
+  if (
+    (data.lease_id == null || data.lease_id === '') &&
+    workflow?.lease_id != null &&
+    workflow.lease_id !== ''
+  ) {
+    data.lease_id = workflow.lease_id;
+  }
+  return data;
+}
+
+/**
+ * Body for POST/PUT /api/compliance/workflows.
+ * Spread row fields first, then set current_step / workflow_data / status so a
+ * stale current_step inside workflow_data cannot overwrite the step being saved.
+ *
+ * @param {{
+ *   workflowType: string,
+ *   totalSteps: number,
+ *   stepToSave: number,
+ *   markCompleted?: boolean,
+ *   dataToSave?: Record<string, unknown>,
+ * }} opts
+ * @returns {Record<string, unknown>}
+ */
+export function buildWorkflowSavePayload({
+  workflowType,
+  totalSteps,
+  stepToSave,
+  markCompleted = false,
+  dataToSave = {},
+} = {}) {
+  const total = Math.max(1, Number(totalSteps) || 1);
+  const step = Math.min(Math.max(Number(stepToSave) || 1, 1), total);
+  const data = dataToSave && typeof dataToSave === 'object' ? dataToSave : {};
+  const {
+    current_step: _ignoredStep,
+    status: _ignoredStatus,
+    workflow_data: _ignoredBlob,
+    workflow_type: _ignoredType,
+    total_steps: _ignoredTotal,
+    ...rowFields
+  } = data;
+  return {
+    ...rowFields,
+    workflow_type: workflowType,
+    total_steps: total,
+    current_step: step,
+    status: workflowProgressStatus(step, total, markCompleted),
+    workflow_data: {
+      ...data,
+      current_step: step,
+    },
+  };
+}
+
+/**
  * Whether changing the parent workflowId should refetch the row.
  * Skip when the parent just caught up to an id this session already created
  * (otherwise Next remounts/reloads onto Select Lease).

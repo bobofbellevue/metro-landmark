@@ -4,7 +4,13 @@ import { Card } from './ui';
 import DateInput from './DateInput';
 import WorkflowFileField from './WorkflowFileField';
 import { AuthContext } from '../contexts';
-import { hasMeaningfulWorkflowProgress, shouldReloadWorkflowRecord, workflowCloseAction, workflowProgressStatus } from '../utils/compliance-workflow-persistence.js';
+import {
+  buildWorkflowSavePayload,
+  hasMeaningfulWorkflowProgress,
+  hydrateWorkflowData,
+  shouldReloadWorkflowRecord,
+  workflowCloseAction,
+} from '../utils/compliance-workflow-persistence.js';
 import {
   shouldIgnoreWorkflowCancel,
   shouldIgnoreWorkflowNext,
@@ -76,10 +82,7 @@ export default function ComplianceWorkflow({
         const parsed = await readResponseJson(response);
         const result = parsed.data;
         if (parsed.ok && result?.success && result.workflow) {
-          const loadedData = {
-            ...result.workflow.workflow_data,
-            ...initialData
-          };
+          const loadedData = hydrateWorkflowData(result.workflow, initialData);
           const loadedSteps = getSteps ? (getSteps() || []) : getWorkflowSteps(workflowType) || [];
           const totalSteps = loadedSteps.length || result.workflow.total_steps || 1;
           setWorkflowRecord(result.workflow);
@@ -88,7 +91,7 @@ export default function ComplianceWorkflow({
           }
           setCurrentStep(
             resumeStepIndex({
-              currentStep: result.workflow.current_step || 1,
+              currentStep: result.workflow.current_step || loadedData.current_step || 1,
               totalSteps,
               workflowData: loadedData,
               generateThenServe: GENERATE_THEN_SERVE_WORKFLOW_TYPES.has(workflowType),
@@ -211,8 +214,13 @@ export default function ComplianceWorkflow({
     setIsSaving(true);
     try {
       const dataToSave = options.workflowData || workflowData;
-      const stepToSave = step || currentStep;
-      const totalSteps = (getSteps ? getSteps() : steps)?.length || steps.length;
+      const stepToSave = step == null ? currentStep : step;
+      const fromGetSteps = (getSteps ? getSteps() : steps)?.length || 0;
+      const totalSteps =
+        fromGetSteps ||
+        Number(workflowRecord?.total_steps) ||
+        steps.length ||
+        1;
       const markCompleted = options.markCompleted === true;
       const existingId = workflowId || workflowRecord?.workflow_id;
       const meaningful = hasMeaningfulWorkflowProgress(dataToSave, {
@@ -230,18 +238,13 @@ export default function ComplianceWorkflow({
         return false;
       }
 
-      const payload = {
-        workflow_type: workflowType,
-        total_steps: totalSteps,
-        current_step: Math.min(stepToSave, totalSteps),
-        status: workflowProgressStatus(
-          Math.min(stepToSave, totalSteps),
-          totalSteps,
-          markCompleted
-        ),
-        workflow_data: dataToSave,
-        ...dataToSave
-      };
+      const payload = buildWorkflowSavePayload({
+        workflowType,
+        totalSteps,
+        stepToSave,
+        markCompleted,
+        dataToSave,
+      });
 
       let response;
       if (existingId) {
