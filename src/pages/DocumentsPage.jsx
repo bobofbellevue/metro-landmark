@@ -11,8 +11,13 @@ import {
 } from '../config/document-types.js';
 import {
   DOCUMENT_LIST_SELECT,
-  attachDocumentTenantContacts,
+  attachDocumentEntityParties,
+  documentEntityLines,
+  documentLandlordId,
   formatDocumentEntityLabel,
+  indexContactsById,
+  tenantNamesByLeaseId,
+  uniqueIds,
 } from '../utils/document-entity-label.js';
 
 export default function DocumentsPage() {
@@ -107,31 +112,59 @@ export default function DocumentsPage() {
         setDocuments([]);
       } else {
         const rows = data || [];
-        const userIds = [
-          ...new Set(
-            rows
-              .map((doc) => doc.tenant_user_id)
-              .filter((id) => id != null && id !== '')
-          ),
-        ];
-        let contacts = [];
-        if (userIds.length > 0) {
+        const leaseIds = uniqueIds(rows.map((doc) => doc.lease_id));
+        const landlordIds = uniqueIds(rows.map((doc) => documentLandlordId(doc)));
+        const tenantUserIds = uniqueIds(rows.map((doc) => doc.tenant_user_id));
+
+        let tenantsByLeaseId = {};
+        if (leaseIds.length > 0) {
+          const { data: leaseClients } = await supabase
+            .from('lease_clients')
+            .select('lease_id, client_id')
+            .in('lease_id', leaseIds);
+          const clientIds = uniqueIds(
+            (leaseClients || []).map((row) => row.client_id)
+          );
+          let clientContacts = [];
+          if (clientIds.length > 0) {
+            const { data: contactRows } = await supabase
+              .from('contacts')
+              .select('contactable_id, first_name, middle_name, last_name')
+              .eq('contactable_type', 'client')
+              .in('contactable_id', clientIds);
+            clientContacts = contactRows || [];
+          }
+          tenantsByLeaseId = tenantNamesByLeaseId(leaseClients || [], clientContacts);
+        }
+
+        let landlordContactsById = {};
+        if (landlordIds.length > 0) {
+          const { data: landlordContacts } = await supabase
+            .from('contacts')
+            .select('contactable_id, first_name, middle_name, last_name')
+            .eq('contactable_type', 'landlord')
+            .in('contactable_id', landlordIds);
+          landlordContactsById = indexContactsById(landlordContacts || []);
+        }
+
+        let tenantContactsByUserId = {};
+        if (tenantUserIds.length > 0) {
           const { data: userContacts } = await supabase
             .from('contacts')
             .select('contactable_id, first_name, middle_name, last_name')
             .eq('contactable_type', 'user')
-            .in('contactable_id', userIds);
-          contacts = userContacts || [];
-          const found = new Set(contacts.map((c) => String(c.contactable_id)));
-          const missing = userIds.filter((id) => !found.has(String(id)));
+            .in('contactable_id', tenantUserIds);
+          tenantContactsByUserId = indexContactsById(userContacts || []);
+          const found = new Set(Object.keys(tenantContactsByUserId));
+          const missing = tenantUserIds.filter((id) => !found.has(String(id)));
           if (missing.length > 0) {
             const { data: clients } = await supabase
               .from('clients')
               .select('client_id, user_id')
               .in('user_id', missing);
-            const clientIds = (clients || [])
-              .map((client) => client.client_id)
-              .filter((id) => id != null);
+            const clientIds = uniqueIds(
+              (clients || []).map((client) => client.client_id)
+            );
             if (clientIds.length > 0) {
               const { data: clientContacts } = await supabase
                 .from('contacts')
@@ -147,14 +180,21 @@ export default function DocumentsPage() {
               for (const contact of clientContacts || []) {
                 const userId = userIdByClientId.get(String(contact.contactable_id));
                 if (userId != null) {
-                  contacts.push({ ...contact, contactable_id: userId });
+                  tenantContactsByUserId[String(userId)] = contact;
                 }
               }
             }
           }
         }
-        setDocuments(attachDocumentTenantContacts(rows, contacts));
-        setCurrentPage(1); // Reset to first page when filters change
+
+        setDocuments(
+          attachDocumentEntityParties(rows, {
+            tenantsByLeaseId,
+            landlordContactsById,
+            tenantContactsByUserId,
+          })
+        );
+        setCurrentPage(1);
       }
     } catch (error) {
       console.error('Error fetching documents:', error);
@@ -760,10 +800,8 @@ export default function DocumentsPage() {
                           {formatDocumentTypeLabel(doc.document_type)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-900">
-                          {formatDocumentEntityLabel(doc) || '—'}
-                        </span>
+                      <td className="px-6 py-4 align-top">
+                        <DocumentEntityCell doc={doc} />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatFileSize(doc.file_size)}
@@ -876,6 +914,25 @@ export default function DocumentsPage() {
           </div>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function DocumentEntityCell({ doc }) {
+  const lines = documentEntityLines(doc);
+  if (lines.length === 0) {
+    return <span className="text-sm text-gray-400">—</span>;
+  }
+  return (
+    <div className="min-w-[12rem] max-w-[20rem] space-y-1.5 text-sm text-gray-900">
+      {lines.map((line) => (
+        <div key={line.role} className="break-words whitespace-normal">
+          <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+            {line.role}
+          </div>
+          <div>{line.label}</div>
+        </div>
+      ))}
     </div>
   );
 }
