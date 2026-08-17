@@ -1,41 +1,42 @@
 import {
+  attachDocumentEntityParties,
   attachDocumentTenantContacts,
+  documentEntityLines,
+  documentLandlordLabel,
   documentLocationLabel,
   documentPersonLabel,
   formatDocumentEntityLabel,
+  tenantNamesByLeaseId,
 } from '../../src/utils/document-entity-label.js';
 
-describe('formatDocumentEntityLabel', () => {
-  test('uses property and unit from a nested lease join', () => {
-    expect(
-      formatDocumentEntityLabel({
-        lease_id: 72,
-        lease: {
-          units: {
-            unit_number: '4B',
-            properties: { property_name: 'Oak Street' },
-          },
-        },
-      })
-    ).toBe('Oak Street — Unit 4B');
-  });
+const leaseDoc = {
+  lease_id: 72,
+  lease: {
+    landlord_id: 5,
+    units: {
+      unit_number: '4B',
+      properties: { property_name: 'Oak Street', landlord_id: 5 },
+    },
+  },
+};
 
-  test('uses a direct property join when there is no lease', () => {
-    expect(
-      formatDocumentEntityLabel({
-        property_id: 8,
-        property: { property_name: 'Pine Court' },
-      })
-    ).toBe('Pine Court');
-  });
-
-  test('uses the tenant contact name when there is no location', () => {
-    expect(
-      formatDocumentEntityLabel({
-        tenant_user_id: 19,
-        tenant_contact: { first_name: 'Jane', last_name: 'Smith' },
-      })
-    ).toBe('Jane Smith');
+describe('documentEntityLines', () => {
+  test('returns property, tenants, and landlord as separate lines', () => {
+    const lines = documentEntityLines({
+      ...leaseDoc,
+      tenant_names: 'Jane Smith, John Doe',
+      landlord_contact: { first_name: 'Pat', last_name: 'Lee' },
+    });
+    expect(lines).toEqual([
+      { role: 'Property', label: 'Oak Street — Unit 4B' },
+      { role: 'Tenants', label: 'Jane Smith, John Doe' },
+      { role: 'Landlord', label: 'Pat Lee' },
+    ]);
+    expect(formatDocumentEntityLabel({
+      ...leaseDoc,
+      tenant_names: 'Jane Smith, John Doe',
+      landlord_contact: { first_name: 'Pat', last_name: 'Lee' },
+    })).toBe('Oak Street — Unit 4B · Jane Smith, John Doe · Pat Lee');
   });
 
   test('does not surface internal ids when joins are missing', () => {
@@ -44,6 +45,40 @@ describe('formatDocumentEntityLabel', () => {
     );
     expect(documentLocationLabel({ lease_id: 72 })).toBe('');
     expect(documentPersonLabel({ tenant_user_id: 19 })).toBe('');
+    expect(documentLandlordLabel({ landlord_id: 5 })).toBe('');
+  });
+});
+
+describe('attachDocumentEntityParties', () => {
+  test('fills tenant names from the lease and landlord from contacts', () => {
+    const [doc] = attachDocumentEntityParties([leaseDoc], {
+      tenantsByLeaseId: { 72: ['Jane Smith'] },
+      landlordContactsById: {
+        5: { first_name: 'Pat', last_name: 'Lee' },
+      },
+    });
+    expect(documentEntityLines(doc)).toEqual([
+      { role: 'Property', label: 'Oak Street — Unit 4B' },
+      { role: 'Tenant', label: 'Jane Smith' },
+      { role: 'Landlord', label: 'Pat Lee' },
+    ]);
+  });
+});
+
+describe('tenantNamesByLeaseId', () => {
+  test('groups client contact names by lease', () => {
+    expect(
+      tenantNamesByLeaseId(
+        [
+          { lease_id: 72, client_id: 1 },
+          { lease_id: 72, client_id: 2 },
+        ],
+        [
+          { contactable_id: 1, first_name: 'Jane', last_name: 'Smith' },
+          { contactable_id: 2, first_name: 'John', last_name: 'Doe' },
+        ]
+      )
+    ).toEqual({ 72: ['Jane Smith', 'John Doe'] });
   });
 });
 
