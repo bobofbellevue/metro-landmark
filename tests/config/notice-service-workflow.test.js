@@ -127,6 +127,50 @@ describe('resumeStepIndex', () => {
       })
     ).toBe(4);
   });
+
+  test('skips Select Lease when a lease is already saved but step is 1', () => {
+    expect(
+      resumeStepIndex({
+        currentStep: 1,
+        totalSteps: 4,
+        workflowData: { lease_id: 42, new_rent: 2100 },
+        generateThenServe: true,
+      })
+    ).toBe(2);
+  });
+
+  test('keeps Generate Notice when that is the saved step', () => {
+    expect(
+      resumeStepIndex({
+        currentStep: 3,
+        totalSteps: 4,
+        workflowData: { lease_id: 42, new_rent: 2100, effective_date: '2026-10-01' },
+        generateThenServe: true,
+      })
+    ).toBe(3);
+  });
+
+  test('uses workflow_data.current_step when the column is stale', () => {
+    expect(
+      resumeStepIndex({
+        currentStep: 1,
+        totalSteps: 4,
+        workflowData: { lease_id: 42, current_step: 3 },
+        generateThenServe: true,
+      })
+    ).toBe(3);
+  });
+
+  test('opens the service step when a notice PDF exists but step is 1', () => {
+    expect(
+      resumeStepIndex({
+        currentStep: 1,
+        totalSteps: 4,
+        workflowData: { lease_id: 42, notice_document_id: 9 },
+        generateThenServe: true,
+      })
+    ).toBe(4);
+  });
 });
 
 describe('fingerprints and mailto', () => {

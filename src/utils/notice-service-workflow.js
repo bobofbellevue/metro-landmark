@@ -74,8 +74,9 @@ export function validateNoticeService(data = {}, ctx = {}) {
 }
 
 /**
- * Resume onto Generate Notice when the saved step is Service but no PDF exists
- * (legacy in-progress workflows that stored Generate as the last step).
+ * Resume onto the saved step. Skip Select Lease when a lease (or notice PDF)
+ * is already on the row — stale current_step=1 is common after Close.
+ * Drop back to Generate Notice when the saved step is Service but no PDF exists.
  *
  * Steps are 1-indexed.
  *
@@ -89,8 +90,24 @@ export function resumeStepIndex({
   generateThenServe = false,
 } = {}) {
   const total = Math.max(1, Number(totalSteps) || 1);
-  const step = Number(currentStep) || 1;
-  let next = Math.min(Math.max(step, 1), total);
+  const saved = Math.max(
+    Number(currentStep) || 0,
+    Number(workflowData?.current_step) || 0
+  );
+  let next = Math.min(Math.max(saved || 1, 1), total);
+  const hasLease =
+    workflowData?.lease_id != null && String(workflowData.lease_id).trim() !== '';
+
+  // Stale rows often keep current_step=1 after Select Lease → Next. If a lease
+  // (or notice PDF) is already saved, skip the picker instead of restarting.
+  if (next <= 1 && total >= 2) {
+    if (generateThenServe && workflowData?.notice_document_id) {
+      next = total;
+    } else if (hasLease) {
+      next = 2;
+    }
+  }
+
   if (
     generateThenServe &&
     !workflowData?.notice_document_id &&
