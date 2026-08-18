@@ -263,7 +263,10 @@ export default function ManagerDashboard() {
             yellow: 'text-yellow-600 bg-yellow-100',
             orange: 'text-orange-600 bg-orange-100',
             red: 'text-red-600 bg-red-100',
+            purple: 'text-purple-600 bg-purple-100',
         };
+        const palette = colorClasses[color] || colorClasses.indigo;
+        const valueColor = palette.split(' ')[0];
 
         return (
             <div
@@ -272,12 +275,12 @@ export default function ManagerDashboard() {
             >
                 <Card className={`bg-white ${page ? 'hover:shadow-xl transition-shadow duration-200' : ''}`}>
                     <div className="flex items-center">
-                        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
+                        <div className={`p-3 rounded-lg ${palette}`}>
                             {React.cloneElement(icon, { size: 24 })}
                         </div>
                         <div className="ml-4">
                             <p className="text-sm font-medium text-gray-500">{title}</p>
-                            <p className={`text-2xl font-bold ${colorClasses[color].split(' ')[0]}`}>{value}</p>
+                            <p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
                         </div>
                     </div>
                 </Card>
