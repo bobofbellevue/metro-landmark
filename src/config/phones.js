@@ -1,30 +1,31 @@
 /**
- * Phone / telephony configuration (Workstream 2).
+ * Phone / telephony configuration.
  *
- * Current model: one shared VAPI.ai number for tenant maintenance (and
- * related voice) during development. Multi-number org/property resources
- * are Phase E (see METRO_LANDMARK_OSS_TRANSITION_PLAN §8).
+ * Deploy env still supplies a shared VAPI DID for tenant maintenance and
+ * vendor dispatch. Per-org numbers and IVR purposes (roadmap E3) live in
+ * `phone_resources` and are resolved at runtime via `/api/phone-resources`.
  *
  * Override via Vercel / .env.local:
  *   VITE_TENANT_MAINTENANCE_PHONE=+12064017109
  *   VITE_VOICE_BOT_PHONE=+12064017109   (alias)
+ *   VITE_VENDOR_DISPATCH_PHONE=+1...     (optional; else shared voice DID)
+ *   VITE_MARKETING_PHONE=+1...
+ *   VITE_APPOINTMENTS_PHONE=+1...
  *
- * Server-side outbound calling still uses VAPI_PHONE_NUMBER_ID (UUID) and
- * optional VAPI_PHONE_NUMBER (E.164) — see api/utils/phones.js.
+ * Server-side outbound calling still uses VAPI_PHONE_NUMBER_ID (UUID) unless
+ * a phone_resources row stores a per-purpose Vapi resource id.
  */
+import {
+  PHONE_PURPOSE_LIST,
+  PHONE_PURPOSES,
+} from '../utils/phone-resource-resolve.js';
 
 const env =
   typeof import.meta !== 'undefined' && import.meta.env
     ? import.meta.env
     : {};
 
-/** Purpose ids for the future multi-number model */
-export const PHONE_PURPOSES = Object.freeze({
-  TENANT_MAINTENANCE: 'tenant_maintenance',
-  VENDOR_DISPATCH: 'vendor_dispatch',
-  MARKETING: 'marketing',
-  APPOINTMENTS: 'appointments',
-});
+export { PHONE_PURPOSE_LIST, PHONE_PURPOSES };
 
 /**
  * Shared reference/dev VAPI number (Seattle 206).
@@ -85,28 +86,67 @@ export function toTelHref(e164OrRaw) {
   return e164 ? `tel:${e164}` : '';
 }
 
+export function envPhoneForPurpose(purpose, source = env) {
+  if (purpose === PHONE_PURPOSES.MARKETING) {
+    return toE164(firstNonEmpty(source.VITE_MARKETING_PHONE, source.MARKETING_PHONE));
+  }
+  if (purpose === PHONE_PURPOSES.APPOINTMENTS) {
+    return toE164(
+      firstNonEmpty(source.VITE_APPOINTMENTS_PHONE, source.APPOINTMENTS_PHONE)
+    );
+  }
+  if (purpose === PHONE_PURPOSES.VENDOR_DISPATCH) {
+    return toE164(
+      firstNonEmpty(
+        source.VITE_VENDOR_DISPATCH_PHONE,
+        source.VENDOR_DISPATCH_PHONE,
+        source.VITE_VAPI_PHONE_NUMBER,
+        source.VAPI_PHONE_NUMBER
+      )
+    );
+  }
+  return toE164(
+    firstNonEmpty(
+      source.VITE_TENANT_MAINTENANCE_PHONE,
+      source.TENANT_MAINTENANCE_PHONE,
+      source.VITE_VOICE_BOT_PHONE,
+      source.VOICE_BOT_PHONE,
+      source.VITE_VAPI_PHONE_NUMBER,
+      source.VAPI_PHONE_NUMBER
+    )
+  );
+}
+
 /**
- * Resolve the configured phone for a purpose.
- * Today only tenant_maintenance (and aliases) are wired; others fall through
- * to the same shared number so call sites can adopt purpose ids early.
+ * Env-only resolve (no PMC table). Used before `/api/phone-resources` loads
+ * and as the deploy fallback.
  * @param {string} [purpose]
  * @returns {string} E.164 or empty
  */
 export function getPhoneForPurpose(purpose = PHONE_PURPOSES.TENANT_MAINTENANCE) {
-  const fromEnv = firstNonEmpty(
-    env.VITE_TENANT_MAINTENANCE_PHONE,
-    env.VITE_VOICE_BOT_PHONE,
-    env.VITE_VAPI_PHONE_NUMBER
-  );
-
-  // All current purposes share the single VAPI number.
-  void purpose;
-  return toE164(fromEnv || DEFAULT_TENANT_MAINTENANCE_PHONE_E164);
+  const fromEnv = envPhoneForPurpose(purpose);
+  if (fromEnv) return fromEnv;
+  if (
+    purpose === PHONE_PURPOSES.TENANT_MAINTENANCE ||
+    purpose === PHONE_PURPOSES.VENDOR_DISPATCH
+  ) {
+    return DEFAULT_TENANT_MAINTENANCE_PHONE_E164;
+  }
+  return '';
 }
 
 /** Tenant-facing maintenance / voice-bot number (E.164). */
 export function getTenantMaintenancePhoneE164() {
   return getPhoneForPurpose(PHONE_PURPOSES.TENANT_MAINTENANCE);
+}
+
+export function phoneView(e164OrRaw) {
+  const e164 = toE164(e164OrRaw);
+  return {
+    e164,
+    display: formatPhoneDisplay(e164),
+    telHref: toTelHref(e164),
+  };
 }
 
 export const phones = {

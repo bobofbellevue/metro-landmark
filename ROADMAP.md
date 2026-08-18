@@ -13,6 +13,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 | Operator hygiene | Example DB env file, documented secrets handling, no silent hardcoded client Supabase fallbacks |
 | E1 WA/Seattle pack + calculator tests | 2025/2026 RCW 59.18 notice math, Seattle **180-day** housing-cost overlay (SMC 7.24.030), statute citations, pack-driven calculator coverage. The 30-day subsidized rent-increase path is encoded in the pack only — we do not yet track subsidy on leases or units (E11). |
 | E2 Per-org themes | After login, a PM company’s primary color restyles the existing indigo chrome; optional logo URL overrides the sidebar mark. Login and `VITE_PRODUCT_NAME` stay deploy-wide. Settings → Company appearance (company/global admin with a `pmc_id`). |
+| E3 Phone number resources + IVR purposes | `phone_resources` rows assign DIDs (and optional Vapi UUIDs) to tenant maintenance, vendor dispatch, marketing, and appointments. Company/global admins edit under **Admin → Phone numbers**. Tenant “Call Voice Bot” and outbound vendor calls resolve PMC then deploy/env fallback. Marketing/appointments do not inherit the maintenance DID. |
 
 ## Partial
 
@@ -20,14 +21,13 @@ This list is intentionally short. Finish or cut items before expanding it.
 |------|--------|
 | Compliance Center | Rent Increase, Lease Renewal, Eviction, Lease Termination, and Tenant Screening are operator-ready. Remaining catalog tiles are leftover stubs (E13–E17). |
 | Documents | Staff registry + type catalog exist; contextual panels incomplete across landlord/maintenance/portals |
-| Voice / chat maintenance | Works with Vapi/OpenAI when configured; single shared number model |
+| Voice / chat maintenance | Works with Vapi/OpenAI when configured; numbers can be assigned per purpose (E3), with a shared env DID as fallback |
 | Auth | Login exists; API authorization is not hardened for hostile multi-tenant internet deploy (E7) |
 
 ## Planned
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| E3 | Phone number resources + IVR purposes | Multi-number / purpose model |
 | E4 | Payments | e.g. Stripe — rent, deposits, fees |
 | E5 | Listing syndication | Export vacancies to major channels |
 | E6 | Additional city packs | Tacoma, Bellingham, Federal Way, Olympia (and others) as **child packs of WA**, only when official citations exist and an operator needs them. Do not copy RHAWA PDFs. Design: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#rent-increase-completeness--seattle-cities-forms-exemptions-2026-08-16) |

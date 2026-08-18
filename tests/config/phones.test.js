@@ -27,5 +27,7 @@ describe('phone config', () => {
     expect(getTenantMaintenancePhoneE164()).toBe('+12064017109');
     expect(getPhoneForPurpose(PHONE_PURPOSES.TENANT_MAINTENANCE)).toBe('+12064017109');
     expect(getPhoneForPurpose(PHONE_PURPOSES.VENDOR_DISPATCH)).toBe('+12064017109');
+    expect(getPhoneForPurpose(PHONE_PURPOSES.MARKETING)).toBe('');
+    expect(getPhoneForPurpose(PHONE_PURPOSES.APPOINTMENTS)).toBe('');
   });
 });

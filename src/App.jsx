@@ -46,6 +46,7 @@ export default function App() {
   const [authAttempted, setAuthAttempted] = useState(false);
   const [userType, setUserType] = useState(null); // 'tenant', 'applicant', or 'admin'
   const [orgTheme, setOrgTheme] = useState(null);
+  const [resolvedPhones, setResolvedPhones] = useState(null);
 
   useEffect(() => {
     document.title = brand.productName;
@@ -245,6 +246,29 @@ export default function App() {
     };
   }, [user]);
 
+  useEffect(() => {
+    if (!user) {
+      setResolvedPhones(null);
+      return undefined;
+    }
+    let cancelled = false;
+    const loadPhones = async () => {
+      try {
+        const data = await api.get('/phone-resources', user);
+        if (cancelled) return;
+        if (data?.success && data.resolved) {
+          setResolvedPhones(data.resolved);
+        }
+      } catch {
+        if (!cancelled) setResolvedPhones(null);
+      }
+    };
+    loadPhones();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const handleLoginSuccess = async (userData, supabaseSession) => {
     setUser(userData);
     writeStoredAuthUser(JSON.stringify(userData));
@@ -272,12 +296,13 @@ export default function App() {
     setUserType(null);
     setOrgTheme(null);
     clearOrgTheme();
+    setResolvedPhones(null);
     clearStoredAuthUser();
     // Sign out from Supabase Auth as well
     await supabase.auth.signOut();
   };
 
-  const authValue = { user, logout: handleLogout, orgTheme, setOrgTheme };
+  const authValue = { user, logout: handleLogout, orgTheme, setOrgTheme, resolvedPhones, setResolvedPhones };
 
   if (!authAttempted) return null;
 

@@ -64,7 +64,9 @@ Useful client overrides (also documented in the deployment guide):
 | `VITE_PRODUCT_NAME` | Product display name (derives heading, sidebar lines, auth storage key) |
 | `VITE_LOGO` | JSON logo asset: `{"logo":[{"path":"/brand/..."},{"alt":"..."}]}` (`alt` optional) |
 | `VITE_BACKGROUND` | JSON background asset: `{"background":[{"path":"/brand/..."},{"alt":"..."}]}` (`alt` optional) |
-| `VITE_TENANT_MAINTENANCE_PHONE` | Tenant “Call Voice Bot” number (E.164) |
+| `VITE_TENANT_MAINTENANCE_PHONE` | Tenant “Call Voice Bot” fallback (E.164); per-company numbers live in Admin → Phone numbers |
+| `VITE_VENDOR_DISPATCH_PHONE` | Optional vendor-dispatch DID; otherwise the shared voice number |
+| `VITE_MARKETING_PHONE` / `VITE_APPOINTMENTS_PHONE` | Optional; not inherited from maintenance |
 
 ### 3. Run locally
 
@@ -91,7 +93,7 @@ Integration tests under `tests/integration/` need database credentials and the s
 | Per-org chrome theme | `src/utils/org-theme.js`, `api/org-theme.js` |
 | Locale / currency display | `src/config/locale.js` |
 | Jurisdiction packs (WA + Seattle) | `src/jurisdictions/` |
-| Voice / maintenance phone | `src/config/phones.js`, `api/utils/phones.js` |
+| Voice / maintenance phone | `src/config/phones.js`, `api/utils/phones.js`, `src/utils/phone-resource-resolve.js` |
 
 ## Try Metro Landmark
 

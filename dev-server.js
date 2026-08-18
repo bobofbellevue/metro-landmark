@@ -27,6 +27,7 @@ dotenv.config();
 import loginHandler from './api/login.js';
 import brandConfigHandler from './api/brand-config.js';
 import orgThemeHandler from './api/org-theme.js';
+import phoneResourcesHandler from './api/phone-resources.js';
 import convertPDFHandler from './api/documents/convert-pdf-to-json.js';
 import convertDocHandler from './api/documents/convert-doc-to-images.js';
 import measureFieldPositionsHandler from './api/documents/measure-field-positions.js';
@@ -59,6 +60,33 @@ app.put('/api/org-theme', async (req, res) => {
     await orgThemeHandler(req, res);
   } catch (error) {
     console.error('Org theme error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.get('/api/phone-resources', async (req, res) => {
+  try {
+    await phoneResourcesHandler(req, res);
+  } catch (error) {
+    console.error('Phone resources error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.put('/api/phone-resources', async (req, res) => {
+  try {
+    await phoneResourcesHandler(req, res);
+  } catch (error) {
+    console.error('Phone resources error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.delete('/api/phone-resources', async (req, res) => {
+  try {
+    await phoneResourcesHandler(req, res);
+  } catch (error) {
+    console.error('Phone resources error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });

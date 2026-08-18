@@ -22,7 +22,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { isDebugMode, getGlobalAdminPhones } from '../voice/vapi-config.js';
-import { getVapiPhoneNumberE164, getVapiPhoneNumberId } from '../utils/phones.js';
+import { getVapiPhoneNumberE164, getVapiPhoneNumberId, resolveOutboundVapiPhoneNumberId } from '../utils/phones.js';
 import OpenAI from 'openai';
 import { brand } from '../utils/brand.js';
 
@@ -648,11 +648,16 @@ export default async function handler(req, res) {
  */
 async function makeVendorCall({ vendor, request, vendorPhone, supabase, openai, isDebugMode = false }) {
   try {
-    // Get phone number ID for outbound calls
-    // Vapi.ai requires phoneNumberId (UUID) - this is the ID that Vapi.ai assigns to your phone number in their system
-    // It is NOT the phone number itself (like +12064017109), but rather a UUID like: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-    // To find it: Go to Vapi.ai dashboard → Phone Numbers → Find your phone number → Copy its ID/UUID
-    const phoneNumberId = getVapiPhoneNumberId();
+    const unitNumber = request.units?.unit_number || 'Not specified';
+    const propertyName = request.units?.properties?.property_name || 'Not specified';
+    const propertyType = request.units?.properties?.property_type || 'Not specified';
+    const propertyId = request.units?.properties?.property_id;
+    const landlordId = request.units?.properties?.landlord_id;
+    const pmcId = request.units?.properties?.pmc_id;
+    const managerId = request.units?.properties?.manager_id;
+
+    // Vapi.ai requires phoneNumberId (UUID of the purchased DID in their dashboard).
+    const phoneNumberId = await resolveOutboundVapiPhoneNumberId(supabase, pmcId);
     
     if (!phoneNumberId) {
       throw new Error('VAPI_PHONE_NUMBER_ID is not set. Cannot make outbound call. This must be the UUID of your phone number from Vapi.ai dashboard, not the phone number itself.');
@@ -663,14 +668,6 @@ async function makeVendorCall({ vendor, request, vendorPhone, supabase, openai, 
     if (!uuidRegex.test(phoneNumberId)) {
       throw new Error(`VAPI_PHONE_NUMBER_ID must be a UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx), but got: ${phoneNumberId.substring(0, 30)}... This should be the ID/UUID of your phone number from the Vapi.ai dashboard, not the phone number itself (like +12064017109). To find it: Vapi.ai dashboard → Phone Numbers → Your phone number → Copy the ID.`);
     }
-    
-    const unitNumber = request.units?.unit_number || 'Not specified';
-    const propertyName = request.units?.properties?.property_name || 'Not specified';
-    const propertyType = request.units?.properties?.property_type || 'Not specified';
-    const propertyId = request.units?.properties?.property_id;
-    const landlordId = request.units?.properties?.landlord_id;
-    const pmcId = request.units?.properties?.pmc_id;
-    const managerId = request.units?.properties?.manager_id;
 
     // Fetch additional property details for voicemail
     let propertyAddress = 'Not specified';

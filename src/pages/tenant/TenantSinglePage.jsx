@@ -8,7 +8,7 @@ import { getPropertyContactInfo } from '../../utils/propertyContactInfo.js';
 import DocumentManagement from '../../components/DocumentManagement';
 import DateInput from '../../components/DateInput';
 import ContactMethodTypeInput from '../../components/ContactMethodTypeInput';
-import { phones } from '../../config/phones.js';
+import { phones, phoneView } from '../../config/phones.js';
 
 // CreateRequestModal component (copied from TenantMaintenance.jsx)
 const CreateRequestModal = ({ onClose, onUpdateSuccess, user }) => {
@@ -198,7 +198,10 @@ const CreateRequestModal = ({ onClose, onUpdateSuccess, user }) => {
 };
 
 export default function TenantSinglePage() {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, resolvedPhones } = useContext(AuthContext);
+  const maintenancePhone = phoneView(
+    resolvedPhones?.tenant_maintenance?.e164 || phones.tenantMaintenanceE164
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [properties, setProperties] = useState([]);
@@ -1099,7 +1102,7 @@ export default function TenantSinglePage() {
             {/* Three Options for Requesting Help */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               {/* Voice Bot Phone Number */}
-              {phones.tenantMaintenanceTelHref && (
+              {maintenancePhone.telHref && (
               <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200">
                 <div className="flex flex-col items-center text-center p-3">
                   <div className="flex items-center justify-center w-10 h-10 bg-indigo-100 rounded-full mb-2">
@@ -1110,11 +1113,11 @@ export default function TenantSinglePage() {
                     Speak with our AI assistant 24/7
                   </p>
                   <a 
-                    href={phones.tenantMaintenanceTelHref} 
+                    href={maintenancePhone.telHref} 
                     className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"
                   >
                     <Phone className="w-4 h-4" />
-                    {phones.tenantMaintenanceDisplay}
+                    {maintenancePhone.display}
                   </a>
                 </div>
               </Card>

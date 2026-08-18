@@ -649,6 +649,26 @@ async function createTables(sql) {
     `;
     await sql`CREATE INDEX IF NOT EXISTS idx_pm_companies_archived ON pm_companies(is_archived, archived_at)`;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS phone_resources (
+        phone_resource_id SERIAL PRIMARY KEY,
+        pmc_id INTEGER REFERENCES pm_companies(pmc_id) ON DELETE CASCADE,
+        purpose VARCHAR(50) NOT NULL,
+        e164 VARCHAR(32) NOT NULL,
+        vapi_phone_number_id VARCHAR(64),
+        label VARCHAR(255),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT phone_resources_purpose_check CHECK (
+          purpose IN ('tenant_maintenance', 'vendor_dispatch', 'marketing', 'appointments')
+        )
+      )
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_phone_resources_pmc_purpose ON phone_resources (pmc_id, purpose) WHERE is_active = true AND pmc_id IS NOT NULL`;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_phone_resources_system_purpose ON phone_resources (purpose) WHERE is_active = true AND pmc_id IS NULL`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_phone_resources_pmc ON phone_resources (pmc_id) WHERE pmc_id IS NOT NULL`;
+
     // Create users table (depends on pm_companies)
     await sql`
       CREATE TABLE IF NOT EXISTS users (
@@ -2291,6 +2311,31 @@ async function ensurePmCompaniesThemeColumn(sql) {
   }
 }
 
+async function ensurePhoneResourcesTable(sql) {
+  try {
+    logDetail('Ensuring phone_resources table exists...');
+    await sql`
+      CREATE TABLE IF NOT EXISTS phone_resources (
+        phone_resource_id SERIAL PRIMARY KEY,
+        pmc_id INTEGER REFERENCES pm_companies(pmc_id) ON DELETE CASCADE,
+        purpose VARCHAR(50) NOT NULL,
+        e164 VARCHAR(32) NOT NULL,
+        vapi_phone_number_id VARCHAR(64),
+        label VARCHAR(255),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_phone_resources_pmc_purpose ON phone_resources (pmc_id, purpose) WHERE is_active = true AND pmc_id IS NOT NULL`;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_phone_resources_system_purpose ON phone_resources (purpose) WHERE is_active = true AND pmc_id IS NULL`;
+    logDetail('✅ phone_resources verified/created');
+  } catch (error) {
+    logDetail(`⚠️ Could not ensure phone_resources: ${error.message}`, 'error');
+    throw error;
+  }
+}
+
 async function ensureVendorColumns(sql) {
   const vendorColumns = [
     {
@@ -2376,6 +2421,7 @@ async function runSchemaMigrations(sql) {
     await ensurePropertyJurisdictionColumns(sql);
     await ensureVendorColumns(sql);
     await ensurePmCompaniesThemeColumn(sql);
+    await ensurePhoneResourcesTable(sql);
     
     // Run SQL migration files from migrations folder
     await runSQLMigrations(sql);

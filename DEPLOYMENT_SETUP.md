@@ -178,9 +178,16 @@ VAPI_PHONE_NUMBER=+12064017109
 # Tenant UI "Call Voice Bot" number (browser). Defaults to reference 206 number if unset.
 VITE_TENANT_MAINTENANCE_PHONE=+12064017109
 
+# Optional purpose-specific DIDs (Admin → Phone numbers overrides these per PMC)
+# VITE_VENDOR_DISPATCH_PHONE=+12065551212
+# VITE_MARKETING_PHONE=+12065551213
+# VITE_APPOINTMENTS_PHONE=+12065551214
+
 # Optional: Testing mode - routes all calls to this number
 TESTER_PHONE_NUMBER=+1234567890
 ```
+
+Per-org numbers (E3): after operators sign in, company admins can assign DIDs to **tenant maintenance**, **vendor dispatch**, **marketing**, and **appointments** under **Admin → Phone numbers**. That stores `phone_resources` (migration `011_phone_resources.sql`). Tenant “Call Voice Bot” and outbound vendor Vapi IDs resolve PMC → deploy-wide row → env → shared default. Marketing and appointments stay unset until assigned — they do not reuse the maintenance DID.
 
 #### Cron Jobs (Optional Security)
 ```bash

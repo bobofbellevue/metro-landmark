@@ -4,10 +4,13 @@ import { supabase } from '../../lib/supabase.js';
 import { AuthContext } from '../../contexts';
 import { Card } from '../../components/ui';
 import MaintenanceChatBot from '../../components/MaintenanceChatBot';
-import { phones } from '../../config/phones.js';
+import { phones, phoneView } from '../../config/phones.js';
 
 export default function TenantMaintenance() {
-  const { user } = useContext(AuthContext);
+  const { user, resolvedPhones } = useContext(AuthContext);
+  const maintenancePhone = phoneView(
+    resolvedPhones?.tenant_maintenance?.e164 || phones.tenantMaintenanceE164
+  );
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -256,7 +259,7 @@ export default function TenantMaintenance() {
       </div>
 
       {/* Voice Bot Phone Number */}
-      {phones.tenantMaintenanceTelHref && (
+      {maintenancePhone.telHref && (
       <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200">
         <div className="flex items-center gap-4 p-4">
           <div className="flex-shrink-0">
@@ -270,11 +273,11 @@ export default function TenantMaintenance() {
               Call our AI maintenance assistant 24/7 for immediate help with urgent issues or to report maintenance problems.
             </p>
             <a 
-              href={phones.tenantMaintenanceTelHref} 
+              href={maintenancePhone.telHref} 
               className="inline-flex items-center gap-2 px-4 py-2 text-base font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"
             >
               <Phone className="w-4 h-4" />
-              {phones.tenantMaintenanceDisplay}
+              {maintenancePhone.display}
             </a>
           </div>
         </div>

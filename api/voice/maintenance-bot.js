@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import crypto from 'crypto';
 import { getVapiConfig, isDebugMode, isGlobalAdminPhone, routePhoneNumber, getGlobalAdminPhones } from './vapi-config.js';
+import { resolveOutboundVapiPhoneNumberId } from '../utils/phones.js';
 import {
   assessUrgency,
   findEmergencyVendors,
@@ -2970,7 +2971,7 @@ async function callVendor(vendorId, vendorPhone, maintenanceRequestId, callId, s
     // Get maintenance request details and tenant phone
     const { data: maintenanceRequest } = await supabase
       .from('maintenance_requests')
-      .select('description, priority, tenant_user_id, admin_notes, units!inner(unit_number, properties!inner(property_type))')
+      .select('description, priority, tenant_user_id, admin_notes, units!inner(unit_number, properties!inner(property_type, pmc_id))')
       .eq('request_id', maintenanceRequestId)
       .single();
     
@@ -3037,6 +3038,11 @@ async function callVendor(vendorId, vendorPhone, maintenanceRequestId, callId, s
       actualPhone = vendorPhone;
     }
 
+    const pmcId = maintenanceRequest?.units?.properties?.pmc_id;
+    const outboundPhoneNumberId =
+      (await resolveOutboundVapiPhoneNumberId(supabase, pmcId)) ||
+      process.env.VAPI_PHONE_NUMBER_ID;
+
     // Create Vapi.ai outbound call
     const vapiResponse = await fetch('https://api.vapi.ai/call', {
       method: 'POST',
@@ -3045,7 +3051,7 @@ async function callVendor(vendorId, vendorPhone, maintenanceRequestId, callId, s
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID, // Your Vapi.ai phone number ID
+        phoneNumberId: outboundPhoneNumberId,
         customer: {
           number: actualPhone
         },
