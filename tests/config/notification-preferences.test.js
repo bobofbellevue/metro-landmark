@@ -1,5 +1,6 @@
 import {
   NOTIFICATION_CATEGORIES,
+  createSerialSaver,
   setCategoryFrequency,
   toggleCategoryChannel,
   toggleGlobalChannel,
@@ -62,5 +63,27 @@ describe('notification preference toggles', () => {
       'payment',
       'general',
     ]);
+  });
+
+  test('serial saver sends the in-flight value then the latest queued value', async () => {
+    const saved = [];
+    let release;
+    const gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    const enqueue = createSerialSaver(async (value) => {
+      saved.push(`start:${value}`);
+      if (saved.length === 1) await gate;
+      saved.push(`done:${value}`);
+    });
+
+    const first = enqueue('a');
+    enqueue('b');
+    enqueue('c');
+    release();
+    await first;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(saved).toEqual(['start:a', 'done:a', 'start:c', 'done:c']);
   });
 });

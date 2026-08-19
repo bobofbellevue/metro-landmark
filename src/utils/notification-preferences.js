@@ -8,7 +8,7 @@ export const NOTIFICATION_CATEGORIES = [
 export const NOTIFICATION_CHANNELS = [
   { key: 'email', label: 'Email' },
   { key: 'sms', label: 'SMS' },
-  { key: 'push', label: 'Push' },
+  { key: 'push', label: 'Browser push' },
 ];
 
 /**
@@ -43,5 +43,41 @@ export function setCategoryFrequency(preferences, category, frequency) {
   return {
     ...preferences,
     [`${category}_frequency`]: frequency,
+  };
+}
+
+/**
+ * Serialize preference writes so a slower older PUT cannot overwrite a newer one.
+ * Overlapping calls keep only the latest queued value after the in-flight save.
+ */
+export function createSerialSaver(saveFn) {
+  let inFlight = false;
+  let queued = undefined;
+  let hasQueued = false;
+
+  const drain = async () => {
+    inFlight = true;
+    try {
+      while (hasQueued) {
+        const sending = queued;
+        hasQueued = false;
+        queued = undefined;
+        await saveFn(sending);
+      }
+    } finally {
+      inFlight = false;
+      if (hasQueued) {
+        await drain();
+      }
+    }
+  };
+
+  return (value) => {
+    queued = value;
+    hasQueued = true;
+    if (!inFlight) {
+      return drain();
+    }
+    return undefined;
   };
 }
