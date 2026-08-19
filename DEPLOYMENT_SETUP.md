@@ -148,7 +148,7 @@ OPENAI_MODEL=gpt-4-turbo
 # SendGrid API Key
 SENDGRID_API_KEY=SG.xxxxx
 
-# Optional: Custom sender email and name
+# Optional: Custom sender email and name (must be a SendGrid verified Sender Identity)
 FROM_EMAIL=noreply@yourdomain.com
 FROM_NAME=Metro Landmark
 SENDGRID_FROM_EMAIL=noreply@yourdomain.com
@@ -157,11 +157,16 @@ SENDGRID_FROM_NAME=Metro Landmark
 
 #### SMS Notifications (Twilio - Optional)
 ```bash
-# Twilio Credentials
+# Twilio Credentials (Account SID starts with AC)
 TWILIO_ACCOUNT_SID=ACxxxxx
 TWILIO_AUTH_TOKEN=your_auth_token
 FROM_PHONE=+1234567890
 TWILIO_PHONE_NUMBER=+1234567890
+
+# If you use a Twilio API key (SK…) instead of the main auth token:
+# TWILIO_ACCOUNT_SID=ACxxxxx
+# TWILIO_API_KEY=SKxxxxx
+# TWILIO_API_SECRET=your_api_key_secret
 ```
 
 #### Voice Bot (Vapi.ai - Optional)

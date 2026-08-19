@@ -1,23 +1,41 @@
 /* eslint-env node */
 import twilio from 'twilio';
+import { resolveTwilioCredentials } from './twilio-credentials.js';
 
-/**
- * Initialize Twilio client
- */
-function initializeTwilio() {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
+let twilioClient;
+let twilioInitError;
+let twilioInitialized = false;
 
-  if (!accountSid || !authToken) {
-    console.warn('TWILIO_ACCOUNT_SID or TWILIO_AUTH_TOKEN not configured. SMS sending will be disabled.');
-    return null;
+function getTwilioClient() {
+  if (twilioInitialized) {
+    return { client: twilioClient, error: twilioInitError };
   }
-
-  return twilio(accountSid, authToken);
+  twilioInitialized = true;
+  const resolved = resolveTwilioCredentials(process.env);
+  if (resolved.error) {
+    twilioInitError = resolved.error;
+    twilioClient = null;
+    return { client: null, error: twilioInitError };
+  }
+  if (!resolved.mode) {
+    twilioClient = null;
+    twilioInitError = null;
+    return { client: null, error: null };
+  }
+  try {
+    twilioClient =
+      resolved.mode === 'api_key'
+        ? twilio(resolved.apiKey, resolved.apiSecret, {
+            accountSid: resolved.accountSid,
+          })
+        : twilio(resolved.accountSid, resolved.authToken);
+    twilioInitError = null;
+  } catch (error) {
+    twilioClient = null;
+    twilioInitError = error.message || 'Failed to initialize Twilio';
+  }
+  return { client: twilioClient, error: twilioInitError };
 }
-
-// Initialize on module load
-const twilioClient = initializeTwilio();
 
 /**
  * Normalize phone number to E.164 format
@@ -62,7 +80,11 @@ function normalizePhoneNumber(phone) {
  * @returns {Promise<{success: boolean, messageSid?: string, error?: string}>}
  */
 export async function sendSMS({ to, message, from }) {
-  if (!twilioClient) {
+  const { client, error: initError } = getTwilioClient();
+  if (initError) {
+    return { success: false, error: initError };
+  }
+  if (!client) {
     // Log to console if Twilio is not configured (for development)
     console.log('SMS notification (Twilio not configured):', {
       to,
@@ -100,7 +122,7 @@ export async function sendSMS({ to, message, from }) {
       console.warn(`SMS message is very long (${message.length} chars). Twilio will split into multiple messages.`);
     }
 
-    const twilioMessage = await twilioClient.messages.create({
+    const twilioMessage = await client.messages.create({
       body: message,
       to: toPhone,
       from: normalizePhoneNumber(fromPhone)

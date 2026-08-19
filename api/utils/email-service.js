@@ -1,6 +1,7 @@
 /* eslint-env node */
 import sgMail from '@sendgrid/mail';
 import { brand } from './brand.js';
+import { formatSendGridDeliveryError } from './email-delivery-error.js';
 
 /**
  * Initialize SendGrid with API key
@@ -47,6 +48,9 @@ export async function sendEmail({ to, subject, html, text, from, fromName }) {
     };
   }
 
+  const fromEmail = from || brand.fromEmail;
+  const fromNameValue = fromName || brand.fromName;
+
   try {
     // Generate plain text from HTML if not provided
     let plainText = text;
@@ -65,9 +69,6 @@ export async function sendEmail({ to, subject, html, text, from, fromName }) {
         .replace(/\s+/g, ' ')
         .trim();
     }
-
-    const fromEmail = from || brand.fromEmail;
-    const fromNameValue = fromName || brand.fromName;
 
     const msg = {
       to,
@@ -89,20 +90,10 @@ export async function sendEmail({ to, subject, html, text, from, fromName }) {
     };
   } catch (error) {
     console.error('Error sending email via SendGrid:', error);
-    
-    // Handle SendGrid-specific errors
-    if (error.response) {
-      const { body, statusCode } = error.response;
-      return {
-        success: false,
-        error: `SendGrid API error (${statusCode}): ${JSON.stringify(body)}`,
-        statusCode
-      };
-    }
-
     return {
       success: false,
-      error: error.message || 'Failed to send email'
+      error: formatSendGridDeliveryError(error, fromEmail),
+      statusCode: error.response?.statusCode,
     };
   }
 }

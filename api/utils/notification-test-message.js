@@ -7,7 +7,7 @@ export const NOTIFICATION_TEST_KINDS = {
 function shortenError(error) {
   if (!error) return '';
   const text = String(error).replace(/\s+/g, ' ').trim();
-  return text.length > 160 ? `${text.slice(0, 157)}…` : text;
+  return text.length > 240 ? `${text.slice(0, 237)}…` : text;
 }
 
 /**
