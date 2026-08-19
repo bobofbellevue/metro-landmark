@@ -42,8 +42,9 @@ export default function NotificationPreferences() {
     setError('');
     try {
       const response = await api.get('/notifications/preferences', user);
-      if (response.success) {
+      if (response.success && response.preferences) {
         setPreferences(response.preferences);
+        if (response.warning) setError(response.warning);
       } else {
         setError(response.error || 'Failed to load preferences');
       }
@@ -156,7 +157,7 @@ export default function NotificationPreferences() {
     return (
       <Card title="Notification Preferences">
         <div className="text-center py-8">
-          <p className="text-red-500">Failed to load preferences</p>
+          <p className="text-red-500">{error || 'Failed to load preferences'}</p>
           <button
             onClick={fetchPreferences}
             className="mt-4 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"

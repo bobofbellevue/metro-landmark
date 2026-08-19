@@ -2368,8 +2368,8 @@ async function runSQLMigrations(sql) {
     }
 
     const migrationFiles = fs.readdirSync(migrationsDir)
-      .filter(file => file.endsWith('.sql'))
-      .sort(); // Run in alphabetical order
+      .filter(file => /^\d{3}_.+\.sql$/.test(file))
+      .sort(); // Three-digit prefix so lexicographic order matches numeric order
 
     if (migrationFiles.length === 0) {
       logDetail('No SQL migration files found');

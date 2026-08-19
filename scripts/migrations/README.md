@@ -2,7 +2,13 @@
 
 ## Overview
 
-This directory contains database migrations for Metro Landmark. Schema changes are consolidated into a comprehensive, idempotent script suitable for new installs and safe re-runs.
+This directory contains database migrations for Metro Landmark.
+
+**Naming:** `NNN_description.sql` with a three-digit prefix (`000`–`999`) so
+lexicographic order matches run order. `db:migrate` only executes files that
+match that pattern.
+
+Schema changes are idempotent (`IF NOT EXISTS` / `IF EXISTS`) and safe to re-run.
 
 ## Running Migrations
 
@@ -32,7 +38,7 @@ node scripts/db-util.js migrate [environment]
 
 1. Open **Supabase Dashboard** → Your Project
 2. Click **SQL Editor** (left sidebar)
-3. Open the file: `scripts/migrations/00-comprehensive-schema-migration.sql`
+3. Open the file: `scripts/migrations/000_comprehensive_schema_migration.sql`
 4. Copy the entire contents
 5. Paste into SQL Editor
 6. Click **Run**
@@ -41,7 +47,7 @@ node scripts/db-util.js migrate [environment]
 
 ## Migration File
 
-### `00-comprehensive-schema-migration.sql`
+### `000_comprehensive_schema_migration.sql`
 
 This is the **single comprehensive migration script** that includes all schema changes:
 
@@ -196,7 +202,9 @@ DELETE FROM vendors WHERE vendor_id = 999;
 
 ## Legacy Migration Files
 
-The individual migration files in this directory have been consolidated into `00-comprehensive-schema-migration.sql`. The old files are kept for reference but are no longer used. The migration system will automatically run `00-comprehensive-schema-migration.sql` when migrations are executed.
+The incremental files in this directory (`001_` onward) are kept for existing
+databases. New installs get the same objects from `000_comprehensive_schema_migration.sql`
+plus later numbered files. `db:migrate` runs every `NNN_*.sql` file in order.
 
 ## Next Steps
 

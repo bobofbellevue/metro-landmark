@@ -1,5 +1,5 @@
 /* eslint-env node */
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '../utils/supabase-client.js';
 
 /**
  * Vercel serverless function to mark notifications as read/unread
@@ -28,18 +28,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Initialize Supabase client
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.VITE_SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SECRET_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      return res.status(500).json({
-        success: false,
-        error: 'Supabase configuration missing'
-      });
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createSupabaseClient();
 
     // Get user ID from headers
     const userId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id']) : null;

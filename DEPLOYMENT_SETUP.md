@@ -187,7 +187,7 @@ VITE_TENANT_MAINTENANCE_PHONE=+12064017109
 TESTER_PHONE_NUMBER=+1234567890
 ```
 
-Per-org numbers (E3): after operators sign in, company admins can assign DIDs to **tenant maintenance**, **vendor dispatch**, **marketing**, and **appointments** under **Admin → Phone numbers**. That stores `phone_resources` (migration `011_phone_resources.sql`). Tenant “Call Voice Bot” and outbound vendor Vapi IDs resolve PMC → deploy-wide row → env → shared default. Marketing and appointments stay unset until assigned — they do not reuse the maintenance DID.
+Per-org numbers (E3): after operators sign in, company admins can assign DIDs to **tenant maintenance**, **vendor dispatch**, **marketing**, and **appointments** under **Admin → Phone numbers**. That stores `phone_resources` (migration `016_phone_resources.sql`). Tenant “Call Voice Bot” and outbound vendor Vapi IDs resolve PMC → deploy-wide row → env → shared default. Marketing and appointments stay unset until assigned — they do not reuse the maintenance DID.
 
 #### Cron Jobs (Optional Security)
 ```bash
@@ -227,7 +227,7 @@ After a correct Salish setup, `GET /api/brand-config` should look like:
 }
 ```
 
-Per-org colors are separate from that deploy brand. After operators sign in, a company admin can set a primary color (and an optional sidebar logo URL) under **Settings → Company appearance**. That restyles the indigo chrome for that PM company only. It does **not** change `VITE_PRODUCT_NAME` or the login screen. Storage is `pm_companies.theme` (migration `scripts/migrations/010_add_pm_companies_theme.sql`).
+Per-org colors are separate from that deploy brand. After operators sign in, a company admin can set a primary color (and an optional sidebar logo URL) under **Settings → Company appearance**. That restyles the indigo chrome for that PM company only. It does **not** change `VITE_PRODUCT_NAME` or the login screen. Storage is `pm_companies.theme` (migration `scripts/migrations/015_add_pm_companies_theme.sql`).
 
 ---
 
@@ -740,7 +740,7 @@ vercel --prod
 
 - `vercel.json` - Vercel configuration (cron jobs, function settings)
 - `.db-environments.json` - Database environment configurations (DO NOT COMMIT)
-- `scripts/migrations/00-comprehensive-schema-migration.sql` - Database schema
+- `scripts/migrations/000_comprehensive_schema_migration.sql` - Database schema
 - `scripts/db-util-server.js` - Database utility server
 - `package.json` - Project dependencies and scripts
 

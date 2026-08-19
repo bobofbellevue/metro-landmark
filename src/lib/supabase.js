@@ -27,7 +27,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
     if (testError) {
       console.error('[Supabase] RLS test failed - queries may be blocked:', testError);
       if (testError.code === '42501' || testError.message?.includes('permission denied') || testError.message?.includes('policy')) {
-        console.error('[Supabase] RLS Policy Issue: Run the migration file to create RLS policies: scripts/migrations/00-comprehensive-schema-migration.sql');
+        console.error('[Supabase] RLS Policy Issue: Run the migration file to create RLS policies: scripts/migrations/000_comprehensive_schema_migration.sql');
       }
     }
   } catch (err) {

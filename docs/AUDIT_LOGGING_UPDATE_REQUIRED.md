@@ -7,7 +7,7 @@ To ensure all database operations are properly audited, all direct Supabase `.up
 ## Migration Status
 
 ✅ **Completed:**
-- Migration `02-add-contacts-audit-trigger.sql` adds audit triggers for:
+- Migration `010_add_contacts_audit_trigger.sql` adds audit triggers for:
   - `contacts` table
   - `addresses` table  
   - `contact_methods` table
@@ -158,7 +158,7 @@ After updating code to use audit helpers:
 
 ## Next Steps
 
-1. Run migration `02-add-contacts-audit-trigger.sql` to add triggers for contacts, addresses, and contact_methods
+1. Run migration `010_add_contacts_audit_trigger.sql` to add triggers for contacts, addresses, and contact_methods
 2. Systematically update each file listed above
 3. Test each update to ensure audit logs are created
 4. Consider adding automated tests to verify audit logging
