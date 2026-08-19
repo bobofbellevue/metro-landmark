@@ -1,19 +1,42 @@
 /* eslint-env node */
 import { createSupabaseClient } from '../utils/supabase-client.js';
-import { sendNotification } from '../utils/notification-service.js';
 import { formatNotificationTestMessage } from '../utils/notification-test-message.js';
 
 /**
- * Vercel serverless function to send a test notification
- * 
  * POST /api/notifications/test
- * Body: {
- *   notification_type: 'email' | 'sms' | 'push',
- *   category: 'maintenance' | 'lease' | 'payment' | 'general'
- * }
+ *
+ * Loads SendGrid or Twilio only for the channel being tested. Importing the
+ * full notification-service (both providers + templates) crashed this
+ * function on Vercel with FUNCTION_INVOCATION_FAILED.
  */
+
+const SEND_TIMEOUT_MS = 8000;
+
+function jsonBody(req) {
+  const body = req?.body;
+  if (body && typeof body === 'object' && !Buffer.isBuffer(body)) return body;
+  if (typeof body === 'string' && body.trim()) {
+    try {
+      return JSON.parse(body);
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+function withDeadline(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} did not respond in ${ms / 1000} seconds.`)),
+      ms
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export default async function handler(req, res) {
-  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id');
@@ -25,47 +48,64 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({
       success: false,
-      error: 'Method not allowed. Use POST.'
+      error: 'Method not allowed. Use POST.',
     });
   }
 
+  const body = jsonBody(req);
+  const notificationType = body.notification_type;
+  const category = body.category;
+
+  const fail = (destination, error, extra = {}) => {
+    const message = formatNotificationTestMessage({
+      channel: notificationType,
+      destination,
+      error,
+    });
+    return res.status(200).json({
+      success: false,
+      error: message,
+      message,
+      destination,
+      ...extra,
+    });
+  };
+
   try {
-    const supabase = createSupabaseClient();
-
-    // Get user ID from headers
-    const userId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id']) : null;
-
+    const userId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'], 10) : null;
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User ID required'
+        error: 'User ID required',
       });
     }
 
-    const { notification_type, category } = req.body;
-
-    if (!notification_type || !category) {
+    if (!notificationType || !category) {
       return res.status(400).json({
         success: false,
-        error: 'notification_type and category are required'
+        error: 'notification_type and category are required',
       });
     }
 
-    if (!['email', 'sms', 'push'].includes(notification_type)) {
+    if (!['email', 'sms', 'push'].includes(notificationType)) {
       return res.status(400).json({
         success: false,
-        error: 'notification_type must be email, sms, or push'
+        error: 'notification_type must be email, sms, or push',
       });
     }
 
     if (!['maintenance', 'lease', 'payment', 'general'].includes(category)) {
       return res.status(400).json({
         success: false,
-        error: 'category must be maintenance, lease, payment, or general'
+        error: 'category must be maintenance, lease, payment, or general',
       });
     }
 
-    // Get user email
+    if (notificationType === 'push') {
+      return fail(null, 'Browser notifications are not available yet.');
+    }
+
+    const supabase = createSupabaseClient();
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('email, first_name, last_name')
@@ -75,65 +115,102 @@ export default async function handler(req, res) {
     if (userError || !user) {
       return res.status(404).json({
         success: false,
-        error: 'User not found'
+        error: 'User not found',
       });
     }
 
-    // Send test notification
-    const result = await sendNotification({
-      userId,
-      notificationType: notification_type,
-      category,
-      subject: 'Test Notification',
-      message: 'This is a test notification to verify your notification preferences are working correctly.',
-      metadata: { test: true },
-      bypassPreferences: true,
-      forceImmediate: true,
-      maxRetries: 0,
-    }, supabase);
+    const subject = 'Test Notification';
+    const text =
+      'This is a test notification to verify your notification preferences are working correctly.';
 
-    const channelResult = result.results?.[notification_type] || {};
-    const destination =
-      channelResult.destination ||
-      (notification_type === 'email' ? user.email : null) ||
-      null;
-    const message = formatNotificationTestMessage({
-      channel: notification_type,
-      destination,
-      success: Boolean(result.success),
-      skipped: Boolean(channelResult.skipped),
-      queued: Boolean(result.queued),
-      error: channelResult.error || result.error || result.errors?.[0],
-    });
-    const delivered = Boolean(result.success) && !channelResult.skipped && !result.queued;
+    if (notificationType === 'email') {
+      const destination = user.email || null;
+      if (!destination) {
+        return fail(null);
+      }
 
-    if (!delivered) {
-      return res.status(200).json({
-        success: false,
-        error: message,
-        message,
+      let sendEmail;
+      try {
+        ({ sendEmail } = await import('../utils/email-service.js'));
+      } catch (importError) {
+        return fail(destination, importError.message || 'Email service failed to load.');
+      }
+
+      let result;
+      try {
+        result = await withDeadline(
+          sendEmail({
+            to: destination,
+            subject,
+            text,
+            html: `<p>${text}</p>`,
+          }),
+          SEND_TIMEOUT_MS,
+          'Email service'
+        );
+      } catch (sendError) {
+        return fail(destination, sendError.message);
+      }
+
+      if (result?.skipped) {
+        return fail(destination, 'this server is not set up to send emails.');
+      }
+
+      if (!result?.success) {
+        return fail(destination, result?.error);
+      }
+
+      const message = formatNotificationTestMessage({
+        channel: 'email',
         destination,
+        success: true,
       });
+      return res.status(200).json({ success: true, message, destination });
     }
 
-    return res.status(200).json({
-      success: true,
-      message,
+    let sendSMS;
+    let getUserPhoneNumber;
+    try {
+      ({ sendSMS, getUserPhoneNumber } = await import('../utils/sms-service.js'));
+    } catch (importError) {
+      return fail(null, importError.message || 'SMS service failed to load.');
+    }
+
+    const destination = await getUserPhoneNumber(supabase, userId);
+    if (!destination) {
+      return fail(null);
+    }
+
+    let result;
+    try {
+      result = await withDeadline(
+        sendSMS({
+          to: destination,
+          message: text,
+        }),
+        SEND_TIMEOUT_MS,
+        'Text message service'
+      );
+    } catch (sendError) {
+      return fail(destination, sendError.message);
+    }
+
+    if (result?.skipped) {
+      return fail(destination, 'this server is not set up to send text messages.');
+    }
+
+    if (!result?.success) {
+      return fail(destination, result?.error);
+    }
+
+    const message = formatNotificationTestMessage({
+      channel: 'sms',
       destination,
-      notificationId: result.notificationId,
+      success: true,
     });
+    return res.status(200).json({ success: true, message, destination });
   } catch (error) {
     console.error('Error in test notification handler:', error);
-    const notificationType = req.body?.notification_type;
-    const message = formatNotificationTestMessage({
-      channel: notificationType,
-      error: error.message || 'Internal server error',
-    });
-    return res.status(500).json({
-      success: false,
-      error: message,
-      message,
-    });
+    return fail(null, error.message || 'Internal server error');
   }
 }
-

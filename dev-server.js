@@ -29,6 +29,7 @@ import brandConfigHandler from './api/brand-config.js';
 import orgThemeHandler from './api/org-theme.js';
 import phoneResourcesHandler from './api/phone-resources.js';
 import notificationPreferencesHandler from './api/notifications/preferences.js';
+import notificationTestHandler from './api/notifications/test.js';
 import convertPDFHandler from './api/documents/convert-pdf-to-json.js';
 import convertDocHandler from './api/documents/convert-doc-to-images.js';
 import measureFieldPositionsHandler from './api/documents/measure-field-positions.js';
@@ -106,6 +107,15 @@ app.put('/api/notifications/preferences', async (req, res) => {
     await notificationPreferencesHandler(req, res);
   } catch (error) {
     console.error('Notification preferences error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.post('/api/notifications/test', async (req, res) => {
+  try {
+    await notificationTestHandler(req, res);
+  } catch (error) {
+    console.error('Notification test error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
