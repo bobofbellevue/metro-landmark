@@ -1,7 +1,7 @@
 /* eslint-env node */
 import { createSupabaseClient } from '../utils/supabase-client.js';
 import { sendNotification } from '../utils/notification-service.js';
-import { formatNotificationTestMessage } from '../../src/utils/notification-test-message.js';
+import { formatNotificationTestMessage } from '../utils/notification-test-message.js';
 
 /**
  * Vercel serverless function to send a test notification
@@ -89,6 +89,7 @@ export default async function handler(req, res) {
       metadata: { test: true },
       bypassPreferences: true,
       forceImmediate: true,
+      maxRetries: 0,
     }, supabase);
 
     const channelResult = result.results?.[notification_type] || {};
@@ -107,7 +108,7 @@ export default async function handler(req, res) {
     const delivered = Boolean(result.success) && !channelResult.skipped && !result.queued;
 
     if (!delivered) {
-      return res.status(result.success && (channelResult.skipped || result.queued) ? 200 : 500).json({
+      return res.status(200).json({
         success: false,
         error: message,
         message,

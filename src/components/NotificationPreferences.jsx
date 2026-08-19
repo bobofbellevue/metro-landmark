@@ -109,7 +109,9 @@ export default function NotificationPreferences() {
     const fallbackMessage = formatNotificationTestMessage({
       channel: notificationType,
       destination: fallbackDestination,
-      error: 'The test request did not complete.',
+      error: err?.message
+        ? `The test request did not complete (${err.message}).`
+        : 'The test request did not complete.',
     });
 
     try {

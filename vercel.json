@@ -38,7 +38,7 @@
     }
   ],
   "functions": {
-    "api/maintenance-chat.js": {
+    "api/notifications/test.js": {
       "maxDuration": 30
     },
     "api/voice/maintenance-bot.js": {

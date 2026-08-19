@@ -20,6 +20,7 @@ import { generateEmailTemplate, generateSMSTemplate, generateDigestNotification 
  * @param {Object} options.metadata - Additional metadata
  * @param {boolean} options.bypassPreferences - Send the requested types even if prefs are off
  * @param {boolean} options.forceImmediate - Skip digest queue and send now
+ * @param {number} options.maxRetries - Delivery retries (default 3)
  * @param {Object} supabase - Supabase client instance
  * @returns {Promise<{success: boolean, notificationIds?: Array<number>, results?: Object, error?: string}>}
  */
@@ -37,6 +38,7 @@ export async function sendNotification({
   metadata = {},
   bypassPreferences = false,
   forceImmediate = false,
+  maxRetries = 3,
 }, supabase) {
   try {
     // Get user preferences
@@ -174,7 +176,7 @@ export async function sendNotification({
           subject,
           html: emailHtml,
           text: message || text
-        });
+        }, maxRetries);
 
         results.email = { ...emailResult, destination: user.email };
 
@@ -220,7 +222,7 @@ export async function sendNotification({
         const smsResult = await sendSMSWithRetry({
           to: phoneNumber,
           message: smsText
-        });
+        }, maxRetries);
 
         results.sms = { ...smsResult, destination: phoneNumber };
 
