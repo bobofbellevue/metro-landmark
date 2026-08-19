@@ -106,27 +106,33 @@ export default async function handler(req, res) {
     }
 
     const supabase = createSupabaseClient();
-    const { data: user, error: userError } = await supabase
+    const { data: account, error: accountError } = await supabase
       .from('users')
-      .select('email, first_name, last_name')
+      .select('user_id, email')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (userError || !user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found',
-      });
+    if (accountError) {
+      console.error('Error loading user for notification test:', accountError);
     }
+
+    const sessionEmail =
+      typeof body.email === 'string' && body.email.includes('@')
+        ? body.email.trim()
+        : null;
+    const accountEmail = account?.email || sessionEmail || null;
 
     const subject = 'Test Notification';
     const text =
       'This is a test notification to verify your notification preferences are working correctly.';
 
     if (notificationType === 'email') {
-      const destination = user.email || null;
+      const destination = accountEmail;
       if (!destination) {
-        return fail(null);
+        return fail(
+          null,
+          accountError?.message || 'this account has no email address.'
+        );
       }
 
       let sendEmail;

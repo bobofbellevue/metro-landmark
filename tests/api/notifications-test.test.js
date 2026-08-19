@@ -17,7 +17,8 @@ function createRes() {
   return res;
 }
 
-let usersRow = { email: 'ops@example.com', first_name: 'Pat', last_name: 'Lee' };
+let usersRow = { user_id: 7, email: 'ops@example.com' };
+let usersError = null;
 let sendEmail = async () => ({ success: true, messageId: 'sg-1' });
 let sendSMS = async () => ({ success: true, messageSid: 'sm-1' });
 let getUserPhoneNumber = async () => '+12065550100';
@@ -29,7 +30,7 @@ await jest.unstable_mockModule('../../api/utils/supabase-client.js', () => ({
       return {
         select: () => ({
           eq: () => ({
-            single: async () => ({ data: usersRow, error: null }),
+            maybeSingle: async () => ({ data: usersRow, error: usersError }),
           }),
         }),
       };
@@ -52,7 +53,8 @@ describe('api/notifications/test', () => {
   beforeEach(() => {
     process.env.SUPABASE_URL = 'http://localhost';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
-    usersRow = { email: 'ops@example.com', first_name: 'Pat', last_name: 'Lee' };
+    usersRow = { user_id: 7, email: 'ops@example.com' };
+    usersError = null;
     sendEmail = async () => ({ success: true, messageId: 'sg-1' });
     sendSMS = async () => ({ success: true, messageSid: 'sm-1' });
     getUserPhoneNumber = async () => '+12065550100';
@@ -121,5 +123,27 @@ describe('api/notifications/test', () => {
     );
     expect(res.jsonData.success).toBe(true);
     expect(res.jsonData.message).toBe('Sent a test text message to +12065550100.');
+  });
+
+  test('uses the signed-in email when the users row cannot be loaded', async () => {
+    usersRow = null;
+    usersError = { message: "column users.first_name does not exist" };
+    const res = createRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { 'x-user-id': '7' },
+        body: {
+          notification_type: 'email',
+          category: 'maintenance',
+          email: 'bobofbellevue@gmail.com',
+        },
+      },
+      res
+    );
+    expect(res.jsonData.success).toBe(true);
+    expect(res.jsonData.message).toBe(
+      'Sent a test email to bobofbellevue@gmail.com.'
+    );
   });
 });

@@ -122,7 +122,8 @@ export default function NotificationPreferences() {
         '/notifications/test',
         {
           notification_type: notificationType,
-          category
+          category,
+          email: user?.email || undefined,
         },
         user,
         { timeoutMs: 20000 }
