@@ -14,6 +14,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 | E1 WA/Seattle pack + calculator tests | 2025/2026 RCW 59.18 notice math, Seattle **180-day** housing-cost overlay (SMC 7.24.030), statute citations, pack-driven calculator coverage. The 30-day subsidized rent-increase path is encoded in the pack only — we do not yet track subsidy on leases or units (E11). |
 | E2 Per-org themes | After login, a PM company’s primary color restyles the existing indigo chrome; optional logo URL overrides the sidebar mark. Login and `VITE_PRODUCT_NAME` stay deploy-wide. Settings → Company appearance (company/global admin with a `pmc_id`). |
 | E3 Phone number resources + IVR purposes | `phone_resources` rows assign DIDs (and optional Vapi UUIDs) to tenant maintenance, vendor dispatch, marketing, and appointments. Company/global admins edit under **Admin → Phone numbers**. Tenant “Call Voice Bot” and outbound vendor calls resolve PMC then deploy/env fallback. Marketing/appointments do not inherit the maintenance DID. |
+| E4 Payments | Operator ledger for rent, deposits, and fees against a lease (**Payments** in the sidebar). Cash, check, ACH, and card can be recorded without a card processor. Stripe Checkout is optional when `STRIPE_SECRET_KEY` (`sk_…`) is set on the deploy. |
 
 ## Partial
 
@@ -28,7 +29,6 @@ This list is intentionally short. Finish or cut items before expanding it.
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| E4 | Payments | e.g. Stripe — rent, deposits, fees |
 | E5 | Listing syndication | Export vacancies to major channels |
 | E6 | Additional city packs | Tacoma, Bellingham, Federal Way, Olympia (and others) as **child packs of WA**, only when official citations exist and an operator needs them. Do not copy RHAWA PDFs. Design: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#rent-increase-completeness--seattle-cities-forms-exemptions-2026-08-16) |
 | E7 | Auth hardening | Verified sessions/tokens; stop trusting client role headers; tighten RLS/CORS |
@@ -42,6 +42,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 | E15 | Lease violation notices | Replace leftover stub. Pick lease, violation type, cure period from pack/eviction notice days where they apply, generate-then-serve a worksheet. |
 | E16 | Habitability | Replace leftover stub. Record issue, pack repair timeline if encoded, link to maintenance where a work order exists. Document outcome; not a legal opinion. |
 | E17 | Entry notices | Replace leftover stub. Pack already has two-day written notice and one-day showing (RCW 59.18.150). Generate/record notice with emergency exception. |
+| E18 | Configure and test SendGrid and Twilio | Notification preference UI and Test buttons are shipped. Later: verify a SendGrid Sender Identity (`FROM_EMAIL` / `SENDGRID_FROM_EMAIL`) and Twilio Account SID (`AC…`) plus Auth Token or API key (`SK…` + `TWILIO_API_SECRET`) on the Vercel deploy, then send a real email and SMS from Settings → Notifications. |
 
 ## Out of scope (near term)
 

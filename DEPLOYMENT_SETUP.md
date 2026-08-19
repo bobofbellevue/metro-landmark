@@ -72,6 +72,13 @@ Local development only needs `.db-environments.json` + `npm run env:select` as d
      - Private API key (for serverless functions)
      - Public API key (for frontend, if needed)
 
+7. **Stripe** (Online card payments - Optional)
+   - **Purpose**: Checkout links for rent, deposits, and fees recorded in **Payments**
+   - **Sign up**: [stripe.com](https://stripe.com)
+   - **The operator ledger works without Stripe** (cash, check, ACH, and card received in person)
+   - **What you need for Checkout**:
+     - Secret key (`sk_test_…` or `sk_live_…`)
+
 ---
 
 ## Prerequisites
@@ -167,6 +174,17 @@ TWILIO_PHONE_NUMBER=+1234567890
 # TWILIO_ACCOUNT_SID=ACxxxxx
 # TWILIO_API_KEY=SKxxxxx
 # TWILIO_API_SECRET=your_api_key_secret
+```
+
+Live SendGrid and Twilio delivery (verified From identity + `AC…` Account SID or API key) is roadmap **E18** — the Settings → Notifications Test buttons work without those keys; they report provider errors until the deploy is configured.
+
+#### Online card payments (Stripe - Optional)
+```bash
+# Secret key enables Stripe Checkout links from Payments (ledger works without this)
+STRIPE_SECRET_KEY=sk_test_xxxxx
+
+# Optional: canonical site origin used in Checkout success/cancel URLs
+# APP_ORIGIN=https://your-app.vercel.app
 ```
 
 #### Voice Bot (Vapi.ai - Optional)

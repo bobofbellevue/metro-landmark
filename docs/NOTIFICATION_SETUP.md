@@ -162,6 +162,8 @@ The system includes automatic retry logic:
 
 ## Testing
 
+The Settings → Notifications **Test** buttons exercise the same send path the UI uses. They work without live SendGrid/Twilio credentials and will name the provider error (for example an unverified From identity, or a Twilio SID that starts with `SK` instead of `AC`). Configuring and proving real delivery is roadmap **E18**.
+
 ### Test Email Sending
 
 1. Ensure `SENDGRID_API_KEY` is set

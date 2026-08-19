@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { Building2, LayoutDashboard, Wrench, Shield, LogOut, Settings as SettingsIcon, Menu, X, UserCircle, UserPlus, Building, Briefcase, FileText, UserCheck, Store } from 'lucide-react';
+import { Building2, LayoutDashboard, Wrench, Shield, LogOut, Settings as SettingsIcon, Menu, X, UserCircle, UserPlus, Building, Briefcase, FileText, UserCheck, Store, DollarSign } from 'lucide-react';
 
 // Import shared modules
 import { AuthContext, SidebarContext } from './contexts';
@@ -28,6 +28,7 @@ import CompliancePoliciesPage from './pages/CompliancePoliciesPage';
 import SettingsPage from './pages/SettingsPage';
 import DashboardPage from './pages/DashboardPage';
 import DocumentsPage from './pages/DocumentsPage';
+import PaymentsPage from './pages/PaymentsPage';
 
 // Import tenant layout and pages
 import TenantSinglePage from './pages/tenant/TenantSinglePage';
@@ -460,6 +461,7 @@ function MainAppLayout() {
       case 'Applicants': return <ApplicantsPage />;
       case 'Tenants': return <TenantsPage />;
       case 'Leases': return <LeasesPage />;
+      case 'Payments': return <PaymentsPage />;
       case 'Maintenance': return <MaintenancePage />;
       case 'Compliance': return <CompliancePage />;
       case 'Compliance Policies': return <CompliancePoliciesPage />;
@@ -504,6 +506,7 @@ function Sidebar() {
         { icon: <UserCheck />, text: 'Applicants' },
         { icon: <Building2 />, text: 'Tenants' },
         { icon: <FileText />, text: 'Leases' },
+        { icon: <DollarSign />, text: 'Payments' },
         { icon: <Wrench />, text: 'Maintenance' },
         { icon: <Shield />, text: 'Compliance' },
         { icon: <Shield />, text: 'Compliance Policies' },
@@ -520,6 +523,7 @@ function Sidebar() {
         { icon: <UserCheck />, text: 'Applicants' },
         { icon: <Building2 />, text: 'Tenants' },
         { icon: <FileText />, text: 'Leases' },
+        { icon: <DollarSign />, text: 'Payments' },
         { icon: <Wrench />, text: 'Maintenance' },
         { icon: <Shield />, text: 'Compliance' },
         { icon: <Shield />, text: 'Compliance Policies' },
@@ -534,6 +538,7 @@ function Sidebar() {
         ...baseItems,
         { icon: <Building2 />, text: 'Properties' },
         { icon: <FileText />, text: 'Leases' },
+        { icon: <DollarSign />, text: 'Payments' },
         { icon: <Wrench />, text: 'Maintenance' },
         { icon: <Shield />, text: 'Compliance' },
         { icon: <FileText />, text: 'Documents' },
@@ -555,6 +560,7 @@ function Sidebar() {
         ...baseItems,
         { icon: <Building2 />, text: 'Properties' },
         { icon: <FileText />, text: 'Leases' },
+        { icon: <DollarSign />, text: 'Payments' },
         { icon: <Wrench />, text: 'Maintenance' },
         { icon: <Shield />, text: 'Compliance' },
         { icon: <FileText />, text: 'Documents' },

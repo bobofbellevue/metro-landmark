@@ -30,6 +30,7 @@ import orgThemeHandler from './api/org-theme.js';
 import phoneResourcesHandler from './api/phone-resources.js';
 import notificationPreferencesHandler from './api/notifications/preferences.js';
 import notificationTestHandler from './api/notifications/test.js';
+import paymentsHandler from './api/payments.js';
 import convertPDFHandler from './api/documents/convert-pdf-to-json.js';
 import convertDocHandler from './api/documents/convert-doc-to-images.js';
 import measureFieldPositionsHandler from './api/documents/measure-field-positions.js';
@@ -116,6 +117,33 @@ app.post('/api/notifications/test', async (req, res) => {
     await notificationTestHandler(req, res);
   } catch (error) {
     console.error('Notification test error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.get('/api/payments', async (req, res) => {
+  try {
+    await paymentsHandler(req, res);
+  } catch (error) {
+    console.error('Payments error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.post('/api/payments', async (req, res) => {
+  try {
+    await paymentsHandler(req, res);
+  } catch (error) {
+    console.error('Payments error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.put('/api/payments', async (req, res) => {
+  try {
+    await paymentsHandler(req, res);
+  } catch (error) {
+    console.error('Payments error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
