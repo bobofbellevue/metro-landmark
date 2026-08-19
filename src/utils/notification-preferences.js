@@ -87,3 +87,12 @@ export function createSerialSaver(saveFn) {
 
   return { enqueue, whenIdle };
 }
+
+export function waitWithTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    }),
+  ]);
+}

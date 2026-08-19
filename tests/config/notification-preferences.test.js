@@ -4,6 +4,7 @@ import {
   setCategoryFrequency,
   toggleCategoryChannel,
   toggleGlobalChannel,
+  waitWithTimeout,
 } from '../../src/utils/notification-preferences.js';
 
 const base = {
@@ -85,5 +86,9 @@ describe('notification preference toggles', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(saved).toEqual(['start:a', 'done:a', 'start:c', 'done:c']);
+  });
+
+  test('waitWithTimeout resolves even if the original promise never does', async () => {
+    await expect(waitWithTimeout(new Promise(() => {}), 20)).resolves.toBeUndefined();
   });
 });

@@ -12,14 +12,32 @@ export const api = {
       });
       return readApiJson(response);
     },
-    post: async (endpoint, body, user) => {
+    post: async (endpoint, body, user, options = {}) => {
       const url = `${API_BASE_URL}${endpoint}`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-role': user?.role, 'x-user-id': user?.user_id },
-        body: JSON.stringify(body),
-      });
-      return readApiJson(response);
+      const timeoutMs = options.timeoutMs;
+      const controller = timeoutMs ? new AbortController() : undefined;
+      const timer = timeoutMs
+        ? setTimeout(() => controller.abort(), timeoutMs)
+        : undefined;
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-user-role': user?.role, 'x-user-id': user?.user_id },
+          body: JSON.stringify(body),
+          signal: controller?.signal,
+        });
+        return readApiJson(response);
+      } catch (err) {
+        if (err?.name === 'AbortError') {
+          return {
+            success: false,
+            error: `Request timed out after ${Math.round(timeoutMs / 1000)} seconds.`,
+          };
+        }
+        throw err;
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
     },
     put: async (endpoint, body, user) => {
       const url = `${API_BASE_URL}${endpoint}`;

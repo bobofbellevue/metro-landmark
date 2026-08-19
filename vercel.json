@@ -38,8 +38,11 @@
     }
   ],
   "functions": {
-    "api/notifications/test.js": {
+    "api/maintenance-chat.js": {
       "maxDuration": 30
+    },
+    "api/notifications/test.js": {
+      "maxDuration": 15
     },
     "api/voice/maintenance-bot.js": {
       "maxDuration": 60

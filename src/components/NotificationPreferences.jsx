@@ -9,6 +9,7 @@ import {
   setCategoryFrequency,
   toggleCategoryChannel,
   toggleGlobalChannel,
+  waitWithTimeout,
 } from '../utils/notification-preferences.js';
 import {
   NOTIFICATION_TEST_KINDS,
@@ -106,29 +107,35 @@ export default function NotificationPreferences() {
 
     const fallbackDestination =
       notificationType === 'email' ? user?.email || null : null;
-    const fallbackMessage = formatNotificationTestMessage({
-      channel: notificationType,
-      destination: fallbackDestination,
-      error: err?.message
-        ? `The test request did not complete (${err.message}).`
-        : 'The test request did not complete.',
-    });
+    const fallbackFor = (error) =>
+      formatNotificationTestMessage({
+        channel: notificationType,
+        destination: fallbackDestination,
+        error: error?.message
+          ? `The test request did not complete (${error.message}).`
+          : 'The test request did not complete.',
+      });
 
     try {
-      await saver.whenIdle();
-      const response = await api.post('/notifications/test', {
-        notification_type: notificationType,
-        category
-      }, user);
+      await waitWithTimeout(saver.whenIdle(), 3000);
+      const response = await api.post(
+        '/notifications/test',
+        {
+          notification_type: notificationType,
+          category
+        },
+        user,
+        { timeoutMs: 20000 }
+      );
 
       if (response.success) {
         setStatusHint(response.message || `Sent a test ${kind}.`);
       } else {
-        setError(response.message || response.error || fallbackMessage);
+        setError(response.message || response.error || fallbackFor());
       }
-    } catch (err) {
-      console.error('Error sending test notification:', err);
-      setError(fallbackMessage);
+    } catch (error) {
+      console.error('Error sending test notification:', error);
+      setError(fallbackFor(error));
     } finally {
       setTestingKey(null);
     }
