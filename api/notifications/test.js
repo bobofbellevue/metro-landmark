@@ -1,6 +1,7 @@
 /* eslint-env node */
 import { createSupabaseClient } from '../utils/supabase-client.js';
 import { sendNotification } from '../utils/notification-service.js';
+import { formatNotificationTestMessage } from '../../src/utils/notification-test-message.js';
 
 /**
  * Vercel serverless function to send a test notification
@@ -85,26 +86,52 @@ export default async function handler(req, res) {
       category,
       subject: 'Test Notification',
       message: 'This is a test notification to verify your notification preferences are working correctly.',
-      metadata: { test: true }
+      metadata: { test: true },
+      bypassPreferences: true,
+      forceImmediate: true,
     }, supabase);
 
-    if (!result.success) {
-      return res.status(500).json({
+    const channelResult = result.results?.[notification_type] || {};
+    const destination =
+      channelResult.destination ||
+      (notification_type === 'email' ? user.email : null) ||
+      null;
+    const message = formatNotificationTestMessage({
+      channel: notification_type,
+      destination,
+      success: Boolean(result.success),
+      skipped: Boolean(channelResult.skipped),
+      queued: Boolean(result.queued),
+      error: channelResult.error || result.error || result.errors?.[0],
+    });
+    const delivered = Boolean(result.success) && !channelResult.skipped && !result.queued;
+
+    if (!delivered) {
+      return res.status(result.success && (channelResult.skipped || result.queued) ? 200 : 500).json({
         success: false,
-        error: result.error || 'Failed to send test notification'
+        error: message,
+        message,
+        destination,
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Test notification sent successfully',
-      notificationId: result.notificationId
+      message,
+      destination,
+      notificationId: result.notificationId,
     });
   } catch (error) {
     console.error('Error in test notification handler:', error);
+    const notificationType = req.body?.notification_type;
+    const message = formatNotificationTestMessage({
+      channel: notificationType,
+      error: error.message || 'Internal server error',
+    });
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error'
+      error: message,
+      message,
     });
   }
 }

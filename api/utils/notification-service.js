@@ -18,6 +18,8 @@ import { generateEmailTemplate, generateSMSTemplate, generateDigestNotification 
  * @param {string} options.actionUrl - Action URL for email template (optional)
  * @param {string} options.actionText - Action button text (optional)
  * @param {Object} options.metadata - Additional metadata
+ * @param {boolean} options.bypassPreferences - Send the requested types even if prefs are off
+ * @param {boolean} options.forceImmediate - Skip digest queue and send now
  * @param {Object} supabase - Supabase client instance
  * @returns {Promise<{success: boolean, notificationIds?: Array<number>, results?: Object, error?: string}>}
  */
@@ -32,7 +34,9 @@ export async function sendNotification({
   userName,
   actionUrl,
   actionText,
-  metadata = {} 
+  metadata = {},
+  bypassPreferences = false,
+  forceImmediate = false,
 }, supabase) {
   try {
     // Get user preferences
@@ -69,12 +73,13 @@ export async function sendNotification({
     // Normalize notificationType to array
     const types = Array.isArray(notificationType) ? notificationType : [notificationType];
     
-    // Filter types based on user preferences
-    const enabledTypes = types.filter(type => {
-      const globalEnabled = prefs[`${type}_enabled`];
-      const categoryEnabled = prefs[`${category}_${type}`];
-      return globalEnabled && categoryEnabled;
-    });
+    const enabledTypes = bypassPreferences
+      ? types
+      : types.filter(type => {
+          const globalEnabled = prefs[`${type}_enabled`];
+          const categoryEnabled = prefs[`${category}_${type}`];
+          return globalEnabled && categoryEnabled;
+        });
 
     if (enabledTypes.length === 0) {
       return { success: false, error: 'No notification types enabled for this category' };
@@ -84,7 +89,7 @@ export async function sendNotification({
     const frequency = prefs[`${category}_frequency`] || 'immediate';
 
     // If not immediate, queue for digest (handled by cron jobs)
-    if (frequency !== 'immediate') {
+    if (!forceImmediate && frequency !== 'immediate') {
       // Store in notification_history with digest flag for each enabled type
       const notificationIds = [];
       const errors = [];
@@ -159,41 +164,47 @@ export async function sendNotification({
 
     // Send email if enabled
     if (enabledTypes.includes('email')) {
-      const emailResult = await sendEmailWithRetry({
-        to: user.email,
-        subject,
-        html: emailHtml,
-        text: message || text
-      });
-
-      results.email = emailResult;
-
-      // Record in notification_history
-      const deliveryStatus = emailResult.success ? 'sent' : 'failed';
-      const { data: notification, error: notifError } = await supabase
-        .from('notification_history')
-        .insert({
-          user_id: userId,
-          notification_type: 'email',
-          category,
-          subject,
-          message,
-          delivery_status: deliveryStatus,
-          error_message: emailResult.error || null,
-          metadata: { ...metadata, messageId: emailResult.messageId }
-        })
-        .select()
-        .single();
-
-      if (notifError) {
-        console.error('Error recording email notification:', notifError);
-        errors.push('Failed to record email notification');
+      if (!user.email) {
+        const emailError = 'This account has no email address.';
+        errors.push(emailError);
+        results.email = { success: false, error: emailError, destination: null };
       } else {
-        notificationIds.push(notification.notification_id);
-      }
+        const emailResult = await sendEmailWithRetry({
+          to: user.email,
+          subject,
+          html: emailHtml,
+          text: message || text
+        });
 
-      if (!emailResult.success && !emailResult.skipped) {
-        errors.push(`Email failed: ${emailResult.error}`);
+        results.email = { ...emailResult, destination: user.email };
+
+        // Record in notification_history
+        const deliveryStatus = emailResult.success ? 'sent' : 'failed';
+        const { data: notification, error: notifError } = await supabase
+          .from('notification_history')
+          .insert({
+            user_id: userId,
+            notification_type: 'email',
+            category,
+            subject,
+            message,
+            delivery_status: deliveryStatus,
+            error_message: emailResult.error || null,
+            metadata: { ...metadata, messageId: emailResult.messageId }
+          })
+          .select()
+          .single();
+
+        if (notifError) {
+          console.error('Error recording email notification:', notifError);
+          errors.push('Failed to record email notification');
+        } else {
+          notificationIds.push(notification.notification_id);
+        }
+
+        if (!emailResult.success && !emailResult.skipped) {
+          errors.push(`Email failed: ${emailResult.error}`);
+        }
       }
     }
 
@@ -202,16 +213,16 @@ export async function sendNotification({
       const phoneNumber = await getUserPhoneNumber(supabase, userId);
       
       if (!phoneNumber) {
-        const smsError = 'User phone number not found';
+        const smsError = 'This account has no phone number.';
         errors.push(smsError);
-        results.sms = { success: false, error: smsError };
+        results.sms = { success: false, error: smsError, destination: null };
       } else {
         const smsResult = await sendSMSWithRetry({
           to: phoneNumber,
           message: smsText
         });
 
-        results.sms = smsResult;
+        results.sms = { ...smsResult, destination: phoneNumber };
 
         // Record in notification_history
         const deliveryStatus = smsResult.success ? 'sent' : 'failed';
@@ -246,19 +257,26 @@ export async function sendNotification({
     // Push notifications not yet implemented
     if (enabledTypes.includes('push')) {
       console.log('Push notification requested but not implemented:', { userId, category, subject });
-      results.push = { success: false, error: 'Push notifications are not yet implemented' };
-      errors.push('Push notifications are not yet implemented');
+      results.push = {
+        success: false,
+        error: 'Browser notifications are not available yet.',
+        destination: null,
+      };
+      errors.push('Browser notifications are not available yet.');
     }
 
     // Determine overall success
     const hasSuccess = Object.values(results).some(r => r.success || r.skipped);
-    const allFailed = Object.values(results).every(r => !r.success && !r.skipped);
+    const allFailed =
+      Object.values(results).length === 0 ||
+      Object.values(results).every(r => !r.success && !r.skipped);
 
     return {
       success: hasSuccess && !allFailed,
       notificationIds,
       results,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
+      error: errors.length > 0 ? errors.join('; ') : undefined,
     };
   } catch (error) {
     console.error('Error in sendNotification:', error);

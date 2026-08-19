@@ -75,7 +75,7 @@ describe('notification preference toggles', () => {
       saved.push(`start:${value}`);
       if (saved.length === 1) await gate;
       saved.push(`done:${value}`);
-    });
+    }).enqueue;
 
     const first = enqueue('a');
     enqueue('b');

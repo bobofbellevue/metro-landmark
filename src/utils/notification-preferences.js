@@ -8,7 +8,7 @@ export const NOTIFICATION_CATEGORIES = [
 export const NOTIFICATION_CHANNELS = [
   { key: 'email', label: 'Email' },
   { key: 'sms', label: 'SMS' },
-  { key: 'push', label: 'Browser push' },
+  { key: 'push', label: 'Browser notification' },
 ];
 
 /**
@@ -54,6 +54,7 @@ export function createSerialSaver(saveFn) {
   let inFlight = false;
   let queued = undefined;
   let hasQueued = false;
+  let drainPromise = Promise.resolve();
 
   const drain = async () => {
     inFlight = true;
@@ -67,17 +68,22 @@ export function createSerialSaver(saveFn) {
     } finally {
       inFlight = false;
       if (hasQueued) {
-        await drain();
+        drainPromise = drain();
+        await drainPromise;
       }
     }
   };
 
-  return (value) => {
+  const enqueue = (value) => {
     queued = value;
     hasQueued = true;
     if (!inFlight) {
-      return drain();
+      drainPromise = drain();
     }
-    return undefined;
+    return drainPromise;
   };
+
+  const whenIdle = () => drainPromise;
+
+  return { enqueue, whenIdle };
 }

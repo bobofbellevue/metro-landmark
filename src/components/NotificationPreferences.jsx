@@ -10,6 +10,10 @@ import {
   toggleCategoryChannel,
   toggleGlobalChannel,
 } from '../utils/notification-preferences.js';
+import {
+  NOTIFICATION_TEST_KINDS,
+  formatNotificationTestMessage,
+} from '../utils/notification-test-message.js';
 
 const FREQUENCY_OPTIONS = [
   { value: 'immediate', label: 'Immediate' },
@@ -31,7 +35,7 @@ export default function NotificationPreferences() {
   const userRef = useRef(user);
   userRef.current = user;
 
-  const enqueueSave = useMemo(
+  const saver = useMemo(
     () =>
       createSerialSaver(async (prefs) => {
         const currentUser = userRef.current;
@@ -66,8 +70,8 @@ export default function NotificationPreferences() {
     const isHydrate = lastPersistedJson.current === null;
     lastPersistedJson.current = json;
     if (isHydrate) return;
-    enqueueSave(preferences);
-  }, [preferences, user?.user_id, enqueueSave]);
+    saver.enqueue(preferences);
+  }, [preferences, user?.user_id, saver]);
 
   const fetchPreferences = async () => {
     if (!user?.user_id) return;
@@ -95,26 +99,34 @@ export default function NotificationPreferences() {
     if (!user?.user_id) return;
 
     const key = `${category}_${notificationType}`;
+    const kind = NOTIFICATION_TEST_KINDS[notificationType] || 'notification';
     setTestingKey(key);
     setError('');
     setStatusHint('');
 
+    const fallbackDestination =
+      notificationType === 'email' ? user?.email || null : null;
+    const fallbackMessage = formatNotificationTestMessage({
+      channel: notificationType,
+      destination: fallbackDestination,
+      error: 'The test request did not complete.',
+    });
+
     try {
+      await saver.whenIdle();
       const response = await api.post('/notifications/test', {
         notification_type: notificationType,
         category
       }, user);
 
       if (response.success) {
-        setStatusHint(
-          `${notificationType.charAt(0).toUpperCase() + notificationType.slice(1)} test sent`
-        );
+        setStatusHint(response.message || `Sent a test ${kind}.`);
       } else {
-        setError(response.error || 'Failed to send test notification');
+        setError(response.message || response.error || fallbackMessage);
       }
     } catch (err) {
       console.error('Error sending test notification:', err);
-      setError('Failed to send test notification');
+      setError(fallbackMessage);
     } finally {
       setTestingKey(null);
     }
@@ -188,7 +200,7 @@ export default function NotificationPreferences() {
                     className={CHECKBOX_CLASS}
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    Enable {type.label} Notifications
+                    Enable {type.label}
                   </span>
                 </label>
               </div>
@@ -210,7 +222,7 @@ export default function NotificationPreferences() {
                   const canTest = channelOn && categoryOn && type.key !== 'push';
                   const rowTestKey = `${category.key}_${type.key}`;
                   return (
-                    <div key={type.key} className="flex h-8 items-center justify-between">
+                    <div key={type.key} className="flex h-8 items-center gap-3">
                       <label className="flex items-center gap-3">
                         <input
                           type="checkbox"
