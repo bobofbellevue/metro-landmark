@@ -2,24 +2,18 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Card } from './ui';
 import { AuthContext } from '../contexts';
 import { api } from '../api';
+import {
+  NOTIFICATION_CATEGORIES,
+  NOTIFICATION_CHANNELS,
+  setCategoryFrequency,
+  toggleCategoryChannel,
+  toggleGlobalChannel,
+} from '../utils/notification-preferences.js';
 
 const FREQUENCY_OPTIONS = [
   { value: 'immediate', label: 'Immediate' },
   { value: 'daily_digest', label: 'Daily Digest (8 AM)' },
   { value: 'weekly_digest', label: 'Weekly Digest (Monday 8 AM)' }
-];
-
-const CATEGORIES = [
-  { key: 'maintenance', label: 'Maintenance' },
-  { key: 'lease', label: 'Lease' },
-  { key: 'payment', label: 'Payment' },
-  { key: 'general', label: 'General' }
-];
-
-const NOTIFICATION_TYPES = [
-  { key: 'email', label: 'Email' },
-  { key: 'sms', label: 'SMS' },
-  { key: 'push', label: 'Push' }
 ];
 
 export default function NotificationPreferences() {
@@ -107,40 +101,20 @@ export default function NotificationPreferences() {
     }
   };
 
-  const updatePreference = (key, value) => {
-    if (!preferences) return;
-    setPreferences({
-      ...preferences,
-      [key]: value
-    });
-  };
-
   const toggleGlobal = (type) => {
-    const key = `${type}_enabled`;
-    const newValue = !preferences[key];
-    updatePreference(key, newValue);
-
-    // If disabling globally, disable all category-specific toggles
-    if (!newValue) {
-      CATEGORIES.forEach(category => {
-        updatePreference(`${category.key}_${type}`, false);
-      });
-    }
+    setPreferences((prev) => (prev ? toggleGlobalChannel(prev, type) : prev));
   };
 
   const toggleCategory = (category, type) => {
-    const key = `${category}_${type}`;
-    const newValue = !preferences[key];
-    updatePreference(key, newValue);
-
-    // If enabling a category, ensure global is enabled
-    if (newValue) {
-      updatePreference(`${type}_enabled`, true);
-    }
+    setPreferences((prev) =>
+      prev ? toggleCategoryChannel(prev, category, type) : prev
+    );
   };
 
   const updateFrequency = (category, frequency) => {
-    updatePreference(`${category}_frequency`, frequency);
+    setPreferences((prev) =>
+      prev ? setCategoryFrequency(prev, category, frequency) : prev
+    );
   };
 
   if (loading) {
@@ -187,8 +161,14 @@ export default function NotificationPreferences() {
         {/* Global Preferences */}
         <div className="border-b pb-6">
           <h4 className="text-lg font-medium text-gray-800 mb-4">Global Settings</h4>
+          <p className="text-sm text-gray-600 mb-4">
+            Global Email, SMS, and Push are master switches for each channel.
+            Turn a channel on here, then choose which categories send on that
+            channel below. Category boxes stay off until you enable them — turning
+            on SMS or Push globally does not subscribe every category automatically.
+          </p>
           <div className="space-y-3">
-            {NOTIFICATION_TYPES.map(type => (
+            {NOTIFICATION_CHANNELS.map(type => (
               <div key={type.key} className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <input
@@ -210,13 +190,13 @@ export default function NotificationPreferences() {
         <div className="space-y-6">
           <h4 className="text-lg font-medium text-gray-800">Category Preferences</h4>
           
-          {CATEGORIES.map(category => (
+          {NOTIFICATION_CATEGORIES.map(category => (
             <div key={category.key} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
               <h5 className="text-md font-semibold text-gray-800 mb-4">{category.label}</h5>
               
               {/* Notification Type Toggles */}
               <div className="space-y-3 mb-4">
-                {NOTIFICATION_TYPES.map(type => (
+                {NOTIFICATION_CHANNELS.map(type => (
                   <div key={type.key} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <input
