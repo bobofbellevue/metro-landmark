@@ -37,6 +37,7 @@ const emptyForm = () => ({
   kind: 'rent',
   amount: null,
   dueDate: formatWorkflowDateMMDDYYYY(todayWorkflowDate()),
+  receiptDate: formatWorkflowDateMMDDYYYY(todayWorkflowDate()),
   method: '',
   memo: '',
   periodKey: '',
@@ -191,6 +192,7 @@ export default function PaymentsPage() {
           kind: form.kind,
           amount: form.amount,
           dueDate: form.dueDate,
+          receiptDate: status === 'paid' ? form.receiptDate : null,
           method:
             status === 'paid' || form.collectOnline
               ? form.method || 'card'
@@ -210,6 +212,8 @@ export default function PaymentsPage() {
       }
       if (data.checkoutError && !data.checkoutUrl) {
         setError(data.checkoutError);
+      } else if (data.warning) {
+        setError(data.warning);
       }
       setSuccess(
         data.checkoutUrl
@@ -237,6 +241,9 @@ export default function PaymentsPage() {
       if (!data?.success) {
         setError(data?.error || 'Could not update payment.');
         return;
+      }
+      if (data.warning) {
+        setError(data.warning);
       }
       setSuccess('Payment updated.');
       await load();
@@ -293,8 +300,9 @@ export default function PaymentsPage() {
         <p className="mt-2 text-sm text-gray-600 max-w-3xl">
           Open charges are created here as <span className="font-medium">due</span>.
           When money arrives, mark the charge paid — or record a payment that was
-          already received in one step. Attach a photo or PDF as proof. Type and
-          method lists can be extended for this company.
+          already received in one step. Due date and date of receipt are separate.
+          Attach a photo or PDF as proof (photos are compressed before the 10MB
+          limit). Type and method lists can be extended for this company.
         </p>
       </div>
 
@@ -335,7 +343,17 @@ export default function PaymentsPage() {
                   type="radio"
                   name="intent"
                   checked={!isCharge}
-                  onChange={() => setField('intent', 'received')}
+                  onChange={() => {
+                    setForm((prev) => ({
+                      ...prev,
+                      intent: 'received',
+                      receiptDate:
+                        prev.receiptDate ||
+                        formatWorkflowDateMMDDYYYY(todayWorkflowDate()),
+                    }));
+                    setSuccess('');
+                    setCheckoutUrl('');
+                  }}
                 />
                 Payment already received
               </label>
@@ -386,6 +404,13 @@ export default function PaymentsPage() {
                 value={form.dueDate}
                 onChange={(e) => setField('dueDate', e.target.value)}
               />
+              {!isCharge && (
+                <DateInput
+                  label="Date of receipt"
+                  value={form.receiptDate}
+                  onChange={(e) => setField('receiptDate', e.target.value)}
+                />
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Covered period
@@ -524,7 +549,7 @@ export default function PaymentsPage() {
                 userId={user?.user_id}
                 documentType={PROOF_OF_PAYMENT_TYPE}
                 acceptedTypes={PROOF_OF_SERVICE_ACCEPT}
-                description="Photo or PDF of a receipt, check image, bank confirmation, or similar. Saved to Documents."
+                description="Photo or PDF of a receipt, check image, bank confirmation, or similar. Photos are compressed automatically. Saved to Documents."
               />
             </div>
 
@@ -615,6 +640,7 @@ export default function PaymentsPage() {
               <thead>
                 <tr className="text-left text-gray-500 border-b">
                   <th className="py-2 pr-4 font-medium">Due</th>
+                  <th className="py-2 pr-4 font-medium">Received</th>
                   <th className="py-2 pr-4 font-medium">Lease</th>
                   <th className="py-2 pr-4 font-medium">Type</th>
                   <th className="py-2 pr-4 font-medium">Amount</th>
@@ -628,6 +654,9 @@ export default function PaymentsPage() {
                   <tr key={row.paymentId} className="border-b last:border-0 align-top">
                     <td className="py-2 pr-4 whitespace-nowrap">
                       {row.dueDate ? formatWorkflowDateMMDDYYYY(row.dueDate) : '—'}
+                    </td>
+                    <td className="py-2 pr-4 whitespace-nowrap">
+                      {row.receiptDate ? formatWorkflowDateMMDDYYYY(row.receiptDate) : '—'}
                     </td>
                     <td className="py-2 pr-4">
                       <div className="font-medium text-gray-900">{row.leaseLabel}</div>
@@ -670,6 +699,7 @@ export default function PaymentsPage() {
                               updatePayment(row.paymentId, {
                                 status: 'paid',
                                 method: row.method || 'other',
+                                receiptDate: todayWorkflowDate(),
                               })
                             }
                             className="text-indigo-600 hover:text-indigo-800 font-medium"

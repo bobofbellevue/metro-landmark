@@ -7,7 +7,11 @@ import {
   filterPaymentsBySearch,
   leaseLabelFromParts,
   mergePaymentCatalog,
+  missingPaymentsColumn,
+  missingPaymentsTable,
   parsePaymentAmount,
+  paymentsSchemaWarning,
+  paymentsWriteErrorMessage,
   publicPayment,
   stripeOnlineEnabled,
   stripeSecretKey,
@@ -105,6 +109,55 @@ describe('payment helpers', () => {
     ).toBe(false);
   });
 
+  test('receipt date is distinct from due date', () => {
+    const parsed = validatePaymentWrite(
+      {
+        leaseId: 1,
+        kind: 'rent',
+        amount: 1850,
+        status: 'paid',
+        method: 'check',
+        receiptDate: '2026-08-18',
+      },
+      { requireAmount: true }
+    );
+    expect(parsed.ok).toBe(true);
+    expect(parsed.value.receiptDate).toBe('2026-08-18');
+    expect(
+      validatePaymentWrite(
+        {
+          leaseId: 1,
+          kind: 'rent',
+          amount: 10,
+          receiptDate: 'not-a-date',
+        },
+        { requireAmount: true }
+      ).error
+    ).toMatch(/receipt/i);
+  });
+
+  test('missing-table detection does not treat missing 018 columns as 017', () => {
+    const columnMissing = {
+      message: "Could not find the 'period_start' column of 'payments' in the schema cache",
+    };
+    expect(missingPaymentsTable(columnMissing)).toBe(false);
+    expect(missingPaymentsColumn(columnMissing)).toBe(true);
+    expect(paymentsWriteErrorMessage(columnMissing)).toMatch(/018_payment_ledger_ux/);
+    expect(paymentsWriteErrorMessage(columnMissing)).not.toMatch(/017_payments/);
+
+    const tableMissing = {
+      message: 'relation "payments" does not exist',
+    };
+    expect(missingPaymentsTable(tableMissing)).toBe(true);
+    expect(paymentsWriteErrorMessage(tableMissing)).toMatch(/017_payments/);
+
+    const receiptMissing = {
+      message: "Could not find the 'receipt_date' column of 'payments' in the schema cache",
+    };
+    expect(paymentsWriteErrorMessage(receiptMissing)).toMatch(/019_payment_receipt_and_rls/);
+    expect(paymentsSchemaWarning(['receipt_date'])).toMatch(/Date of receipt/);
+  });
+
   test('mergePaymentCatalog appends company types', () => {
     const merged = mergePaymentCatalog(PAYMENT_TYPES, [
       { category: 'type', code: 'garage_remote', label: 'Garage remote', pmc_id: 9 },
@@ -135,6 +188,19 @@ describe('payment helpers', () => {
     );
     expect(row.leaseLabel).toBe('Pine Court · Unit 2A · Ada Lovelace');
     expect(row.kindLabel).toBe('Rent');
+    expect(row.receiptDate).toBeNull();
+    expect(
+      publicPayment({
+        payment_id: 9,
+        pmc_id: 2,
+        lease_id: 4,
+        kind: 'rent',
+        amount: '1850.00',
+        status: 'paid',
+        due_date: '2026-09-01',
+        receipt_date: '2026-08-18',
+      }).receiptDate
+    ).toBe('2026-08-18');
     expect(summarizePayments([row, { status: 'paid', amount: 50 }])).toEqual({
       dueCount: 1,
       dueAmount: 1850,

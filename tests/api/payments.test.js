@@ -86,6 +86,17 @@ function createQuery(db, table) {
   async function execute() {
     const rows = db[table] || [];
     if (state.insertRow) {
+      const missing = Object.keys(state.insertRow).find((key) =>
+        (db.missingColumns || []).includes(key)
+      );
+      if (missing) {
+        return {
+          data: null,
+          error: {
+            message: `Could not find the '${missing}' column of 'payments' in the schema cache`,
+          },
+        };
+      }
       const key = primaryKey(table);
       const nextId = rows.reduce((max, row) => Math.max(max, Number(row[key]) || 0), 0) + 1;
       const created = {
@@ -142,6 +153,7 @@ describe('api/payments', () => {
     db.documents.splice(0, db.documents.length);
     db.lease_clients.splice(0, db.lease_clients.length);
     db.contacts.splice(0, db.contacts.length);
+    db.missingColumns = [];
 
     db.users.push(
       { user_id: 1, pmc_id: 9, role: 'company_admin' },
@@ -240,6 +252,65 @@ describe('api/payments', () => {
     expect(db.payments).toHaveLength(1);
   });
 
+  test('POST records date of receipt separately from due date', async () => {
+    const res = createRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { 'x-user-id': '1' },
+        body: {
+          leaseId: 10,
+          kind: 'rent',
+          amount: 1850,
+          dueDate: '2026-09-01',
+          receiptDate: '2026-08-18',
+          status: 'paid',
+          method: 'check',
+        },
+      },
+      res
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.jsonData.payment).toMatchObject({
+      status: 'paid',
+      dueDate: '2026-09-01',
+      receiptDate: '2026-08-18',
+    });
+    expect(db.payments[0].receipt_date).toBe('2026-08-18');
+    expect(db.payments[0].due_date).toBe('2026-09-01');
+  });
+
+  test('POST does not claim 017 is missing when later columns are absent', async () => {
+    db.missingColumns = ['period_start', 'period_end', 'document_id', 'receipt_date'];
+    const res = createRes();
+    await handler(
+      {
+        method: 'POST',
+        headers: { 'x-user-id': '1' },
+        body: {
+          leaseId: 10,
+          kind: 'rent',
+          amount: 1850,
+          dueDate: '2026-09-01',
+          periodStart: '2026-08-15',
+          periodEnd: '2026-09-14',
+          status: 'paid',
+          method: 'check',
+          receiptDate: '2026-08-18',
+        },
+      },
+      res
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.jsonData.success).toBe(true);
+    expect(res.jsonData.error).toBeUndefined();
+    expect(String(res.jsonData.warning || '')).not.toMatch(/017_payments/);
+    expect(res.jsonData.warning).toMatch(/019_payment_receipt_and_rls/);
+    expect(db.payments).toHaveLength(1);
+    expect(db.payments[0].period_start).toBeUndefined();
+    expect(db.payments[0].receipt_date).toBeUndefined();
+  });
+
   test('landlord can read but not POST', async () => {
     db.payments.push({
       payment_id: 1,
@@ -289,7 +360,9 @@ describe('api/payments', () => {
     expect(res.statusCode).toBe(200);
     expect(res.jsonData.payment.status).toBe('paid');
     expect(res.jsonData.payment.method).toBe('check');
+    expect(res.jsonData.payment.receiptDate).toBeTruthy();
     expect(db.payments[0].paid_at).toBeTruthy();
+    expect(db.payments[0].receipt_date).toBeTruthy();
   });
 
   test('manager cannot see another company payment', async () => {

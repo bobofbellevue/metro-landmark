@@ -2361,6 +2361,59 @@ async function ensurePmCompaniesThemeColumn(sql) {
   }
 }
 
+async function ensurePermissiveRls(sql, tableName) {
+  if (!/^[a-z_]+$/.test(tableName)) {
+    throw new Error(`Refusing RLS setup for unexpected table name: ${tableName}`);
+  }
+  try {
+    await sql.unsafe(`ALTER TABLE IF EXISTS public.${tableName} ENABLE ROW LEVEL SECURITY`);
+    const policies = [
+      {
+        name: `Allow anon reads on ${tableName}`,
+        clause: `FOR SELECT TO anon USING (true)`,
+      },
+      {
+        name: `Allow authenticated reads on ${tableName}`,
+        clause: `FOR SELECT TO authenticated USING (true)`,
+      },
+      {
+        name: `Allow anon inserts on ${tableName}`,
+        clause: `FOR INSERT TO anon WITH CHECK (true)`,
+      },
+      {
+        name: `Allow authenticated inserts on ${tableName}`,
+        clause: `FOR INSERT TO authenticated WITH CHECK (true)`,
+      },
+      {
+        name: `Allow anon updates on ${tableName}`,
+        clause: `FOR UPDATE TO anon USING (true) WITH CHECK (true)`,
+      },
+      {
+        name: `Allow authenticated updates on ${tableName}`,
+        clause: `FOR UPDATE TO authenticated USING (true) WITH CHECK (true)`,
+      },
+      {
+        name: `Allow anon deletes on ${tableName}`,
+        clause: `FOR DELETE TO anon USING (true)`,
+      },
+      {
+        name: `Allow authenticated deletes on ${tableName}`,
+        clause: `FOR DELETE TO authenticated USING (true)`,
+      },
+    ];
+    for (const policy of policies) {
+      await sql.unsafe(`DROP POLICY IF EXISTS "${policy.name}" ON public.${tableName}`);
+      await sql.unsafe(
+        `CREATE POLICY "${policy.name}" ON public.${tableName} ${policy.clause}`
+      );
+    }
+    logDetail(`✅ RLS enabled on ${tableName}`);
+  } catch (error) {
+    logDetail(`⚠️ Could not enable RLS on ${tableName}: ${error.message}`, 'error');
+    throw error;
+  }
+}
+
 async function ensurePaymentsTable(sql) {
   try {
     logDetail('Ensuring payments table exists...');
@@ -2372,6 +2425,7 @@ async function ensurePaymentsTable(sql) {
         kind VARCHAR(64) NOT NULL,
         amount DECIMAL(10,2) NOT NULL,
         due_date DATE,
+        receipt_date DATE,
         paid_at TIMESTAMP,
         method VARCHAR(64),
         status VARCHAR(50) NOT NULL DEFAULT 'due',
@@ -2390,12 +2444,16 @@ async function ensurePaymentsTable(sql) {
     await sql`ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_method_check`;
     await sql`ALTER TABLE payments ALTER COLUMN kind TYPE VARCHAR(64)`;
     await sql`ALTER TABLE payments ALTER COLUMN method TYPE VARCHAR(64)`;
+    await sql`ALTER TABLE payments ALTER COLUMN period_label TYPE VARCHAR(80)`;
     await sql`ALTER TABLE payments ADD COLUMN IF NOT EXISTS period_start DATE`;
     await sql`ALTER TABLE payments ADD COLUMN IF NOT EXISTS period_end DATE`;
     await sql`ALTER TABLE payments ADD COLUMN IF NOT EXISTS document_id INTEGER`;
+    await sql`ALTER TABLE payments ADD COLUMN IF NOT EXISTS receipt_date DATE`;
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_pmc ON payments (pmc_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_lease ON payments (lease_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_status_due ON payments (status, due_date)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_payments_receipt_date ON payments (receipt_date)`;
+    await ensurePermissiveRls(sql, 'payments');
     logDetail('✅ payments verified/created');
   } catch (error) {
     logDetail(`⚠️ Could not ensure payments: ${error.message}`, 'error');
@@ -2421,6 +2479,7 @@ async function ensurePaymentCatalogTable(sql) {
     `;
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_payment_catalog_pmc_code ON payment_catalog (pmc_id, category, code) WHERE pmc_id IS NOT NULL`;
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_payment_catalog_system_code ON payment_catalog (category, code) WHERE pmc_id IS NULL`;
+    await ensurePermissiveRls(sql, 'payment_catalog');
     logDetail('✅ payment_catalog verified/created');
   } catch (error) {
     logDetail(`⚠️ Could not ensure payment_catalog: ${error.message}`, 'error');
@@ -2446,6 +2505,7 @@ async function ensurePhoneResourcesTable(sql) {
     `;
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_phone_resources_pmc_purpose ON phone_resources (pmc_id, purpose) WHERE is_active = true AND pmc_id IS NOT NULL`;
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_phone_resources_system_purpose ON phone_resources (purpose) WHERE is_active = true AND pmc_id IS NULL`;
+    await ensurePermissiveRls(sql, 'phone_resources');
     logDetail('✅ phone_resources verified/created');
   } catch (error) {
     logDetail(`⚠️ Could not ensure phone_resources: ${error.message}`, 'error');

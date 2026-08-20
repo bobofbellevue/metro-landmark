@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { compressImageFile, isCompressibleImageFile } from '../utils/compress-image.js';
 
 /**
  * DocumentUpload component for uploading documents to Supabase Storage
@@ -55,14 +56,33 @@ export default function DocumentUpload({
       return;
     }
 
-    // Validate file size
-    const fileSizeMB = file.size / (1024 * 1024);
-    if (fileSizeMB > maxSize) {
-      onUploadError?.(new Error(`File size ${fileSizeMB.toFixed(2)}MB exceeds maximum of ${maxSize}MB`));
-      return;
+    setUploading(true);
+
+    let uploadFile = file;
+    try {
+      if (isCompressibleImageFile(file)) {
+        const result = await compressImageFile(file, {
+          maxBytes: maxSize * 1024 * 1024,
+        });
+        uploadFile = result.file || file;
+      }
+    } catch {
+      uploadFile = file;
     }
 
-    setUploading(true);
+    const fileSizeMB = uploadFile.size / (1024 * 1024);
+    if (fileSizeMB > maxSize) {
+      setUploading(false);
+      const extra = isCompressibleImageFile(file)
+        ? ' This photo could not be compressed below the limit in the browser. Try JPEG or PNG, or a smaller crop.'
+        : '';
+      onUploadError?.(
+        new Error(
+          `File size ${fileSizeMB.toFixed(2)}MB exceeds maximum of ${maxSize}MB.${extra}`
+        )
+      );
+      return;
+    }
 
     try {
       // Convert file to base64
@@ -77,9 +97,9 @@ export default function DocumentUpload({
           // Build upload body with entity-specific fields
           const uploadBody = {
             file: base64Data,
-            file_name: file.name,
-            file_type: file.type,
-            mime_type: file.type,
+            file_name: uploadFile.name,
+            file_type: uploadFile.type,
+            mime_type: uploadFile.type,
             document_type: documentType,
             user_id: userId || user?.id || null
           };
@@ -111,8 +131,8 @@ export default function DocumentUpload({
 
           onUploadSuccess?.({
             ...result,
-            file_name: file.name,
-            mime_type: file.type || result.mime_type,
+            file_name: uploadFile.name,
+            mime_type: uploadFile.type || result.mime_type,
             file_path: result.file_path,
           });
         } catch (error) {
@@ -123,7 +143,7 @@ export default function DocumentUpload({
         }
       };
 
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(uploadFile);
     } catch (error) {
       console.error('File read error:', error);
       onUploadError?.(error);
@@ -211,7 +231,7 @@ export default function DocumentUpload({
               </button>
             </p>
             <p className="text-sm text-gray-500">
-              PDF or image, max {maxSize}MB
+              PDF or image, max {maxSize}MB. Photos are compressed automatically.
             </p>
           </div>
         )}

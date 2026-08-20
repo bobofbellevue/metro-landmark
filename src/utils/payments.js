@@ -185,6 +185,90 @@ export function stripeOnlineEnabled(env = process.env) {
   return Boolean(stripeSecretKey(env));
 }
 
+/** Columns added after 017; safe to omit on older databases. */
+export const OPTIONAL_PAYMENT_WRITE_COLUMNS = Object.freeze([
+  'receipt_date',
+  'period_start',
+  'period_end',
+  'document_id',
+]);
+
+function errorMessage(error) {
+  return String(error?.message || error || '');
+}
+
+/**
+ * True only when the payments relation itself is missing — not when a
+ * later column is absent from the PostgREST schema cache.
+ */
+export function missingPaymentsTable(error) {
+  const message = errorMessage(error);
+  return (
+    /relation ["']?payments["']? does not exist/i.test(message) ||
+    /could not find the table ['"]public\.payments['"] in the schema cache/i.test(message) ||
+    /could not find the ['"]payments['"] table in the schema cache/i.test(message)
+  );
+}
+
+export function missingPaymentsColumn(error) {
+  const message = errorMessage(error);
+  if (/could not find the ['"][^'"]+['"] column of ['"]payments['"]/i.test(message)) {
+    return true;
+  }
+  return (
+    /payments/i.test(message) &&
+    /column/i.test(message) &&
+    /schema cache|does not exist/i.test(message)
+  );
+}
+
+export function paymentsCheckConstraintError(error) {
+  return /payments_kind_check|payments_method_check/i.test(errorMessage(error));
+}
+
+export function paymentColumnFromSchemaError(error) {
+  const match = errorMessage(error).match(/could not find the ['"]([^'"]+)['"] column/i);
+  return match ? match[1] : null;
+}
+
+export function paymentsWriteErrorMessage(error) {
+  if (missingPaymentsTable(error)) {
+    return 'The payments table is not on this database yet. Run migration 017_payments.sql.';
+  }
+  if (paymentsCheckConstraintError(error)) {
+    return 'This payments table still has the original type and method limits. Run migration 018_payment_ledger_ux.sql, then 019_payment_receipt_and_rls.sql.';
+  }
+  if (missingPaymentsColumn(error)) {
+    const col = paymentColumnFromSchemaError(error) || '';
+    const message = errorMessage(error);
+    if (/receipt_date/i.test(col) || /receipt_date/i.test(message)) {
+      return 'This database is missing the date-of-receipt column. Run migration 019_payment_receipt_and_rls.sql.';
+    }
+    if (
+      /period_start|period_end|document_id/i.test(col) ||
+      /period_start|period_end|document_id/i.test(message)
+    ) {
+      return 'This database is missing later payment ledger columns. Run migration 018_payment_ledger_ux.sql, then 019_payment_receipt_and_rls.sql.';
+    }
+    const raw = message.trim();
+    return raw
+      ? `${raw} If a listed column is missing, run migrations 018_payment_ledger_ux.sql and 019_payment_receipt_and_rls.sql.`
+      : 'A payment column is missing from this database. Run migrations 018_payment_ledger_ux.sql and 019_payment_receipt_and_rls.sql.';
+  }
+  return errorMessage(error) || 'Failed to record payment.';
+}
+
+export function paymentsSchemaWarning(droppedColumns) {
+  const dropped = (droppedColumns || []).filter(Boolean);
+  if (dropped.includes('receipt_date')) {
+    return 'Date of receipt was not saved because this database is missing that column. Run migration 019_payment_receipt_and_rls.sql.';
+  }
+  if (dropped.length) {
+    return 'Some payment fields were not saved because this database is missing later ledger columns. Run migration 018_payment_ledger_ux.sql, then 019_payment_receipt_and_rls.sql.';
+  }
+  return null;
+}
+
 function parseOptionalDate(raw, fieldLabel) {
   if (raw == null || raw === '') return { ok: true, value: null };
   const iso = toWorkflowDateString(raw);
@@ -282,6 +366,12 @@ export function validatePaymentWrite(body = {}, options = {}) {
     return { ok: false, error: 'Period start must be on or before period end.' };
   }
 
+  const receiptParsed = parseOptionalDate(
+    body.receiptDate ?? body.receipt_date,
+    'Date of receipt'
+  );
+  if (!receiptParsed.ok) return receiptParsed;
+
   let periodLabel = normalizePeriodLabel(body.periodLabel ?? body.period_label);
   if ((body.periodLabel ?? body.period_label) && periodLabel == null) {
     return { ok: false, error: 'Period label is too long or uses characters that are not allowed.' };
@@ -306,6 +396,7 @@ export function validatePaymentWrite(body = {}, options = {}) {
       periodLabel,
       periodStart: startParsed.value,
       periodEnd: endParsed.value,
+      receiptDate: receiptParsed.value,
       memo,
       documentId,
       collectOnline: Boolean(body.collectOnline ?? body.collect_online),
@@ -345,6 +436,7 @@ export function publicPayment(row, lease = {}, lists = {}) {
     typeLabel: paymentKindLabel(row.kind, types),
     amount: row.amount != null ? Number(row.amount) : null,
     dueDate: row.due_date || null,
+    receiptDate: row.receipt_date || null,
     paidAt: row.paid_at || null,
     method: row.method || null,
     methodLabel: paymentMethodLabel(row.method, methods),
@@ -398,6 +490,8 @@ export function paymentSearchHaystack(payment) {
     payment.memo,
     payment.periodLabel,
     payment.documentName,
+    payment.dueDate,
+    payment.receiptDate,
     payment.amount != null ? String(payment.amount) : '',
   ]
     .filter(Boolean)

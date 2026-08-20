@@ -8,15 +8,25 @@
  */
 import { createSupabaseClient } from './utils/supabase-client.js';
 import { createCheckoutSession, appOriginFromRequest } from './utils/stripe-checkout.js';
-import { toWorkflowDateString, isCompleteWorkflowDate } from '../src/utils/workflow-date.js';
+import {
+  toWorkflowDateString,
+  isCompleteWorkflowDate,
+  todayWorkflowDate,
+} from '../src/utils/workflow-date.js';
 import { brand } from './utils/brand.js';
 import {
+  OPTIONAL_PAYMENT_WRITE_COLUMNS,
   PAYMENT_METHODS,
   PAYMENT_TYPES,
   canEditPaymentCatalog,
   canEditPayments,
   canViewPayments,
   mergePaymentCatalog,
+  missingPaymentsColumn,
+  missingPaymentsTable,
+  paymentColumnFromSchemaError,
+  paymentsSchemaWarning,
+  paymentsWriteErrorMessage,
   publicPayment,
   stripeOnlineEnabled,
   stripeSecretKey,
@@ -29,12 +39,35 @@ export function parseUserIdHeader(headers = {}) {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-const PAYMENT_COLUMNS =
-  'payment_id, pmc_id, lease_id, kind, amount, due_date, paid_at, method, status, memo, period_label, period_start, period_end, document_id, stripe_checkout_session_id, created_by, created_at, updated_at';
-
-function missingPaymentsTable(error) {
-  const message = String(error?.message || '');
-  return /payments/i.test(message) && /does not exist|schema cache/i.test(message);
+async function writePaymentRow(supabase, action, row, matchId = null) {
+  const attempt = { ...row };
+  const dropped = [];
+  for (let i = 0; i <= OPTIONAL_PAYMENT_WRITE_COLUMNS.length; i += 1) {
+    let query =
+      action === 'insert'
+        ? supabase.from('payments').insert(attempt)
+        : supabase.from('payments').update(attempt).eq('payment_id', matchId);
+    const { data, error } = await query.select('*').maybeSingle();
+    if (!error) return { data, error: null, dropped };
+    if (missingPaymentsTable(error) || !missingPaymentsColumn(error)) {
+      return { data: null, error, dropped };
+    }
+    const col =
+      paymentColumnFromSchemaError(error) ||
+      OPTIONAL_PAYMENT_WRITE_COLUMNS.find((name) =>
+        new RegExp(`\\b${name}\\b`, 'i').test(String(error?.message || ''))
+      );
+    if (!col || !Object.prototype.hasOwnProperty.call(attempt, col)) {
+      return { data: null, error, dropped };
+    }
+    delete attempt[col];
+    dropped.push(col);
+  }
+  return {
+    data: null,
+    error: { message: 'Could not save this payment after omitting missing columns.' },
+    dropped,
+  };
 }
 
 async function loadUser(supabase, userId) {
@@ -234,7 +267,7 @@ async function enrichPayments(supabase, rows, lists = {}) {
 async function listScopedPayments(supabase, user, query = {}) {
   let q = supabase
     .from('payments')
-    .select(PAYMENT_COLUMNS)
+    .select('*')
     .order('due_date', { ascending: false });
 
   if (query.status && query.status !== 'all') {
@@ -284,7 +317,7 @@ async function listScopedPayments(supabase, user, query = {}) {
   const { data, error } = await q;
   if (error) {
     if (missingPaymentsTable(error)) return [];
-    throw error;
+    throw new Error(paymentsWriteErrorMessage(error));
   }
   return enrichPayments(supabase, data || [], await loadCatalogLists(supabase, user.pmc_id));
 }
@@ -445,6 +478,10 @@ export default async function handler(req, res) {
         amount: parsed.value.amount,
         due_date: dueDate,
         paid_at: paidAt,
+        receipt_date:
+          parsed.value.status === 'paid'
+            ? parsed.value.receiptDate || todayWorkflowDate()
+            : null,
         method: parsed.value.method,
         status: parsed.value.status,
         memo: parsed.value.memo,
@@ -456,23 +493,20 @@ export default async function handler(req, res) {
         updated_at: new Date().toISOString(),
       };
 
-      const { data: created, error } = await supabase
-        .from('payments')
-        .insert(row)
-        .select(
-          PAYMENT_COLUMNS
-        )
-        .maybeSingle();
+      const { data: created, error, dropped } = await writePaymentRow(
+        supabase,
+        'insert',
+        row
+      );
 
       if (error) {
         res.status(500).json({
           success: false,
-          error: missingPaymentsTable(error)
-            ? 'The payments table is not on this database yet. Run migration 017_payments.sql.'
-            : error.message || 'Failed to record payment.',
+          error: paymentsWriteErrorMessage(error),
         });
         return;
       }
+      const schemaWarning = paymentsSchemaWarning(dropped);
 
       const [enriched] = await enrichPayments(
         supabase,
@@ -497,6 +531,7 @@ export default async function handler(req, res) {
           payment: checkout.payment,
           checkoutUrl: checkout.checkoutUrl || null,
           checkoutError: checkout.checkoutError || null,
+          warning: schemaWarning,
           onlinePaymentsEnabled: true,
           canEdit: true,
         });
@@ -506,6 +541,7 @@ export default async function handler(req, res) {
       res.status(200).json({
         success: true,
         payment: publicRow,
+        warning: schemaWarning,
         onlinePaymentsEnabled: stripeOnlineEnabled(),
         canEdit: true,
       });
@@ -520,13 +556,18 @@ export default async function handler(req, res) {
 
     const { data: existing, error: loadError } = await supabase
       .from('payments')
-      .select(
-        PAYMENT_COLUMNS
-      )
+      .select('*')
       .eq('payment_id', paymentId)
       .maybeSingle();
 
-    if (loadError || !existing) {
+    if (loadError) {
+      res.status(500).json({
+        success: false,
+        error: paymentsWriteErrorMessage(loadError),
+      });
+      return;
+    }
+    if (!existing) {
       res.status(404).json({ success: false, error: 'Payment not found.' });
       return;
     }
@@ -549,6 +590,7 @@ export default async function handler(req, res) {
         periodStart: req.body?.periodStart ?? req.body?.period_start ?? existing.period_start,
         periodEnd: req.body?.periodEnd ?? req.body?.period_end ?? existing.period_end,
         documentId: req.body?.documentId ?? req.body?.document_id ?? existing.document_id,
+        receiptDate: req.body?.receiptDate ?? req.body?.receipt_date ?? existing.receipt_date,
       },
       { requireLease: true, requireKind: true, requireAmount: true }
     );
@@ -570,11 +612,16 @@ export default async function handler(req, res) {
       updated_at: new Date().toISOString(),
     };
 
-    if (parsed.value.status === 'paid' && !existing.paid_at) {
-      patch.paid_at = new Date().toISOString();
+    if (parsed.value.status === 'paid') {
+      if (!existing.paid_at) {
+        patch.paid_at = new Date().toISOString();
+      }
+      patch.receipt_date =
+        parsed.value.receiptDate || existing.receipt_date || todayWorkflowDate();
     }
     if (parsed.value.status === 'due') {
       patch.paid_at = null;
+      patch.receipt_date = null;
     }
     if (parsed.value.status === 'void') {
       patch.paid_at = existing.paid_at;
@@ -594,19 +641,17 @@ export default async function handler(req, res) {
       }
     }
 
-    const { data: updated, error: updateError } = await supabase
-      .from('payments')
-      .update(patch)
-      .eq('payment_id', paymentId)
-      .select(
-        PAYMENT_COLUMNS
-      )
-      .maybeSingle();
+    const { data: updated, error: updateError, dropped } = await writePaymentRow(
+      supabase,
+      'update',
+      patch,
+      paymentId
+    );
 
     if (updateError) {
       res.status(500).json({
         success: false,
-        error: updateError.message || 'Failed to update payment.',
+        error: paymentsWriteErrorMessage(updateError),
       });
       return;
     }
@@ -619,6 +664,7 @@ export default async function handler(req, res) {
     res.status(200).json({
       success: true,
       payment: enriched || publicPayment(updated, {}, catalog),
+      warning: paymentsSchemaWarning(dropped),
       onlinePaymentsEnabled: stripeOnlineEnabled(),
       canEdit: true,
     });
