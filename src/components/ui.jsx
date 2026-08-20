@@ -2,11 +2,11 @@ import React from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 
 export const Card = ({ title, children, className, contentClassName, hideTitle = false }) => (
-    <div className={`p-6 bg-white rounded-lg shadow-md flex flex-col ${className || ''}`}>
+    <div className={`p-6 bg-white rounded-lg shadow-md flex flex-col min-h-0 ${className || ''}`}>
         {!hideTitle && (
             <h3 className="mb-4 text-xl font-semibold text-gray-800 flex-shrink-0">{title}</h3>
         )}
-        <div className={`flex-1 ${contentClassName || ''}`}>{children}</div>
+        <div className={`flex-1 min-h-0 ${contentClassName || ''}`}>{children}</div>
     </div>
 );
 

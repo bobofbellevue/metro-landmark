@@ -473,7 +473,7 @@ export default function PropertiesPage() {
                 <CreatePropertyForm landlords={landlords} propertyTypes={propertyTypes} onPropertyCreated={handlePropertyCreated} />
                 <Card
                     title="Property Search"
-                    className="h-[calc(100vh-160px)] max-h-[calc(100vh-160px)] min-h-0 overflow-hidden"
+                    className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]"
                     contentClassName="flex min-h-0 flex-col overflow-hidden"
                 >
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1424,8 +1424,8 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
     };
 
     return (
-        <Card hideTitle className="max-h-[calc(100vh-160px)]" contentClassName="h-full">
-            <form onSubmit={handleCreate} className="flex flex-col h-full" autoComplete="off">
+        <Card hideTitle className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]" contentClassName="flex min-h-0 flex-col h-full">
+            <form onSubmit={handleCreate} className="flex min-h-0 flex-col h-full" autoComplete="off">
                 <div className="flex items-start justify-between pb-4 mb-4 border-b">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-800">Add Property</h2>

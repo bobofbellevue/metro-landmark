@@ -478,7 +478,7 @@ function MainAppLayout() {
         <Sidebar />
         <div className="flex flex-col flex-1 min-w-0">
           <TopHeader />
-          <main className="flex-1 min-w-0 p-2 overflow-y-auto overflow-x-hidden md:p-3 lg:p-4">{renderActivePage()}</main>
+          <main className="app-main flex-1 min-w-0 min-h-0 p-2 overflow-y-auto overflow-x-hidden md:p-3 lg:p-4">{renderActivePage()}</main>
         </div>
       </div>
     </SidebarContext.Provider>

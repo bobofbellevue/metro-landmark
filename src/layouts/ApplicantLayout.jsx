@@ -21,7 +21,7 @@ export default function ApplicantLayout({ children }) {
         <ApplicantSidebar />
         <div className="flex flex-col flex-1 min-w-0">
           <ApplicantHeader />
-          <main className="flex-1 min-w-0 p-2 overflow-y-auto overflow-x-hidden md:p-3 lg:p-4">{children}</main>
+          <main className="app-main flex-1 min-w-0 min-h-0 p-2 overflow-y-auto overflow-x-hidden md:p-3 lg:p-4">{children}</main>
         </div>
       </div>
     </SidebarContext.Provider>

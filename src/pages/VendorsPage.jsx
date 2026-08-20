@@ -433,10 +433,10 @@ export default function VendorsPage() {
                 <CreateVendorForm onVendorCreated={handleSuccess} />
                 <Card
                     title="Vendor Search"
-                    className="max-h-[calc(100vh-160px)]"
-                    contentClassName="flex flex-col h-full"
+                    className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]"
+                    contentClassName="flex min-h-0 flex-col h-full"
                 >
-                    <div className="flex flex-col h-full">
+                    <div className="flex min-h-0 flex-col h-full">
                     {/* Search Box */}
                     <div className="mb-4 flex-shrink-0">
                         <div className="flex items-center gap-4 mb-2">
@@ -488,8 +488,8 @@ export default function VendorsPage() {
                             )}
                         </div>
                     </div>
-                    <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
-                        <div className="overflow-auto h-full max-w-full">
+                    <div className="flex-1 min-h-0 overflow-hidden rounded-lg border border-gray-200">
+                        <div className="overflow-auto h-full min-h-0 max-w-full">
                         <table className="finder-list w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
@@ -1734,10 +1734,10 @@ const CreateVendorForm = ({ onVendorCreated }) => {
     return (
         <Card 
             hideTitle
-            className="max-h-[calc(100vh-160px)]"
-            contentClassName="flex flex-col h-full"
+            className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]"
+            contentClassName="flex min-h-0 flex-col h-full"
         >
-            <form onSubmit={handleCreate} className="flex flex-col h-full">
+            <form onSubmit={handleCreate} className="flex min-h-0 flex-col h-full">
                 <div className="flex items-start justify-between pb-4 mb-4 border-b">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-800">Add Vendor</h2>

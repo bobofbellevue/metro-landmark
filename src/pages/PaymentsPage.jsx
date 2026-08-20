@@ -295,12 +295,12 @@ export default function PaymentsPage() {
       <h2 className="text-3xl font-bold text-gray-800">Payments</h2>
       <div className={canEdit ? 'finder-split' : 'grid grid-cols-1 gap-4'}>
         {canEdit && (
-          <Card hideTitle className="max-h-[calc(100vh-160px)]" contentClassName="h-full">
-            <form onSubmit={handleCreate} className="flex flex-col h-full">
+          <Card hideTitle className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]" contentClassName="flex min-h-0 flex-col h-full">
+            <form onSubmit={handleCreate} className="flex min-h-0 flex-col h-full">
               <div className="flex items-start justify-between pb-4 mb-4 border-b">
                 <h2 className="text-2xl font-bold text-gray-800">Add Payment</h2>
               </div>
-              <div className="flex-1 overflow-y-auto pr-1">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1">
                 <PaymentLedgerForm
                   form={form}
                   setForm={(updater) => {
@@ -358,10 +358,10 @@ export default function PaymentsPage() {
 
         <Card
           title="Payment Search"
-          className="max-h-[calc(100vh-160px)]"
-          contentClassName="flex flex-col h-full"
+          className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]"
+          contentClassName="flex min-h-0 flex-col h-full"
         >
-          <div className="flex flex-col h-full">
+          <div className="flex min-h-0 flex-col h-full">
             <div className="mb-4 flex-shrink-0">
               <div className="flex items-center gap-4 mb-2 flex-wrap">
                 <div className="relative flex-1">
@@ -453,8 +453,8 @@ export default function PaymentsPage() {
             ) : visible.length === 0 ? (
               <p className="text-sm text-gray-500">No payments match these filters.</p>
             ) : (
-              <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
-                <div className="overflow-auto h-full max-w-full">
+              <div className="flex-1 min-h-0 overflow-hidden rounded-lg border border-gray-200">
+                <div className="overflow-auto h-full min-h-0 max-w-full">
                   <table className="finder-list w-max divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
