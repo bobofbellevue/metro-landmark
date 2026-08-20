@@ -462,7 +462,7 @@ export default function ApplicantsPage() {
     return (
         <div className="space-y-6">
             <h2 className="text-3xl font-bold text-gray-800">Applicants</h2>
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <CreateApplicantForm onApplicantCreated={handleSuccess} />
                 <Card
                     title="Applicant Search"

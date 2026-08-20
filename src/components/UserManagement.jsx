@@ -318,7 +318,7 @@ export default function UserManagement() {
     };
 
     return (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <CreateUserForm companies={companies} onUserCreated={handleSuccess} />
             <Card
                 title="User Search"

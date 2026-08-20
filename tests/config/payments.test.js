@@ -103,6 +103,20 @@ describe('payment helpers', () => {
           leaseId: 1,
           kind: 'rent',
           amount: 10,
+          periodStart: '2026-09-01',
+        },
+        { requireAmount: true }
+      ).value
+    ).toMatchObject({
+      periodStart: '2026-09-01',
+      periodEnd: '2026-09-30',
+    });
+    expect(
+      validatePaymentWrite(
+        {
+          leaseId: 1,
+          kind: 'rent',
+          amount: 10,
           periodStart: '2026-09-14',
           periodEnd: '2026-08-15',
         },
@@ -191,6 +205,35 @@ describe('payment helpers', () => {
     expect(row.leaseLabel).toBe('Pine Court · Unit 2A · Ada Lovelace');
     expect(row.kindLabel).toBe('Rent');
     expect(row.receiptDate).toBeNull();
+    expect(
+      publicPayment({
+        payment_id: 9,
+        status: 'due',
+        kind: 'rent',
+        amount: 1850,
+        period_start: '2026-09-01',
+        period_end: '2026-09-30',
+        period_label: '09-01-2026',
+      })
+    ).toMatchObject({
+      periodStart: '2026-09-01',
+      periodEnd: '2026-09-30',
+      periodLabel: '09-01-2026 – 09-30-2026',
+    });
+    expect(
+      publicPayment({
+        payment_id: 10,
+        status: 'due',
+        kind: 'rent',
+        amount: 1850,
+        period_start: '2026-09-01',
+        period_end: null,
+      })
+    ).toMatchObject({
+      periodStart: '2026-09-01',
+      periodEnd: '2026-09-30',
+      periodLabel: '09-01-2026 – 09-30-2026',
+    });
     expect(
       publicPayment({
         payment_id: 9,

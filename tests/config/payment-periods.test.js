@@ -4,6 +4,7 @@ import {
   formatPeriodRangeLabel,
   leaseAlignedPeriods,
   periodFromStart,
+  resolvedPeriodRange,
 } from '../../src/utils/payment-periods.js';
 
 describe('lease-aligned payment periods', () => {
@@ -37,5 +38,20 @@ describe('lease-aligned payment periods', () => {
     expect(formatPeriodRangeLabel('2026-08-15', '2026-09-14')).toBe(
       '08-15-2026 – 09-14-2026'
     );
+  });
+
+  test('resolvedPeriodRange keeps stored dates and fills a missing end', () => {
+    expect(resolvedPeriodRange('2026-09-01', '2026-09-30')).toEqual({
+      start: '2026-09-01',
+      end: '2026-09-30',
+    });
+    expect(resolvedPeriodRange('2026-09-01', '')).toEqual({
+      start: '2026-09-01',
+      end: '2026-09-30',
+    });
+    expect(resolvedPeriodRange('09-01-2026', null)).toEqual({
+      start: '2026-09-01',
+      end: '2026-09-30',
+    });
   });
 });

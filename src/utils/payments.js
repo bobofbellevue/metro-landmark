@@ -5,7 +5,7 @@
  * with product defaults; a company can add more. Online card collection via
  * Stripe is optional.
  */
-import { formatPeriodRangeLabel } from './payment-periods.js';
+import { formatPeriodRangeLabel, resolvedPeriodRange } from './payment-periods.js';
 import { isCompleteWorkflowDate, toWorkflowDateString } from './workflow-date.js';
 
 export const PAYMENT_TYPES = Object.freeze([
@@ -376,8 +376,10 @@ export function validatePaymentWrite(body = {}, options = {}) {
   if ((body.periodLabel ?? body.period_label) && periodLabel == null) {
     return { ok: false, error: 'Period label is too long or uses characters that are not allowed.' };
   }
-  if (!periodLabel && startParsed.value && endParsed.value) {
-    periodLabel = formatPeriodRangeLabel(startParsed.value, endParsed.value);
+  const periodRange = resolvedPeriodRange(startParsed.value, endParsed.value);
+  const periodEnd = periodRange.end || null;
+  if (!periodLabel && periodRange.start && periodEnd) {
+    periodLabel = formatPeriodRangeLabel(periodRange.start, periodEnd);
   }
 
   const memo = normalizeMemo(body.memo);
@@ -395,7 +397,7 @@ export function validatePaymentWrite(body = {}, options = {}) {
       method,
       periodLabel,
       periodStart: startParsed.value,
-      periodEnd: endParsed.value,
+      periodEnd,
       receiptDate: receiptParsed.value,
       memo,
       documentId,
@@ -422,10 +424,13 @@ export function publicPayment(row, lease = {}, lists = {}) {
   const types = lists.types || PAYMENT_TYPES;
   const methods = lists.methods || PAYMENT_METHODS;
   const periodStart = row.period_start || null;
-  const periodEnd = row.period_end || null;
+  const storedPeriodEnd = row.period_end || null;
+  const periodRange = resolvedPeriodRange(periodStart, storedPeriodEnd);
+  const periodEnd = storedPeriodEnd || periodRange.end || null;
   const periodLabel =
-    row.period_label ||
-    (periodStart && periodEnd ? formatPeriodRangeLabel(periodStart, periodEnd) : null);
+    (periodRange.start && periodRange.end
+      ? formatPeriodRangeLabel(periodRange.start, periodRange.end)
+      : row.period_label) || null;
   return {
     paymentId: row.payment_id,
     pmcId: row.pmc_id ?? null,

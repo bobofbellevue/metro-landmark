@@ -65,6 +65,21 @@ export function formatPeriodRangeLabel(start, end) {
   return a || b;
 }
 
+/**
+ * Use stored start/end when both exist. If only start is present, fill the
+ * inclusive end from the lease-aligned period that begins on that day.
+ */
+export function resolvedPeriodRange(start, end) {
+  const startIso = toWorkflowDateString(start);
+  const endIso = toWorkflowDateString(end);
+  const hasStart = isCompleteWorkflowDate(startIso);
+  const hasEnd = isCompleteWorkflowDate(endIso);
+  if (hasStart && hasEnd) return { start: startIso, end: endIso };
+  if (hasStart) return periodFromStart(startIso);
+  if (hasEnd) return { start: '', end: endIso };
+  return { start: '', end: '' };
+}
+
 function periodCovers(period, isoDate) {
   if (!period?.start || !period?.end) return false;
   const day = toWorkflowDateString(isoDate);

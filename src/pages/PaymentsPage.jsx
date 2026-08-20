@@ -29,12 +29,32 @@ import {
 import {
   currentLeasePeriod as currentPeriod,
   leaseAlignedPeriods as leasePeriods,
+  resolvedPeriodRange,
 } from '../utils/payment-periods.js';
 
 function statusClass(status) {
   if (status === 'paid') return 'bg-green-100 text-green-800';
   if (status === 'void') return 'bg-gray-100 text-gray-600';
   return 'bg-amber-100 text-amber-800';
+}
+
+function PaymentPeriodCell({ start, end, label }) {
+  const range = resolvedPeriodRange(start, end);
+  const startText = formatWorkflowDateMMDDYYYY(range.start);
+  const endText = formatWorkflowDateMMDDYYYY(range.end);
+  if (startText && endText) {
+    return (
+      <>
+        <span className="whitespace-nowrap">{startText} –</span>
+        <br />
+        <span className="whitespace-nowrap">{endText}</span>
+      </>
+    );
+  }
+  if (startText || endText) {
+    return <span className="whitespace-nowrap">{startText || endText}</span>;
+  }
+  return label || '—';
 }
 
 export default function PaymentsPage() {
@@ -259,7 +279,7 @@ export default function PaymentsPage() {
   return (
     <div className="space-y-6">
       <h2 className="text-3xl font-bold text-gray-800">Payments</h2>
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {canEdit && (
           <Card hideTitle className="lg:col-span-1 max-h-[calc(100vh-160px)]" contentClassName="h-full">
             <form onSubmit={handleCreate} className="flex flex-col h-full">
@@ -564,8 +584,12 @@ export default function PaymentsPage() {
                           <td className="px-1.5 py-2 max-w-[12rem] whitespace-normal break-words font-medium text-gray-900">
                             {row.leaseLabel || '—'}
                           </td>
-                          <td className="px-1.5 py-2 max-w-[10rem] whitespace-normal break-words">
-                            {row.periodLabel || '—'}
+                          <td className="px-1.5 py-2 whitespace-normal">
+                            <PaymentPeriodCell
+                              start={row.periodStart}
+                              end={row.periodEnd}
+                              label={row.periodLabel}
+                            />
                           </td>
                           <td className="px-1.5 py-2 max-w-[12rem] whitespace-normal break-words">
                             {row.memo || '—'}

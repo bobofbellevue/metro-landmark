@@ -38,7 +38,11 @@ export function paymentFormFromRow(row) {
     memo: row.memo || '',
     periodKey: '',
     periodStart: row.periodStart ? formatWorkflowDateMMDDYYYY(row.periodStart) : '',
-    periodEnd: row.periodEnd ? formatWorkflowDateMMDDYYYY(row.periodEnd) : '',
+    periodEnd: row.periodEnd
+      ? formatWorkflowDateMMDDYYYY(row.periodEnd)
+      : row.periodStart
+        ? formatWorkflowDateMMDDYYYY(periodFromStart(row.periodStart).end)
+        : '',
     collectOnline: false,
     proof: row.documentId
       ? { document_id: row.documentId, file_name: row.documentName }
@@ -74,7 +78,11 @@ export function paymentWritePayload(form, { includeLease = true, includeCollectO
     status,
     memo: form.memo,
     periodStart: form.periodStart,
-    periodEnd: form.periodEnd,
+    periodEnd:
+      form.periodEnd ||
+      (form.periodStart
+        ? formatWorkflowDateMMDDYYYY(periodFromStart(form.periodStart).end)
+        : ''),
     documentId: form.proof?.document_id || null,
   };
   if (includeLease) payload.leaseId = form.leaseId;

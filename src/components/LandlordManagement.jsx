@@ -278,7 +278,7 @@ export default function LandlordManagement() {
     const displayedLandlords = sortedLandlords.slice(0, landlordVisibleCount || sortedLandlords.length);
 
     return (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <CreateLandlordForm companies={companies} onLandlordCreated={handleSuccess} />
             <Card
                 title="Landlord Search"
