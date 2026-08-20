@@ -181,6 +181,7 @@ async function resetDatabase(sql, environment = null) {
     'maintenance_requests',
     'notification_history',
     'payments',
+    'payment_catalog',
     'phone_resources',
     'pm_companies',
     'properties',
@@ -1022,26 +1023,23 @@ async function createTables(sql) {
         payment_id SERIAL PRIMARY KEY,
         pmc_id INTEGER REFERENCES pm_companies(pmc_id) ON DELETE SET NULL,
         lease_id INTEGER NOT NULL REFERENCES leases(lease_id) ON DELETE CASCADE,
-        kind VARCHAR(50) NOT NULL,
+        kind VARCHAR(64) NOT NULL,
         amount DECIMAL(10,2) NOT NULL,
         due_date DATE,
         paid_at TIMESTAMP,
-        method VARCHAR(50),
+        method VARCHAR(64),
         status VARCHAR(50) NOT NULL DEFAULT 'due',
         memo TEXT,
-        period_label VARCHAR(32),
+        period_label VARCHAR(80),
+        period_start DATE,
+        period_end DATE,
+        document_id INTEGER,
         stripe_checkout_session_id VARCHAR(255),
         created_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT payments_kind_check CHECK (
-          kind IN ('rent', 'deposit', 'fee', 'other')
-        ),
         CONSTRAINT payments_status_check CHECK (
           status IN ('due', 'paid', 'void')
-        ),
-        CONSTRAINT payments_method_check CHECK (
-          method IS NULL OR method IN ('cash', 'check', 'ach', 'card', 'other')
         ),
         CONSTRAINT payments_amount_positive CHECK (amount > 0)
       )
@@ -1049,6 +1047,23 @@ async function createTables(sql) {
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_pmc ON payments (pmc_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_lease ON payments (lease_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_status_due ON payments (status, due_date)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_payments_period ON payments (period_start, period_end)`;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS payment_catalog (
+        payment_catalog_id SERIAL PRIMARY KEY,
+        pmc_id INTEGER REFERENCES pm_companies(pmc_id) ON DELETE CASCADE,
+        category VARCHAR(20) NOT NULL,
+        code VARCHAR(64) NOT NULL,
+        label VARCHAR(100) NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_payment_catalog_pmc_code ON payment_catalog (pmc_id, category, code) WHERE pmc_id IS NOT NULL`;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_payment_catalog_system_code ON payment_catalog (category, code) WHERE pmc_id IS NULL`;
 
     // Create client_units table (direct client-unit relationship)
     // This table tracks direct assignments of clients to units, whether from applications, leases, or direct assignment
@@ -2354,26 +2369,61 @@ async function ensurePaymentsTable(sql) {
         payment_id SERIAL PRIMARY KEY,
         pmc_id INTEGER REFERENCES pm_companies(pmc_id) ON DELETE SET NULL,
         lease_id INTEGER NOT NULL REFERENCES leases(lease_id) ON DELETE CASCADE,
-        kind VARCHAR(50) NOT NULL,
+        kind VARCHAR(64) NOT NULL,
         amount DECIMAL(10,2) NOT NULL,
         due_date DATE,
         paid_at TIMESTAMP,
-        method VARCHAR(50),
+        method VARCHAR(64),
         status VARCHAR(50) NOT NULL DEFAULT 'due',
         memo TEXT,
-        period_label VARCHAR(32),
+        period_label VARCHAR(80),
+        period_start DATE,
+        period_end DATE,
+        document_id INTEGER,
         stripe_checkout_session_id VARCHAR(255),
         created_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
+    await sql`ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_kind_check`;
+    await sql`ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_method_check`;
+    await sql`ALTER TABLE payments ALTER COLUMN kind TYPE VARCHAR(64)`;
+    await sql`ALTER TABLE payments ALTER COLUMN method TYPE VARCHAR(64)`;
+    await sql`ALTER TABLE payments ADD COLUMN IF NOT EXISTS period_start DATE`;
+    await sql`ALTER TABLE payments ADD COLUMN IF NOT EXISTS period_end DATE`;
+    await sql`ALTER TABLE payments ADD COLUMN IF NOT EXISTS document_id INTEGER`;
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_pmc ON payments (pmc_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_lease ON payments (lease_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_status_due ON payments (status, due_date)`;
     logDetail('✅ payments verified/created');
   } catch (error) {
     logDetail(`⚠️ Could not ensure payments: ${error.message}`, 'error');
+    throw error;
+  }
+}
+
+async function ensurePaymentCatalogTable(sql) {
+  try {
+    logDetail('Ensuring payment_catalog table exists...');
+    await sql`
+      CREATE TABLE IF NOT EXISTS payment_catalog (
+        payment_catalog_id SERIAL PRIMARY KEY,
+        pmc_id INTEGER REFERENCES pm_companies(pmc_id) ON DELETE CASCADE,
+        category VARCHAR(20) NOT NULL,
+        code VARCHAR(64) NOT NULL,
+        label VARCHAR(100) NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_payment_catalog_pmc_code ON payment_catalog (pmc_id, category, code) WHERE pmc_id IS NOT NULL`;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_payment_catalog_system_code ON payment_catalog (category, code) WHERE pmc_id IS NULL`;
+    logDetail('✅ payment_catalog verified/created');
+  } catch (error) {
+    logDetail(`⚠️ Could not ensure payment_catalog: ${error.message}`, 'error');
     throw error;
   }
 }
@@ -2490,6 +2540,7 @@ async function runSchemaMigrations(sql) {
     await ensurePmCompaniesThemeColumn(sql);
     await ensurePhoneResourcesTable(sql);
     await ensurePaymentsTable(sql);
+    await ensurePaymentCatalogTable(sql);
     
     // Run SQL migration files from migrations folder
     await runSQLMigrations(sql);

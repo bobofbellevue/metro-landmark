@@ -473,10 +473,10 @@ export default function PropertiesPage() {
                 <CreatePropertyForm landlords={landlords} propertyTypes={propertyTypes} onPropertyCreated={handlePropertyCreated} />
                 <Card
                     title="Property Search"
-                    className="lg:col-span-2 max-h-[calc(100vh-160px)]"
-                    contentClassName="flex flex-col h-full"
+                    className="lg:col-span-2 h-[calc(100vh-160px)] max-h-[calc(100vh-160px)] min-h-0 overflow-hidden"
+                    contentClassName="flex min-h-0 flex-col overflow-hidden"
                 >
-                    <div className="flex flex-col h-full">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                     <div className="mb-4 flex-shrink-0">
                         <div className="flex items-center gap-4 mb-2">
                             <div className="relative flex-1">
@@ -527,8 +527,7 @@ export default function PropertiesPage() {
                             )}
                         </div>
                     </div>
-                    <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
-                        <div className="overflow-auto h-full max-w-full">
+                    <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-gray-200">
                         <table className="w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
@@ -631,7 +630,6 @@ export default function PropertiesPage() {
                                 ))}
                             </tbody>
                         </table>
-                        </div>
                     </div>
                     {hasMoreProperties && (
                         <div className="pt-3 mt-4 border-t text-right flex-shrink-0">

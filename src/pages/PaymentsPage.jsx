@@ -6,29 +6,44 @@ import { Card } from '../components/ui';
 import CurrencyInput, { formatCurrencyDisplay } from '../components/CurrencyInput';
 import DateInput from '../components/DateInput';
 import LeaseSelectionPicker from '../components/LeaseSelectionPicker';
+import WorkflowFileField from '../components/WorkflowFileField';
 import { formatDateTime, localeContextFromBrowser } from '../config/locale.js';
-import { formatWorkflowDateMMDDYYYY, todayWorkflowDate } from '../utils/workflow-date.js';
 import {
-  PAYMENT_KINDS,
-  PAYMENT_METHODS,
+  formatWorkflowDateMMDDYYYY,
+  todayWorkflowDate,
+} from '../utils/workflow-date.js';
+import {
+  MEMO_MAX_LENGTH,
+  PAYMENT_METHODS as DEFAULT_METHODS,
   PAYMENT_STATUSES,
-  currentRentPeriodLabel,
+  PAYMENT_TYPES as DEFAULT_TYPES,
   defaultAmountForKind,
   filterPaymentsBySearch,
   summarizePayments,
 } from '../utils/payments.js';
+import {
+  currentLeasePeriod as currentPeriod,
+  leaseAlignedPeriods as leasePeriods,
+  suggestedDueDate as dueFromPeriod,
+} from '../utils/payment-periods.js';
+import { PROOF_OF_SERVICE_ACCEPT } from '../utils/proof-of-service-file.js';
+
+const PROOF_OF_PAYMENT_TYPE = 'proof_of_payment';
 
 const emptyForm = () => ({
+  intent: 'charge',
   leaseId: null,
   lease: null,
   kind: 'rent',
   amount: null,
   dueDate: formatWorkflowDateMMDDYYYY(todayWorkflowDate()),
   method: '',
-  status: 'due',
   memo: '',
-  periodLabel: currentRentPeriodLabel(),
+  periodKey: '',
+  periodStart: '',
+  periodEnd: '',
   collectOnline: false,
+  proof: null,
 });
 
 function statusClass(status) {
@@ -37,12 +52,28 @@ function statusClass(status) {
   return 'bg-amber-100 text-amber-800';
 }
 
+function applyPeriodToForm(form, period) {
+  if (!period) {
+    return { ...form, periodKey: '', periodStart: '', periodEnd: '' };
+  }
+  return {
+    ...form,
+    periodKey: period.id,
+    periodStart: formatWorkflowDateMMDDYYYY(period.start),
+    periodEnd: formatWorkflowDateMMDDYYYY(period.end),
+    dueDate: formatWorkflowDateMMDDYYYY(dueFromPeriod(period)),
+  };
+}
+
 export default function PaymentsPage() {
   const { user } = useContext(AuthContext);
   const locale = localeContextFromBrowser();
   const [payments, setPayments] = useState([]);
   const [summary, setSummary] = useState(summarizePayments([]));
+  const [types, setTypes] = useState(DEFAULT_TYPES);
+  const [methods, setMethods] = useState(DEFAULT_METHODS);
   const [canEdit, setCanEdit] = useState(false);
+  const [canEditCatalog, setCanEditCatalog] = useState(false);
   const [onlinePaymentsEnabled, setOnlinePaymentsEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,6 +84,13 @@ export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [checkoutUrl, setCheckoutUrl] = useState('');
+  const [addingCategory, setAddingCategory] = useState('');
+  const [newCatalogLabel, setNewCatalogLabel] = useState('');
+
+  const periods = useMemo(
+    () => (form.lease ? leasePeriods(form.lease) : []),
+    [form.lease]
+  );
 
   const load = async () => {
     if (!user?.user_id) return;
@@ -71,7 +109,10 @@ export default function PaymentsPage() {
       }
       setPayments(data.payments || []);
       setSummary(data.summary || summarizePayments(data.payments || []));
+      if (data.types?.length) setTypes(data.types);
+      if (data.methods?.length) setMethods(data.methods);
       setCanEdit(Boolean(data.canEdit));
+      setCanEditCatalog(Boolean(data.canEditCatalog));
       setOnlinePaymentsEnabled(Boolean(data.onlinePaymentsEnabled));
     } catch {
       setError('Could not load payments.');
@@ -104,14 +145,14 @@ export default function PaymentsPage() {
         prev.amount != null &&
         suggested != null &&
         Number(prev.amount) !== Number(defaultAmountForKind(prev.lease, nextKind));
-      return {
+      const next = {
         ...prev,
         leaseId,
         lease,
         amount: keepAmount ? prev.amount : suggested,
-        periodLabel:
-          nextKind === 'rent' ? prev.periodLabel || currentRentPeriodLabel() : prev.periodLabel,
       };
+      const period = currentPeriod(leasePeriods(lease));
+      return applyPeriodToForm(next, period);
     });
     setSuccess('');
   };
@@ -121,8 +162,16 @@ export default function PaymentsPage() {
       ...prev,
       kind,
       amount: defaultAmountForKind(prev.lease, kind) ?? prev.amount,
-      periodLabel: kind === 'rent' ? prev.periodLabel || currentRentPeriodLabel() : prev.periodLabel,
     }));
+  };
+
+  const handlePeriodKeyChange = (key) => {
+    if (!key) {
+      setForm((prev) => ({ ...prev, periodKey: '' }));
+      return;
+    }
+    const period = periods.find((p) => p.id === key);
+    setForm((prev) => applyPeriodToForm(prev, period));
   };
 
   const handleCreate = async (event) => {
@@ -132,24 +181,31 @@ export default function PaymentsPage() {
     setError('');
     setSuccess('');
     setCheckoutUrl('');
+    const status = form.intent === 'received' ? 'paid' : 'due';
     try {
       const data = await api.post(
         '/payments',
         {
           leaseId: form.leaseId,
+          type: form.kind,
           kind: form.kind,
           amount: form.amount,
           dueDate: form.dueDate,
-          method: form.status === 'paid' || form.collectOnline ? form.method || 'card' : form.method,
-          status: form.status,
+          method:
+            status === 'paid' || form.collectOnline
+              ? form.method || 'card'
+              : form.method,
+          status,
           memo: form.memo,
-          periodLabel: form.kind === 'rent' ? form.periodLabel : form.periodLabel,
-          collectOnline: form.collectOnline,
+          periodStart: form.periodStart,
+          periodEnd: form.periodEnd,
+          documentId: form.proof?.document_id || null,
+          collectOnline: form.collectOnline && status === 'due',
         },
         user
       );
       if (!data?.success) {
-        setError(data?.error || 'Could not record payment.');
+        setError(data?.error || 'Could not save to the ledger.');
         return;
       }
       if (data.checkoutError && !data.checkoutUrl) {
@@ -157,14 +213,16 @@ export default function PaymentsPage() {
       }
       setSuccess(
         data.checkoutUrl
-          ? 'Charge recorded. Open the Stripe Checkout link to collect the card payment.'
-          : 'Payment recorded.'
+          ? 'Open charge saved. Open the Stripe Checkout link to collect the card payment.'
+          : status === 'due'
+            ? 'Open charge created. Mark it paid when money arrives.'
+            : 'Payment recorded.'
       );
       setCheckoutUrl(data.checkoutUrl || '');
       setForm(emptyForm());
       await load();
     } catch {
-      setError('Could not record payment.');
+      setError('Could not save to the ledger.');
     } finally {
       setSaving(false);
     }
@@ -189,6 +247,42 @@ export default function PaymentsPage() {
     }
   };
 
+  const handleAddCatalog = async (event) => {
+    event.preventDefault();
+    if (!addingCategory || !newCatalogLabel.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      const data = await api.post(
+        '/payment-catalog',
+        { category: addingCategory, label: newCatalogLabel.trim() },
+        user
+      );
+      if (!data?.success) {
+        setError(data?.error || 'Could not add that item.');
+        return;
+      }
+      if (data.types) setTypes(data.types);
+      if (data.methods) setMethods(data.methods);
+      if (addingCategory === 'type' && data.code) {
+        setForm((prev) => ({ ...prev, kind: data.code }));
+      }
+      if (addingCategory === 'method' && data.code) {
+        setForm((prev) => ({ ...prev, method: data.code }));
+      }
+      setAddingCategory('');
+      setNewCatalogLabel('');
+      setSuccess(`Added ${data.label}.`);
+    } catch {
+      setError('Could not add that item.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isCharge = form.intent === 'charge';
+  const unit = form.lease?.units || form.lease?.unit;
+
   return (
     <div className="space-y-6">
       <div>
@@ -197,11 +291,10 @@ export default function PaymentsPage() {
           Payments
         </h2>
         <p className="mt-2 text-sm text-gray-600 max-w-3xl">
-          Record rent, deposits, and fees against a lease. Cash, check, ACH, and
-          card received in person can be marked paid here.
-          {onlinePaymentsEnabled
-            ? ' Stripe Checkout is configured on this deploy for online card collection.'
-            : ' Online card Checkout is available later, after Stripe keys are set on the deploy.'}
+          Open charges are created here as <span className="font-medium">due</span>.
+          When money arrives, mark the charge paid — or record a payment that was
+          already received in one step. Attach a photo or PDF as proof. Type and
+          method lists can be extended for this company.
         </p>
       </div>
 
@@ -211,6 +304,9 @@ export default function PaymentsPage() {
             {formatCurrencyDisplay(summary.dueAmount, locale) || '$0.00'}
           </p>
           <p className="text-sm text-gray-500">{summary.dueCount} due</p>
+          <p className="mt-2 text-xs text-gray-500">
+            Created with “Open charge” below. They stay due until marked paid or voided.
+          </p>
         </Card>
         <Card title="Recorded as paid">
           <p className="text-2xl font-semibold text-gray-900">
@@ -221,28 +317,63 @@ export default function PaymentsPage() {
       </div>
 
       {canEdit && (
-        <Card title="Record a payment">
+        <Card title="Add to ledger">
           <form onSubmit={handleCreate} className="space-y-4">
+            <fieldset className="flex flex-wrap gap-4 text-sm">
+              <legend className="sr-only">What to add</legend>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="intent"
+                  checked={isCharge}
+                  onChange={() => setField('intent', 'charge')}
+                />
+                Open charge (amount due)
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="intent"
+                  checked={!isCharge}
+                  onChange={() => setField('intent', 'received')}
+                />
+                Payment already received
+              </label>
+            </fieldset>
+
             <LeaseSelectionPicker
               value={form.leaseId}
               onChange={handleLeaseChange}
               showRent
               showDeposit
             />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Kind</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                 <select
                   value={form.kind}
                   onChange={(e) => handleKindChange(e.target.value)}
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
                 >
-                  {PAYMENT_KINDS.map((item) => (
+                  {types.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.label}
                     </option>
                   ))}
                 </select>
+                {canEditCatalog && (
+                  <button
+                    type="button"
+                    className="mt-1 text-xs text-indigo-600 hover:text-indigo-800"
+                    onClick={() => {
+                      setAddingCategory('type');
+                      setNewCatalogLabel('');
+                    }}
+                  >
+                    Add type…
+                  </button>
+                )}
               </div>
               <CurrencyInput
                 label="Amount"
@@ -255,59 +386,149 @@ export default function PaymentsPage() {
                 value={form.dueDate}
                 onChange={(e) => setField('dueDate', e.target.value)}
               />
-              {form.kind === 'rent' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Period (YYYY-MM)
-                  </label>
-                  <input
-                    type="text"
-                    value={form.periodLabel}
-                    onChange={(e) => setField('periodLabel', e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                    placeholder="2026-08"
-                  />
-                </div>
-              )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Covered period
+                </label>
                 <select
-                  value={form.status}
-                  onChange={(e) => setField('status', e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                  value={form.periodKey}
+                  onChange={(e) => handlePeriodKeyChange(e.target.value)}
+                  disabled={!form.leaseId}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm disabled:bg-gray-100"
                 >
-                  <option value="due">Due (charge now, collect later)</option>
-                  <option value="paid">Paid (already received)</option>
+                  <option value="">
+                    {form.leaseId ? 'Custom date range' : 'Select a lease first'}
+                  </option>
+                  {periods.map((period) => (
+                    <option key={period.id} value={period.id}>
+                      {period.label}
+                      {period.current ? ' (current)' : ''}
+                    </option>
+                  ))}
                 </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Periods follow the lease start day, not calendar months.
+                </p>
               </div>
+              <DateInput
+                label="Period start"
+                value={form.periodStart}
+                onChange={(e) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    periodStart: e.target.value,
+                    periodKey: '',
+                  }));
+                  setSuccess('');
+                }}
+              />
+              <DateInput
+                label="Period end"
+                value={form.periodEnd}
+                onChange={(e) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    periodEnd: e.target.value,
+                    periodKey: '',
+                  }));
+                  setSuccess('');
+                }}
+              />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
                 <select
                   value={form.method}
                   onChange={(e) => setField('method', e.target.value)}
-                  required={form.status === 'paid'}
+                  required={!isCharge}
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
                 >
-                  <option value="">Select…</option>
-                  {PAYMENT_METHODS.map((item) => (
+                  <option value="">{isCharge ? 'Optional until paid' : 'Select…'}</option>
+                  {methods.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.label}
                     </option>
                   ))}
                 </select>
+                {canEditCatalog && (
+                  <button
+                    type="button"
+                    className="mt-1 text-xs text-indigo-600 hover:text-indigo-800"
+                    onClick={() => {
+                      setAddingCategory('method');
+                      setNewCatalogLabel('');
+                    }}
+                  >
+                    Add method…
+                  </button>
+                )}
               </div>
             </div>
+
+            {addingCategory && (
+              <div className="flex flex-wrap items-end gap-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+                <div className="flex-1 min-w-[12rem]">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    New {addingCategory} label
+                  </label>
+                  <input
+                    type="text"
+                    value={newCatalogLabel}
+                    onChange={(e) => setNewCatalogLabel(e.target.value)}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    placeholder={addingCategory === 'type' ? 'e.g. Garage remote' : 'e.g. Venmo'}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddCatalog}
+                  disabled={saving || !newCatalogLabel.trim()}
+                  className="px-3 py-2 bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingCategory('');
+                    setNewCatalogLabel('');
+                  }}
+                  className="px-3 py-2 text-sm text-gray-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Memo</label>
-              <input
-                type="text"
+              <textarea
                 value={form.memo}
                 onChange={(e) => setField('memo', e.target.value)}
+                rows={4}
+                maxLength={MEMO_MAX_LENGTH}
                 className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-                maxLength={2000}
+                placeholder="Check number, who paid, proration notes, concessions…"
               />
             </div>
-            {onlinePaymentsEnabled && form.status === 'due' && (
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Proof of payment
+              </label>
+              <WorkflowFileField
+                value={form.proof}
+                onChange={(fileMeta) => setField('proof', fileMeta)}
+                leaseId={form.leaseId}
+                propertyId={unit?.properties?.property_id || unit?.property_id}
+                unitId={unit?.unit_id}
+                userId={user?.user_id}
+                documentType={PROOF_OF_PAYMENT_TYPE}
+                acceptedTypes={PROOF_OF_SERVICE_ACCEPT}
+                description="Photo or PDF of a receipt, check image, bank confirmation, or similar. Saved to Documents."
+              />
+            </div>
+
+            {onlinePaymentsEnabled && isCharge && (
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input
                   type="checkbox"
@@ -322,7 +543,11 @@ export default function PaymentsPage() {
               disabled={saving || !form.leaseId || form.amount == null}
               className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
             >
-              {saving ? 'Saving…' : 'Record'}
+              {saving
+                ? 'Saving…'
+                : isCharge
+                  ? 'Create open charge'
+                  : 'Record payment'}
             </button>
           </form>
         </Card>
@@ -354,8 +579,8 @@ export default function PaymentsPage() {
             onChange={(e) => setKindFilter(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm"
           >
-            <option value="all">All kinds</option>
-            {PAYMENT_KINDS.map((item) => (
+            <option value="all">All types</option>
+            {types.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.label}
               </option>
@@ -363,7 +588,9 @@ export default function PaymentsPage() {
           </select>
         </div>
 
-        {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="mb-3 text-sm text-red-600 whitespace-pre-wrap">{error}</p>
+        )}
         {success && <p className="mb-3 text-sm text-green-700">{success}</p>}
         {checkoutUrl && (
           <p className="mb-3 text-sm">
@@ -389,7 +616,7 @@ export default function PaymentsPage() {
                 <tr className="text-left text-gray-500 border-b">
                   <th className="py-2 pr-4 font-medium">Due</th>
                   <th className="py-2 pr-4 font-medium">Lease</th>
-                  <th className="py-2 pr-4 font-medium">Kind</th>
+                  <th className="py-2 pr-4 font-medium">Type</th>
                   <th className="py-2 pr-4 font-medium">Amount</th>
                   <th className="py-2 pr-4 font-medium">Status</th>
                   <th className="py-2 pr-4 font-medium">Method</th>
@@ -398,7 +625,7 @@ export default function PaymentsPage() {
               </thead>
               <tbody>
                 {visible.map((row) => (
-                  <tr key={row.paymentId} className="border-b last:border-0">
+                  <tr key={row.paymentId} className="border-b last:border-0 align-top">
                     <td className="py-2 pr-4 whitespace-nowrap">
                       {row.dueDate ? formatWorkflowDateMMDDYYYY(row.dueDate) : '—'}
                     </td>
@@ -407,9 +634,18 @@ export default function PaymentsPage() {
                       {row.periodLabel && (
                         <div className="text-xs text-gray-500">{row.periodLabel}</div>
                       )}
-                      {row.memo && <div className="text-xs text-gray-500">{row.memo}</div>}
+                      {row.memo && (
+                        <div className="text-xs text-gray-500 whitespace-pre-wrap mt-1">
+                          {row.memo}
+                        </div>
+                      )}
+                      {row.documentName && (
+                        <div className="text-xs text-indigo-600 mt-1">
+                          Proof: {row.documentName}
+                        </div>
+                      )}
                     </td>
-                    <td className="py-2 pr-4">{row.kindLabel}</td>
+                    <td className="py-2 pr-4">{row.typeLabel || row.kindLabel}</td>
                     <td className="py-2 pr-4 whitespace-nowrap">
                       {formatCurrencyDisplay(row.amount, locale)}
                     </td>

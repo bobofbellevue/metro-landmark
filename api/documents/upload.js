@@ -70,7 +70,7 @@ export default async function handler(req, res) {
     });
 
     // Parse request body
-    let { file, file_name, file_type, mime_type, document_type, user_id, lease_id, notice_id, tenant_user_id, unit_id, property_id, compliance_workflow_id } = req.body;
+    let { file, file_name, file_type, mime_type, document_type, user_id, lease_id, notice_id, tenant_user_id, unit_id, property_id, compliance_workflow_id, payment_id } = req.body;
     
     console.log('[Document Upload] Received request body:', {
       has_file: !!file,
@@ -264,6 +264,15 @@ export default async function handler(req, res) {
         insertData.metadata = {
           ...insertData.metadata,
           notice_id: parsedNoticeId,
+        };
+      }
+    }
+    if (payment_id != null && payment_id !== '') {
+      const parsedPaymentId = parseInt(payment_id, 10);
+      if (!isNaN(parsedPaymentId)) {
+        insertData.metadata = {
+          ...insertData.metadata,
+          payment_id: parsedPaymentId,
         };
       }
     }

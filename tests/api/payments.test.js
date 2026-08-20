@@ -59,6 +59,13 @@ function createQuery(db, table) {
       state.filters.push((row) => vals.includes(row[col]));
       return query;
     },
+    or: () => query,
+    is: (col, val) => {
+      state.filters.push((row) =>
+        val == null ? row[col] == null : row[col] == val
+      );
+      return query;
+    },
     order: () => query,
     insert: (row) => {
       state.insertRow = row;
@@ -106,6 +113,8 @@ const db = {
   units: [],
   properties: [],
   payments: [],
+  payment_catalog: [],
+  documents: [],
   lease_clients: [],
   contacts: [],
 };
@@ -129,6 +138,8 @@ describe('api/payments', () => {
     db.units.splice(0, db.units.length);
     db.properties.splice(0, db.properties.length);
     db.payments.splice(0, db.payments.length);
+    db.payment_catalog.splice(0, db.payment_catalog.length);
+    db.documents.splice(0, db.documents.length);
     db.lease_clients.splice(0, db.lease_clients.length);
     db.contacts.splice(0, db.contacts.length);
 
@@ -195,6 +206,8 @@ describe('api/payments', () => {
     expect(res.jsonData.success).toBe(true);
     expect(res.jsonData.canEdit).toBe(true);
     expect(res.jsonData.onlinePaymentsEnabled).toBe(false);
+    expect(res.jsonData.types.some((t) => t.id === 'rent')).toBe(true);
+    expect(res.jsonData.types.some((t) => t.id === 'late_fee')).toBe(true);
     expect(res.jsonData.payments).toEqual([]);
   });
 

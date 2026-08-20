@@ -1,16 +1,32 @@
 /**
  * Operator payment ledger helpers (roadmap E4).
  *
- * Records rent, deposits, and fees against a lease. Online card collection
- * via Stripe is optional — the ledger works without Stripe keys.
+ * Records charges and receipts against a lease. Type and method lists ship
+ * with product defaults; a company can add more. Online card collection via
+ * Stripe is optional.
  */
+import { formatPeriodRangeLabel } from './payment-periods.js';
+import { isCompleteWorkflowDate, toWorkflowDateString } from './workflow-date.js';
 
-export const PAYMENT_KINDS = Object.freeze([
+export const PAYMENT_TYPES = Object.freeze([
   { id: 'rent', label: 'Rent' },
-  { id: 'deposit', label: 'Deposit' },
+  { id: 'prorated_rent', label: 'Prorated rent' },
+  { id: 'security_deposit', label: 'Security deposit' },
+  { id: 'pet_deposit', label: 'Pet deposit' },
+  { id: 'last_month_rent', label: 'Last month rent' },
+  { id: 'late_fee', label: 'Late fee' },
+  { id: 'nsf_fee', label: 'NSF / returned-payment fee' },
   { id: 'fee', label: 'Fee' },
+  { id: 'parking', label: 'Parking' },
+  { id: 'storage', label: 'Storage' },
+  { id: 'utility', label: 'Utility' },
+  { id: 'application_fee', label: 'Application fee' },
+  { id: 'hold_deposit', label: 'Hold / reservation deposit' },
   { id: 'other', label: 'Other' },
 ]);
+
+/** @deprecated use PAYMENT_TYPES */
+export const PAYMENT_KINDS = PAYMENT_TYPES;
 
 export const PAYMENT_STATUSES = Object.freeze([
   { id: 'due', label: 'Due' },
@@ -21,14 +37,23 @@ export const PAYMENT_STATUSES = Object.freeze([
 export const PAYMENT_METHODS = Object.freeze([
   { id: 'cash', label: 'Cash' },
   { id: 'check', label: 'Check' },
-  { id: 'ach', label: 'ACH' },
+  { id: 'money_order', label: 'Money order' },
+  { id: 'cashiers_check', label: "Cashier's check" },
+  { id: 'ach', label: 'ACH / bank transfer' },
   { id: 'card', label: 'Card' },
+  { id: 'online', label: 'Online' },
+  { id: 'wire', label: 'Wire' },
   { id: 'other', label: 'Other' },
 ]);
 
-const KIND_IDS = new Set(PAYMENT_KINDS.map((item) => item.id));
+export const PAYMENT_TYPE_ALIASES = Object.freeze({
+  deposit: 'security_deposit',
+});
+
+export const MEMO_MAX_LENGTH = 10000;
+
 const STATUS_IDS = new Set(PAYMENT_STATUSES.map((item) => item.id));
-const METHOD_IDS = new Set(PAYMENT_METHODS.map((item) => item.id));
+const CATALOG_CODE = /^[a-z][a-z0-9_]{0,63}$/;
 
 const VIEW_ROLES = new Set([
   'global_admin',
@@ -38,18 +63,7 @@ const VIEW_ROLES = new Set([
 ]);
 
 const EDIT_ROLES = new Set(['global_admin', 'company_admin', 'manager']);
-
-export function isPaymentKind(value) {
-  return KIND_IDS.has(value);
-}
-
-export function isPaymentStatus(value) {
-  return STATUS_IDS.has(value);
-}
-
-export function isPaymentMethod(value) {
-  return METHOD_IDS.has(value);
-}
+const CATALOG_EDIT_ROLES = new Set(['global_admin', 'company_admin', 'manager']);
 
 export function canViewPayments(role) {
   return VIEW_ROLES.has(role);
@@ -59,23 +73,60 @@ export function canEditPayments(role) {
   return EDIT_ROLES.has(role);
 }
 
-export function paymentKindLabel(kind) {
-  return PAYMENT_KINDS.find((item) => item.id === kind)?.label || kind || '';
+export function canEditPaymentCatalog(role) {
+  return CATALOG_EDIT_ROLES.has(role);
+}
+
+export function isPaymentStatus(value) {
+  return STATUS_IDS.has(value);
+}
+
+export function isCatalogCode(value) {
+  return typeof value === 'string' && CATALOG_CODE.test(value);
+}
+
+export function catalogCodeFromLabel(label) {
+  const slug = String(label || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  if (!slug || !isCatalogCode(slug)) return null;
+  return slug.slice(0, 64);
+}
+
+export function normalizeTypeCode(value) {
+  if (value == null || value === '') return null;
+  const raw = String(value).trim();
+  const aliased = PAYMENT_TYPE_ALIASES[raw] || raw;
+  return isCatalogCode(aliased) ? aliased : null;
+}
+
+export function isPaymentKind(value) {
+  return Boolean(normalizeTypeCode(value));
+}
+
+export function isPaymentMethod(value) {
+  return isCatalogCode(value);
+}
+
+function labelFromList(list, id) {
+  return (list || []).find((item) => item.id === id)?.label || id || '';
+}
+
+export function paymentKindLabel(kind, types = PAYMENT_TYPES) {
+  const id = normalizeTypeCode(kind) || kind;
+  return labelFromList(types, id) || labelFromList(PAYMENT_TYPES, id);
 }
 
 export function paymentStatusLabel(status) {
   return PAYMENT_STATUSES.find((item) => item.id === status)?.label || status || '';
 }
 
-export function paymentMethodLabel(method) {
-  return PAYMENT_METHODS.find((item) => item.id === method)?.label || method || '';
+export function paymentMethodLabel(method, methods = PAYMENT_METHODS) {
+  return labelFromList(methods, method) || labelFromList(PAYMENT_METHODS, method);
 }
 
-/**
- * Parse a posted amount into a positive number with cents.
- * @param {unknown} raw
- * @returns {number|null}
- */
 export function parsePaymentAmount(raw) {
   if (raw == null || raw === '') return null;
   const num = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(/[^0-9.-]/g, ''));
@@ -83,25 +134,24 @@ export function parsePaymentAmount(raw) {
   return Math.round(num * 100) / 100;
 }
 
-/**
- * Suggest an amount from the lease when the operator picks a kind.
- * @param {object|null|undefined} lease
- * @param {string} kind
- * @returns {number|null}
- */
 export function defaultAmountForKind(lease, kind) {
   if (!lease) return null;
-  if (kind === 'rent') return parsePaymentAmount(lease.monthly_rent_amount);
-  if (kind === 'deposit') return parsePaymentAmount(lease.security_deposit_amount);
-  if (kind === 'fee') return parsePaymentAmount(lease.other_fee_amount);
+  const type = normalizeTypeCode(kind) || kind;
+  if (type === 'rent' || type === 'prorated_rent' || type === 'last_month_rent') {
+    return parsePaymentAmount(lease.monthly_rent_amount);
+  }
+  if (type === 'security_deposit' || type === 'deposit' || type === 'hold_deposit') {
+    return parsePaymentAmount(lease.security_deposit_amount);
+  }
+  if (type === 'pet_deposit') {
+    return parsePaymentAmount(lease.pet_deposit_amount);
+  }
+  if (type === 'late_fee' || type === 'nsf_fee' || type === 'fee') {
+    return parsePaymentAmount(lease.other_fee_amount);
+  }
   return null;
 }
 
-/**
- * YYYY-MM period label for rent charges.
- * @param {Date} [now]
- * @returns {string}
- */
 export function currentRentPeriodLabel(now = new Date()) {
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -112,8 +162,8 @@ export function normalizePeriodLabel(raw) {
   if (raw == null) return null;
   const text = String(raw).trim();
   if (!text) return null;
-  if (text.length > 32) return null;
-  if (!/^[0-9A-Za-z][0-9A-Za-z .\-/]*$/.test(text)) return null;
+  if (text.length > 80) return null;
+  if (!/^[0-9A-Za-z][0-9A-Za-z .–—\-/]*$/.test(text)) return null;
   return text;
 }
 
@@ -121,14 +171,9 @@ export function normalizeMemo(raw) {
   if (raw == null) return null;
   const text = String(raw).trim();
   if (!text) return null;
-  return text.slice(0, 2000);
+  return text.slice(0, MEMO_MAX_LENGTH);
 }
 
-/**
- * Stripe Checkout is available when a secret key is set (sk_…).
- * @param {NodeJS.ProcessEnv} [env]
- * @returns {string|null}
- */
 export function stripeSecretKey(env = process.env) {
   const key = env?.STRIPE_SECRET_KEY || env?.STRIPE_API_KEY;
   if (!key) return null;
@@ -140,12 +185,50 @@ export function stripeOnlineEnabled(env = process.env) {
   return Boolean(stripeSecretKey(env));
 }
 
+function parseOptionalDate(raw, fieldLabel) {
+  if (raw == null || raw === '') return { ok: true, value: null };
+  const iso = toWorkflowDateString(raw);
+  if (!isCompleteWorkflowDate(iso)) {
+    return { ok: false, error: `${fieldLabel} is not a valid calendar date.` };
+  }
+  return { ok: true, value: iso };
+}
+
 /**
- * Validate a create or update payload.
- * @param {object} body
- * @param {{ requireLease?: boolean, requireKind?: boolean }} [options]
- * @returns {{ ok: true, value: object } | { ok: false, error: string }}
+ * Merge product defaults with company catalog rows. Company rows with the same
+ * code override the label; extra company codes are appended.
  */
+export function mergePaymentCatalog(defaults, rows, category) {
+  const base = (defaults || []).map((item) => ({ ...item, source: 'default' }));
+  const byId = new Map(base.map((item) => [item.id, item]));
+  for (const row of rows || []) {
+    if (row.category && row.category !== category) continue;
+    if (row.is_active === false) {
+      byId.delete(row.code);
+      continue;
+    }
+    const id = row.code || row.id;
+    if (!isCatalogCode(id)) continue;
+    const existing = byId.get(id);
+    byId.set(id, {
+      id,
+      label: row.label || existing?.label || id,
+      source: row.pmc_id == null ? 'default' : 'company',
+    });
+  }
+  const defaultOrder = base.map((item) => item.id);
+  const merged = [...byId.values()];
+  merged.sort((a, b) => {
+    const ai = defaultOrder.indexOf(a.id);
+    const bi = defaultOrder.indexOf(b.id);
+    if (ai === -1 && bi === -1) return a.label.localeCompare(b.label);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+  return merged;
+}
+
 export function validatePaymentWrite(body = {}, options = {}) {
   const requireLease = options.requireLease !== false;
   const requireKind = options.requireKind !== false;
@@ -154,12 +237,12 @@ export function validatePaymentWrite(body = {}, options = {}) {
     return { ok: false, error: 'A lease is required.' };
   }
 
-  const kind = body.kind != null ? String(body.kind) : null;
-  if (requireKind && !isPaymentKind(kind)) {
-    return { ok: false, error: 'Kind must be rent, deposit, fee, or other.' };
+  const kind = normalizeTypeCode(body.type ?? body.kind);
+  if (requireKind && !kind) {
+    return { ok: false, error: 'A payment type is required.' };
   }
-  if (kind != null && kind !== '' && !isPaymentKind(kind)) {
-    return { ok: false, error: 'Kind must be rent, deposit, fee, or other.' };
+  if ((body.type ?? body.kind) && !kind) {
+    return { ok: false, error: 'Type must be a short code such as rent or late_fee.' };
   }
 
   let amount;
@@ -179,32 +262,52 @@ export function validatePaymentWrite(body = {}, options = {}) {
 
   let method = null;
   if (body.method != null && String(body.method).trim() !== '') {
-    method = String(body.method);
+    method = String(body.method).trim();
     if (!isPaymentMethod(method)) {
-      return { ok: false, error: 'Method must be cash, check, ACH, card, or other.' };
+      return { ok: false, error: 'Method must be a short code such as cash, check, or ach.' };
     }
   }
   if (statusRaw === 'paid' && !method && options.requireMethodWhenPaid !== false) {
     return { ok: false, error: 'A payment method is required when marking a charge paid.' };
   }
 
-  const periodLabel = normalizePeriodLabel(body.periodLabel ?? body.period_label);
+  const startParsed = parseOptionalDate(
+    body.periodStart ?? body.period_start,
+    'Period start'
+  );
+  if (!startParsed.ok) return startParsed;
+  const endParsed = parseOptionalDate(body.periodEnd ?? body.period_end, 'Period end');
+  if (!endParsed.ok) return endParsed;
+  if (startParsed.value && endParsed.value && startParsed.value > endParsed.value) {
+    return { ok: false, error: 'Period start must be on or before period end.' };
+  }
+
+  let periodLabel = normalizePeriodLabel(body.periodLabel ?? body.period_label);
   if ((body.periodLabel ?? body.period_label) && periodLabel == null) {
     return { ok: false, error: 'Period label is too long or uses characters that are not allowed.' };
   }
+  if (!periodLabel && startParsed.value && endParsed.value) {
+    periodLabel = formatPeriodRangeLabel(startParsed.value, endParsed.value);
+  }
 
   const memo = normalizeMemo(body.memo);
+  const documentIdRaw = parseInt(body.documentId ?? body.document_id, 10);
+  const documentId =
+    Number.isInteger(documentIdRaw) && documentIdRaw > 0 ? documentIdRaw : null;
 
   return {
     ok: true,
     value: {
       leaseId: Number.isInteger(leaseId) && leaseId > 0 ? leaseId : null,
-      kind: isPaymentKind(kind) ? kind : null,
+      kind,
       amount: amount ?? null,
       status: statusRaw,
       method,
       periodLabel,
+      periodStart: startParsed.value,
+      periodEnd: endParsed.value,
       memo,
+      documentId,
       collectOnline: Boolean(body.collectOnline ?? body.collect_online),
     },
   };
@@ -212,38 +315,47 @@ export function validatePaymentWrite(body = {}, options = {}) {
 
 export function leaseLabelFromParts({ propertyName, unitNumber, tenantNames } = {}) {
   const property = (propertyName || '').trim() || 'Property';
-  const unit = unitNumber != null && String(unitNumber).trim() !== ''
-    ? `Unit ${String(unitNumber).trim()}`
-    : null;
+  const unit =
+    unitNumber != null && String(unitNumber).trim() !== ''
+      ? `Unit ${String(unitNumber).trim()}`
+      : null;
   const tenants = (tenantNames || '').trim();
   return [property, unit, tenants].filter(Boolean).join(' · ');
 }
 
-/**
- * Public JSON for a ledger row.
- * @param {object} row
- * @param {object} [lease]
- */
-export function publicPayment(row, lease = {}) {
+export function publicPayment(row, lease = {}, lists = {}) {
   if (!row) return null;
   const propertyName = lease.propertyName ?? lease.property_name ?? null;
   const unitNumber = lease.unitNumber ?? lease.unit_number ?? null;
   const tenantNames = lease.tenantNames ?? lease.tenant_names ?? null;
+  const types = lists.types || PAYMENT_TYPES;
+  const methods = lists.methods || PAYMENT_METHODS;
+  const periodStart = row.period_start || null;
+  const periodEnd = row.period_end || null;
+  const periodLabel =
+    row.period_label ||
+    (periodStart && periodEnd ? formatPeriodRangeLabel(periodStart, periodEnd) : null);
   return {
     paymentId: row.payment_id,
     pmcId: row.pmc_id ?? null,
     leaseId: row.lease_id,
     kind: row.kind,
-    kindLabel: paymentKindLabel(row.kind),
+    type: row.kind,
+    kindLabel: paymentKindLabel(row.kind, types),
+    typeLabel: paymentKindLabel(row.kind, types),
     amount: row.amount != null ? Number(row.amount) : null,
     dueDate: row.due_date || null,
     paidAt: row.paid_at || null,
     method: row.method || null,
-    methodLabel: paymentMethodLabel(row.method),
+    methodLabel: paymentMethodLabel(row.method, methods),
     status: row.status,
     statusLabel: paymentStatusLabel(row.status),
     memo: row.memo || null,
-    periodLabel: row.period_label || null,
+    periodLabel,
+    periodStart,
+    periodEnd,
+    documentId: row.document_id || null,
+    documentName: lease.documentName || row.document_name || null,
     stripeCheckoutSessionId: row.stripe_checkout_session_id || null,
     checkoutUrl: row.checkout_url || null,
     createdBy: row.created_by ?? null,
@@ -280,10 +392,12 @@ export function paymentSearchHaystack(payment) {
     payment.unitNumber,
     payment.tenantNames,
     payment.kindLabel,
+    payment.typeLabel,
     payment.methodLabel,
     payment.statusLabel,
     payment.memo,
     payment.periodLabel,
+    payment.documentName,
     payment.amount != null ? String(payment.amount) : '',
   ]
     .filter(Boolean)

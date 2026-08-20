@@ -11,8 +11,12 @@ import { createCheckoutSession, appOriginFromRequest } from './utils/stripe-chec
 import { toWorkflowDateString, isCompleteWorkflowDate } from '../src/utils/workflow-date.js';
 import { brand } from './utils/brand.js';
 import {
+  PAYMENT_METHODS,
+  PAYMENT_TYPES,
+  canEditPaymentCatalog,
   canEditPayments,
   canViewPayments,
+  mergePaymentCatalog,
   publicPayment,
   stripeOnlineEnabled,
   stripeSecretKey,
@@ -24,6 +28,9 @@ export function parseUserIdHeader(headers = {}) {
   const n = parseInt(headers['x-user-id'], 10);
   return Number.isInteger(n) && n > 0 ? n : null;
 }
+
+const PAYMENT_COLUMNS =
+  'payment_id, pmc_id, lease_id, kind, amount, due_date, paid_at, method, status, memo, period_label, period_start, period_end, document_id, stripe_checkout_session_id, created_by, created_at, updated_at';
 
 function missingPaymentsTable(error) {
   const message = String(error?.message || '');
@@ -53,7 +60,7 @@ async function loadLease(supabase, leaseId) {
   const { data, error } = await supabase
     .from('leases')
     .select(
-      'lease_id, pmc_id, landlord_id, unit_id, monthly_rent_amount, security_deposit_amount, other_fee_amount, status'
+      'lease_id, pmc_id, landlord_id, unit_id, monthly_rent_amount, security_deposit_amount, pet_deposit_amount, other_fee_amount, start_date, end_date, status'
     )
     .eq('lease_id', leaseId)
     .maybeSingle();
@@ -89,7 +96,29 @@ function leaseAccessible(user, lease, property, landlordId) {
   return Boolean(user.pmc_id);
 }
 
-async function enrichPayments(supabase, rows) {
+async function loadCatalogLists(supabase, pmcId) {
+  try {
+    let query = supabase
+      .from('payment_catalog')
+      .select('payment_catalog_id, pmc_id, category, code, label, sort_order, is_active')
+      .eq('is_active', true);
+    if (pmcId != null) {
+      query = query.or(`pmc_id.eq.${pmcId},pmc_id.is.null`);
+    } else {
+      query = query.is('pmc_id', null);
+    }
+    const { data, error } = await query;
+    if (error) return { types: PAYMENT_TYPES, methods: PAYMENT_METHODS };
+    return {
+      types: mergePaymentCatalog(PAYMENT_TYPES, data, 'type'),
+      methods: mergePaymentCatalog(PAYMENT_METHODS, data, 'method'),
+    };
+  } catch {
+    return { types: PAYMENT_TYPES, methods: PAYMENT_METHODS };
+  }
+}
+
+async function enrichPayments(supabase, rows, lists = {}) {
   const payments = rows || [];
   if (payments.length === 0) return [];
 
@@ -173,24 +202,39 @@ async function enrichPayments(supabase, rows) {
   const propertyById = new Map((properties || []).map((p) => [p.property_id, p]));
   const leaseById = new Map(leaseList.map((l) => [l.lease_id, l]));
 
+  const documentIds = [
+    ...new Set(payments.map((row) => row.document_id).filter(Boolean)),
+  ];
+  const { data: documents } = documentIds.length
+    ? await supabase
+        .from('documents')
+        .select('document_id, document_name, file_name')
+        .in('document_id', documentIds)
+    : { data: [] };
+  const documentById = new Map((documents || []).map((d) => [d.document_id, d]));
+
   return payments.map((row) => {
     const lease = leaseById.get(row.lease_id);
     const unit = lease ? unitById.get(lease.unit_id) : null;
     const property = unit ? propertyById.get(unit.property_id) : null;
-    return publicPayment(row, {
-      propertyName: property?.property_name || null,
-      unitNumber: unit?.unit_number ?? null,
-      tenantNames: (tenantsByLease.get(row.lease_id) || []).join(', ') || null,
-    });
+    const document = documentById.get(row.document_id);
+    return publicPayment(
+      row,
+      {
+        propertyName: property?.property_name || null,
+        unitNumber: unit?.unit_number ?? null,
+        tenantNames: (tenantsByLease.get(row.lease_id) || []).join(', ') || null,
+        documentName: document?.file_name || document?.document_name || null,
+      },
+      lists
+    );
   });
 }
 
 async function listScopedPayments(supabase, user, query = {}) {
   let q = supabase
     .from('payments')
-    .select(
-      'payment_id, pmc_id, lease_id, kind, amount, due_date, paid_at, method, status, memo, period_label, stripe_checkout_session_id, created_by, created_at, updated_at'
-    )
+    .select(PAYMENT_COLUMNS)
     .order('due_date', { ascending: false });
 
   if (query.status && query.status !== 'all') {
@@ -242,7 +286,7 @@ async function listScopedPayments(supabase, user, query = {}) {
     if (missingPaymentsTable(error)) return [];
     throw error;
   }
-  return enrichPayments(supabase, data || []);
+  return enrichPayments(supabase, data || [], await loadCatalogLists(supabase, user.pmc_id));
 }
 
 async function maybeCheckout(req, paymentRow, publicRow) {
@@ -318,6 +362,7 @@ export default async function handler(req, res) {
     }
 
     const canEdit = canEditPayments(user.role);
+    const catalog = await loadCatalogLists(supabase, user.pmc_id);
 
     if (req.method === 'GET') {
       const payments = await listScopedPayments(supabase, user, req.query || {});
@@ -325,8 +370,11 @@ export default async function handler(req, res) {
         success: true,
         payments,
         summary: summarizePayments(payments),
+        types: catalog.types,
+        methods: catalog.methods,
         onlinePaymentsEnabled: stripeOnlineEnabled(),
         canEdit,
+        canEditCatalog: canEditPaymentCatalog(user.role),
       });
       return;
     }
@@ -401,6 +449,9 @@ export default async function handler(req, res) {
         status: parsed.value.status,
         memo: parsed.value.memo,
         period_label: parsed.value.periodLabel,
+        period_start: parsed.value.periodStart,
+        period_end: parsed.value.periodEnd,
+        document_id: parsed.value.documentId,
         created_by: user.user_id,
         updated_at: new Date().toISOString(),
       };
@@ -409,7 +460,7 @@ export default async function handler(req, res) {
         .from('payments')
         .insert(row)
         .select(
-          'payment_id, pmc_id, lease_id, kind, amount, due_date, paid_at, method, status, memo, period_label, stripe_checkout_session_id, created_by, created_at, updated_at'
+          PAYMENT_COLUMNS
         )
         .maybeSingle();
 
@@ -423,8 +474,12 @@ export default async function handler(req, res) {
         return;
       }
 
-      const [enriched] = await enrichPayments(supabase, created ? [created] : []);
-      const publicRow = enriched || publicPayment(created);
+      const [enriched] = await enrichPayments(
+        supabase,
+        created ? [created] : [],
+        catalog
+      );
+      const publicRow = enriched || publicPayment(created, {}, catalog);
 
       if (parsed.value.collectOnline) {
         const checkout = await maybeCheckout(req, created, publicRow);
@@ -466,7 +521,7 @@ export default async function handler(req, res) {
     const { data: existing, error: loadError } = await supabase
       .from('payments')
       .select(
-        'payment_id, pmc_id, lease_id, kind, amount, due_date, paid_at, method, status, memo, period_label, stripe_checkout_session_id, created_by, created_at, updated_at'
+        PAYMENT_COLUMNS
       )
       .eq('payment_id', paymentId)
       .maybeSingle();
@@ -485,12 +540,15 @@ export default async function handler(req, res) {
     const parsed = validatePaymentWrite(
       {
         leaseId: existing.lease_id,
-        kind: req.body?.kind ?? existing.kind,
+        kind: req.body?.type ?? req.body?.kind ?? existing.kind,
         amount: req.body?.amount ?? existing.amount,
         status: nextStatus,
         method: req.body?.method ?? existing.method,
         memo: req.body?.memo ?? existing.memo,
         periodLabel: req.body?.periodLabel ?? req.body?.period_label ?? existing.period_label,
+        periodStart: req.body?.periodStart ?? req.body?.period_start ?? existing.period_start,
+        periodEnd: req.body?.periodEnd ?? req.body?.period_end ?? existing.period_end,
+        documentId: req.body?.documentId ?? req.body?.document_id ?? existing.document_id,
       },
       { requireLease: true, requireKind: true, requireAmount: true }
     );
@@ -506,6 +564,9 @@ export default async function handler(req, res) {
       method: parsed.value.method,
       memo: parsed.value.memo,
       period_label: parsed.value.periodLabel,
+      period_start: parsed.value.periodStart,
+      period_end: parsed.value.periodEnd,
+      document_id: parsed.value.documentId,
       updated_at: new Date().toISOString(),
     };
 
@@ -538,7 +599,7 @@ export default async function handler(req, res) {
       .update(patch)
       .eq('payment_id', paymentId)
       .select(
-        'payment_id, pmc_id, lease_id, kind, amount, due_date, paid_at, method, status, memo, period_label, stripe_checkout_session_id, created_by, created_at, updated_at'
+        PAYMENT_COLUMNS
       )
       .maybeSingle();
 
@@ -550,10 +611,14 @@ export default async function handler(req, res) {
       return;
     }
 
-    const [enriched] = await enrichPayments(supabase, updated ? [updated] : []);
+    const [enriched] = await enrichPayments(
+      supabase,
+      updated ? [updated] : [],
+      catalog
+    );
     res.status(200).json({
       success: true,
-      payment: enriched || publicPayment(updated),
+      payment: enriched || publicPayment(updated, {}, catalog),
       onlinePaymentsEnabled: stripeOnlineEnabled(),
       canEdit: true,
     });

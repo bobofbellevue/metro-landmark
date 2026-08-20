@@ -31,6 +31,7 @@ import phoneResourcesHandler from './api/phone-resources.js';
 import notificationPreferencesHandler from './api/notifications/preferences.js';
 import notificationTestHandler from './api/notifications/test.js';
 import paymentsHandler from './api/payments.js';
+import paymentCatalogHandler from './api/payment-catalog.js';
 import convertPDFHandler from './api/documents/convert-pdf-to-json.js';
 import convertDocHandler from './api/documents/convert-doc-to-images.js';
 import measureFieldPositionsHandler from './api/documents/measure-field-positions.js';
@@ -144,6 +145,24 @@ app.put('/api/payments', async (req, res) => {
     await paymentsHandler(req, res);
   } catch (error) {
     console.error('Payments error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.get('/api/payment-catalog', async (req, res) => {
+  try {
+    await paymentCatalogHandler(req, res);
+  } catch (error) {
+    console.error('Payment catalog error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.post('/api/payment-catalog', async (req, res) => {
+  try {
+    await paymentCatalogHandler(req, res);
+  } catch (error) {
+    console.error('Payment catalog error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });

@@ -1,16 +1,19 @@
 import {
   canEditPayments,
   canViewPayments,
+  catalogCodeFromLabel,
   currentRentPeriodLabel,
   defaultAmountForKind,
   filterPaymentsBySearch,
   leaseLabelFromParts,
+  mergePaymentCatalog,
   parsePaymentAmount,
   publicPayment,
   stripeOnlineEnabled,
   stripeSecretKey,
   summarizePayments,
   validatePaymentWrite,
+  PAYMENT_TYPES,
 } from '../../src/utils/payments.js';
 
 describe('payment helpers', () => {
@@ -70,6 +73,44 @@ describe('payment helpers', () => {
         { requireAmount: true }
       ).value.periodLabel
     ).toBe('2026-08');
+  });
+
+  test('period date range is stored and labeled', () => {
+    const parsed = validatePaymentWrite(
+      {
+        leaseId: 1,
+        type: 'late_fee',
+        amount: 75,
+        periodStart: '2026-08-15',
+        periodEnd: '2026-09-14',
+      },
+      { requireAmount: true }
+    );
+    expect(parsed.ok).toBe(true);
+    expect(parsed.value.kind).toBe('late_fee');
+    expect(parsed.value.periodStart).toBe('2026-08-15');
+    expect(parsed.value.periodEnd).toBe('2026-09-14');
+    expect(parsed.value.periodLabel).toMatch(/08-15-2026/);
+    expect(
+      validatePaymentWrite(
+        {
+          leaseId: 1,
+          kind: 'rent',
+          amount: 10,
+          periodStart: '2026-09-14',
+          periodEnd: '2026-08-15',
+        },
+        { requireAmount: true }
+      ).ok
+    ).toBe(false);
+  });
+
+  test('mergePaymentCatalog appends company types', () => {
+    const merged = mergePaymentCatalog(PAYMENT_TYPES, [
+      { category: 'type', code: 'garage_remote', label: 'Garage remote', pmc_id: 9 },
+    ], 'type');
+    expect(merged.some((t) => t.id === 'garage_remote')).toBe(true);
+    expect(catalogCodeFromLabel('Garage remote')).toBe('garage_remote');
   });
 
   test('stripeOnlineEnabled requires sk_ secret', () => {
