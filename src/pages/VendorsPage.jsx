@@ -429,11 +429,11 @@ export default function VendorsPage() {
     return (
         <div className="space-y-6">
             <h2 className="text-3xl font-bold text-gray-800">Vendors</h2>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="finder-split">
                 <CreateVendorForm onVendorCreated={handleSuccess} />
                 <Card
                     title="Vendor Search"
-                    className="lg:col-span-2 max-h-[calc(100vh-160px)]"
+                    className="max-h-[calc(100vh-160px)]"
                     contentClassName="flex flex-col h-full"
                 >
                     <div className="flex flex-col h-full">
@@ -490,7 +490,7 @@ export default function VendorsPage() {
                     </div>
                     <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
                         <div className="overflow-auto h-full max-w-full">
-                        <table className="w-full divide-y divide-gray-200">
+                        <table className="finder-list w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
@@ -519,7 +519,7 @@ export default function VendorsPage() {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {displayedVendors.map(v => (
                                     <tr key={v.vendor_id} className={v.is_archived ? 'opacity-60 italic' : ''}>
-                                        <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                        <td className="px-1.5 py-2 text-left whitespace-nowrap">
                                             <div className="flex items-center space-x-4">
                                                 {!v.is_archived && (
                                                     <>
@@ -579,7 +579,7 @@ export default function VendorsPage() {
                                                 }
                                             }}>
                                                 {v.is_archived && (
-                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 mr-2">Archived</span>
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full finder-secondary bg-gray-100 text-gray-600 mr-2">Archived</span>
                                                 )}
                                                 <div className="flex items-center gap-2">
                                                     {v.approvals && v.approvals.length > 0 && (
@@ -596,10 +596,10 @@ export default function VendorsPage() {
                                                             )}
                                                         </>
                                                     )}
-                                                    <span className="cursor-help font-medium text-gray-900">{formatVendorName(v)}</span>
+                                                    <span className="cursor-help text-gray-900">{formatVendorName(v)}</span>
                                                 </div>
                                                 {v.description && (
-                                                    <div className="text-xs text-gray-500 mt-1">{v.description.substring(0, 50)}...</div>
+                                                    <div className="finder-secondary text-gray-500 mt-1">{v.description.substring(0, 50)}...</div>
                                                 )}
                                                 <div className="absolute left-0 top-full mt-2 z-50 hidden group-hover:block pointer-events-none tooltip-content">
                                                     <div className="bg-gray-900 text-white text-xs rounded px-3 py-2 max-w-xs shadow-lg whitespace-pre-line">
@@ -608,11 +608,11 @@ export default function VendorsPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-1.5 py-2 text-sm text-gray-500">
+                                        <td className="px-1.5 py-2">
                                             <div className="space-y-1">
                                                 {v.email && (
-                                                    <div className="text-xs">
-                                                        <span className="font-medium">Email:</span> {v.email}
+                                                    <div>
+                                                        Email: {v.email}
                                                     </div>
                                                 )}
                                                 {v.contact_methods && v.contact_methods.length > 0 && (
@@ -620,8 +620,8 @@ export default function VendorsPage() {
                                                         {v.contact_methods
                                                             .filter(m => m.method_type && m.method_type.toLowerCase() !== 'email' && m.value)
                                                             .map((method, idx) => (
-                                                                <div key={idx} className="text-xs">
-                                                                    <span className="font-medium capitalize">{method.method_type}:</span> {method.value}
+                                                                <div key={idx} className="finder-secondary text-gray-500">
+                                                                    {method.method_type}: {method.value}
                                                                 </div>
                                                             ))}
                                                     </>
@@ -631,24 +631,24 @@ export default function VendorsPage() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-1.5 py-2 text-sm text-gray-500">
+                                        <td className="px-1.5 py-2">
                                             {v.keywords && v.keywords.length > 0 ? (
                                                 <div 
                                                     className="flex flex-wrap gap-1 max-h-12 overflow-hidden relative group cursor-help"
                                                     title={v.keywords.map(k => formatServiceKeyword(k.keyword_name)).join(', ')}
                                                 >
                                                     {v.keywords.slice(0, 3).map((k, idx) => (
-                                                        <span key={idx} className="px-2 py-1 text-xs bg-indigo-100 text-indigo-800 rounded">
+                                                        <span key={idx} className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded">
                                                             {formatServiceKeyword(k.keyword_name)}
                                                         </span>
                                                     ))}
                                                     {v.keywords.length > 3 && (
-                                                        <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                                                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded">
                                                             +{v.keywords.length - 3}
                                                         </span>
                                                     )}
                                                     {v.keywords.length > 3 && (
-                                                        <div className="absolute left-0 top-full mt-1 z-10 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-3 py-2 max-w-xs shadow-lg">
+                                                        <div className="absolute left-0 top-full mt-1 z-10 hidden group-hover:block bg-gray-800 text-white finder-secondary rounded px-3 py-2 max-w-xs shadow-lg">
                                                             {v.keywords.map(k => formatServiceKeyword(k.keyword_name)).join(', ')}
                                                         </div>
                                                     )}
@@ -657,14 +657,14 @@ export default function VendorsPage() {
                                                 <span className="text-gray-400">No services</span>
                                             )}
                                         </td>
-                                        <td className="px-1.5 py-2 text-sm">
+                                        <td className="px-1.5 py-2">
                                             {v.service_areas && v.service_areas.length > 0 ? (
                                                 <div 
                                                     className="flex flex-wrap gap-1 max-h-12 overflow-hidden relative group cursor-help"
                                                     title={v.service_areas.map(sa => formatServiceAreaChipLabel(v, sa)).join(', ')}
                                                 >
                                                     {v.service_areas.slice(0, 3).map((sa, idx) => (
-                                                        <span key={idx} className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
+                                                        <span key={idx} className="px-2 py-1 bg-green-100 text-green-800 rounded">
                                                             {formatServiceAreaChipLabel(v, sa)}
                                                         </span>
                                                     ))}
@@ -1734,7 +1734,7 @@ const CreateVendorForm = ({ onVendorCreated }) => {
     return (
         <Card 
             hideTitle
-            className="lg:col-span-1 max-h-[calc(100vh-160px)]"
+            className="max-h-[calc(100vh-160px)]"
             contentClassName="flex flex-col h-full"
         >
             <form onSubmit={handleCreate} className="flex flex-col h-full">
@@ -3729,14 +3729,14 @@ const ApproveVendorModal = ({ vendor, onClose, onApproveSuccess }) => {
                                             >
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-medium text-gray-900">
+                                                        <span className="finder-primary text-gray-900">
                                                             {getApprovalEntityName(approval)}
                                                         </span>
                                                         <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
                                                             {capitalizeApprovalLevel(approval.approval_level)}
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+                                                    <div className="flex items-center gap-4 mt-1 finder-secondary text-gray-500">
                                                         <span>
                                                             {new Date(approval.approved_at).toLocaleDateString()}
                                                         </span>

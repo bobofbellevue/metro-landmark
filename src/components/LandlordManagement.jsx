@@ -278,11 +278,11 @@ export default function LandlordManagement() {
     const displayedLandlords = sortedLandlords.slice(0, landlordVisibleCount || sortedLandlords.length);
 
     return (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="finder-split">
             <CreateLandlordForm companies={companies} onLandlordCreated={handleSuccess} />
             <Card
                 title="Landlord Search"
-                className="lg:col-span-2 max-h-[calc(100vh-160px)]"
+                className="max-h-[calc(100vh-160px)]"
                 contentClassName="flex flex-col h-full"
             >
                 <div className="flex flex-col h-full">
@@ -337,7 +337,7 @@ export default function LandlordManagement() {
                 </div>
                 <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
                     <div className="overflow-auto h-full max-w-full">
-                    <table className="w-full divide-y divide-gray-200">
+                    <table className="finder-list w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
@@ -358,7 +358,7 @@ export default function LandlordManagement() {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {displayedLandlords.map(l => (
                                 <tr key={l.landlord_id}>
-                                    <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                    <td className="px-1.5 py-2 text-left whitespace-nowrap">
                                         <div className="flex items-center space-x-4">
                                             <div className="relative group" onMouseEnter={(e) => {
                                                 const tooltip = e.currentTarget.querySelector('.tooltip-content');
@@ -411,19 +411,19 @@ export default function LandlordManagement() {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-1.5 py-2 text-sm whitespace-nowrap">
+                                    <td className="px-1.5 py-2 whitespace-nowrap">
                                         <div className="space-y-1">
                                             {l.email && (
-                                                <div className="font-medium text-gray-900">
-                                                    <span className="font-medium">Email:</span> {l.email}
+                                                <div>
+                                                    Email: {l.email}
                                                 </div>
                                             )}
                                             {l.contact_methods && l.contact_methods
                                                 .filter(method => method.value && method.type && method.type.toLowerCase() !== 'email')
                                                 .sort((a, b) => a.type.localeCompare(b.type))
                                                 .map((method, index) => (
-                                                    <div key={index} className="text-gray-500">
-                                                        <span className="font-medium capitalize">{method.type}:</span> {method.value}
+                                                    <div key={index} className="finder-secondary text-gray-500">
+                                                        {method.type}: {method.value}
                                                     </div>
                                             ))}
                                             {!l.email && (!l.contact_methods || l.contact_methods.filter(m => m.value && m.type && m.type.toLowerCase() !== 'email').length === 0) && (
@@ -431,11 +431,11 @@ export default function LandlordManagement() {
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-1.5 py-2 text-sm text-gray-500 whitespace-nowrap">
+                                    <td className="px-1.5 py-2 whitespace-nowrap">
                                         <div>{l.property_count || 0} {l.property_count === 1 ? 'property' : 'properties'}</div>
-                                        <div className="text-xs text-gray-400">{l.unit_count || 0} {l.unit_count === 1 ? 'unit' : 'units'}</div>
+                                        <div className="finder-secondary text-gray-500">{l.unit_count || 0} {l.unit_count === 1 ? 'unit' : 'units'}</div>
                                     </td>
-                                    <td className="px-1.5 py-2 text-sm text-gray-500 whitespace-nowrap">
+                                    <td className="px-1.5 py-2 whitespace-nowrap">
                                         {l.city && l.state_province_region ? `${l.city}, ${l.state_province_region}` : 
                                          l.city ? l.city : 
                                          l.state_province_region ? l.state_province_region : 
@@ -709,7 +709,7 @@ const CreateLandlordForm = ({ companies, onLandlordCreated }) => {
     };
 
     return (
-        <Card hideTitle className="lg:col-span-1 max-h-[calc(100vh-160px)]" contentClassName="h-full">
+        <Card hideTitle className="max-h-[calc(100vh-160px)]" contentClassName="h-full">
             <form onSubmit={handleCreate} className="flex flex-col h-full">
                 <div className="flex items-start justify-between pb-4 mb-4 border-b">
                     <div>

@@ -279,9 +279,9 @@ export default function PaymentsPage() {
   return (
     <div className="space-y-6">
       <h2 className="text-3xl font-bold text-gray-800">Payments</h2>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className={canEdit ? 'finder-split' : 'grid grid-cols-1 gap-4'}>
         {canEdit && (
-          <Card hideTitle className="lg:col-span-1 max-h-[calc(100vh-160px)]" contentClassName="h-full">
+          <Card hideTitle className="max-h-[calc(100vh-160px)]" contentClassName="h-full">
             <form onSubmit={handleCreate} className="flex flex-col h-full">
               <div className="flex items-start justify-between pb-4 mb-4 border-b">
                 <h2 className="text-2xl font-bold text-gray-800">Add Payment</h2>
@@ -343,7 +343,7 @@ export default function PaymentsPage() {
 
         <Card
           title="Payment Search"
-          className={`${canEdit ? 'lg:col-span-2' : 'lg:col-span-3'} max-h-[calc(100vh-160px)]`}
+          className="max-h-[calc(100vh-160px)]"
           contentClassName="flex flex-col h-full"
         >
           <div className="flex flex-col h-full">
@@ -440,7 +440,7 @@ export default function PaymentsPage() {
             ) : (
               <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
                 <div className="overflow-auto h-full max-w-full">
-                  <table className="w-max divide-y divide-gray-200 text-sm">
+                  <table className="finder-list w-max divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         {canEdit && (
@@ -504,7 +504,7 @@ export default function PaymentsPage() {
                       {visible.map((row) => (
                         <tr key={row.paymentId} className="align-top">
                           {canEdit && (
-                            <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
+                            <td className="px-1.5 py-2 text-left whitespace-nowrap">
                               <div className="flex items-center space-x-3">
                                 {row.status !== 'void' && (
                                   <button
@@ -605,12 +605,12 @@ export default function PaymentsPage() {
                           </td>
                           <td className="px-1.5 py-2 whitespace-nowrap">
                             <span
-                              className={`px-2 py-0.5 rounded text-xs font-semibold ${statusClass(row.status)}`}
+                              className={`px-2 py-0.5 rounded finder-primary ${statusClass(row.status)}`}
                             >
                               {row.statusLabel}
                             </span>
                             {row.paidAt && (
-                              <div className="text-xs text-gray-500 mt-1">
+                              <div className="finder-secondary text-gray-500 mt-1">
                                 {formatDateTime(row.paidAt, locale)}
                               </div>
                             )}

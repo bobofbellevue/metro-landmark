@@ -462,11 +462,11 @@ export default function ApplicantsPage() {
     return (
         <div className="space-y-6">
             <h2 className="text-3xl font-bold text-gray-800">Applicants</h2>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="finder-split">
                 <CreateApplicantForm onApplicantCreated={handleSuccess} />
                 <Card
                     title="Applicant Search"
-                    className="lg:col-span-2 max-h-[calc(100vh-160px)]"
+                    className="max-h-[calc(100vh-160px)]"
                     contentClassName="flex flex-col h-full"
                 >
                     <div className="flex flex-col h-full">
@@ -496,7 +496,7 @@ export default function ApplicantsPage() {
                     
                     <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
                         <div className="overflow-auto h-full max-w-full">
-                        <table className="w-full divide-y divide-gray-200">
+                        <table className="finder-list w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
@@ -525,7 +525,7 @@ export default function ApplicantsPage() {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {displayedApplicants.map(a => (
                                     <tr key={a.user_id} className={a.is_archived ? 'opacity-60 italic' : ''}>
-                                        <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                        <td className="px-1.5 py-2 text-left whitespace-nowrap">
                                             <div className="flex items-center space-x-4">
                                                 {!a.is_archived && (
                                                     <>
@@ -611,7 +611,7 @@ export default function ApplicantsPage() {
                                                 }
                                             }}>
                                                 {a.is_archived && (
-                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 mr-2">Archived</span>
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full finder-secondary bg-gray-100 text-gray-600 mr-2">Archived</span>
                                                 )}
                                                 <span className="cursor-help">{formatApplicantName(a)}</span>
                                                 <div className="absolute left-0 top-full mt-2 z-50 hidden group-hover:block pointer-events-none tooltip-content">
@@ -624,12 +624,12 @@ export default function ApplicantsPage() {
                                         <td className="px-1.5 py-2 whitespace-nowrap">
                                             <div className="space-y-1">
                                                 {a.email && (
-                                                    <div className="text-sm text-gray-900">
-                                                        <span className="font-medium">Email:</span> {a.email}
+                                                    <div>
+                                                        Email: {a.email}
                                                     </div>
                                                 )}
                                                 {a.contact_methods && a.contact_methods.length > 0 && (
-                                                    <div className="text-sm text-gray-500">
+                                                    <div className="finder-secondary text-gray-500">
                                                         {sortContactMethods(a.contact_methods, a.email)
                                                             .filter(cm => cm.method_type && cm.method_type.toLowerCase() !== 'email')
                                                             .map(cm => `${cm.method_type}: ${cm.value}`)
@@ -643,11 +643,11 @@ export default function ApplicantsPage() {
                                         </td>
                                         <td className="px-1.5 py-2 whitespace-nowrap">
                                             {a.application_status === 'Future' ? (
-                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800">
                                                     Future - {a.application_date ? new Date(a.application_date).toLocaleDateString() : 'N/A'}
                                                 </span>
                                             ) : (
-                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getApplicationStatusColor(a.application_status)}`}>
+                                                <span className={`inline-flex items-center px-2 py-1 rounded-full ${getApplicationStatusColor(a.application_status)}`}>
                                                     {a.application_status || 'None'}
                                                 </span>
                                             )}
@@ -657,27 +657,27 @@ export default function ApplicantsPage() {
                                                 // Format: "address, Unit number" -> split on comma, display on 2 lines max
                                                 if (a.unit_number && a.address_line_1) {
                                                     return (
-                                                        <div className="text-sm leading-tight">
+                                                        <div>
                                                             <div className="line-clamp-1">{a.address_line_1}</div>
-                                                            <div className="text-gray-600 line-clamp-1">Unit {a.unit_number}</div>
+                                                            <div className="finder-secondary text-gray-500 line-clamp-1">Unit {a.unit_number}</div>
                                                         </div>
                                                     );
                                                 } else if (a.unit_number) {
-                                                    return <div className="text-sm text-gray-600 line-clamp-2">Unit {a.unit_number}</div>;
+                                                    return <div className="line-clamp-2">Unit {a.unit_number}</div>;
                                                 } else if (a.address_line_1) {
                                                     // If address contains comma, split it
                                                     const parts = a.address_line_1.split(',').map(p => p.trim()).filter(Boolean);
                                                     if (parts.length > 1) {
                                                         return (
-                                                            <div className="text-sm leading-tight">
+                                                            <div>
                                                                 <div className="line-clamp-1">{parts[0]}</div>
-                                                                <div className="line-clamp-1">{parts.slice(1).join(', ')}</div>
+                                                                <div className="finder-secondary text-gray-500 line-clamp-1">{parts.slice(1).join(', ')}</div>
                                                             </div>
                                                         );
                                                     }
-                                                    return <div className="text-sm line-clamp-2">{a.address_line_1}</div>;
+                                                    return <div className="line-clamp-2">{a.address_line_1}</div>;
                                                 } else {
-                                                    return <div className="text-sm text-gray-500">None</div>;
+                                                    return <div className="text-gray-500">None</div>;
                                                 }
                                             })()}
                                         </td>
@@ -2072,7 +2072,7 @@ const CreateApplicantForm = ({ onApplicantCreated }) => {
     };
 
     return (
-        <Card hideTitle className="lg:col-span-1 max-h-[calc(100vh-160px)]" contentClassName="h-full">
+        <Card hideTitle className="max-h-[calc(100vh-160px)]" contentClassName="h-full">
             <form onSubmit={handleCreate} className="flex flex-col h-full" autoComplete="off">
                 <div className="flex items-start justify-between pb-4 mb-4 border-b">
                     <div>
@@ -2269,8 +2269,8 @@ const CreateApplicantForm = ({ onApplicantCreated }) => {
                                             }}
                                             className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0 min-w-0"
                                         >
-                                            <div className="font-medium truncate">Unit {unit.unit_number}</div>
-                                            <div className="text-sm text-gray-600 truncate">
+                                            <div className="finder-primary truncate">Unit {unit.unit_number}</div>
+                                            <div className="finder-secondary text-gray-500 truncate">
                                                 {unit.address?.address_line_1 || ''}
                                                 {unit.address?.city ? `, ${unit.address.city}` : ''}
                                                 {unit.address?.state_province_region ? ` ${unit.address.state_province_region}` : ''}
@@ -3760,20 +3760,20 @@ const ApplyForUnitsModalInline = ({ applicant, onClose, onApplySuccess }) => {
                                                 />
                                                 <div className="ml-3 flex-1">
                                                     <div className="flex items-center justify-between">
-                                                        <div className="text-sm font-medium text-gray-900">
+                                                        <div className="finder-primary text-gray-900">
                                                             {template.template_name}
                                                             {template.is_default && (
-                                                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                                                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded finder-secondary bg-indigo-100 text-indigo-800">
                                                                     Default
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="text-xs text-gray-500 capitalize">
+                                                        <div className="finder-secondary text-gray-500 capitalize">
                                                             {template.template_level}
                                                         </div>
                                                     </div>
                                                     {template.pm_companies?.company_name && (
-                                                        <div className="text-xs text-gray-500 mt-1">
+                                                        <div className="finder-secondary text-gray-500 mt-1">
                                                             {template.pm_companies.company_name}
                                                         </div>
                                                     )}

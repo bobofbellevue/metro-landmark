@@ -269,7 +269,7 @@ function LeaseGroup({
           ) : null}
         </div>
       ) : null}
-      <div className="max-h-80 overflow-y-auto border border-gray-200 rounded-md divide-y divide-gray-100">
+      <div className="finder-list max-h-80 overflow-y-auto border border-gray-200 rounded-md divide-y divide-gray-100">
         {leases.length === 0 ? (
           <div className="p-3 text-sm text-gray-500">
             {emptyLabel || 'None right now.'}
@@ -322,7 +322,7 @@ function LeaseRowContent({ lease, showRent, showDeposit, annotation }) {
         <span className="whitespace-normal break-words">{leasePickerPrimaryLabel(lease)}</span>
         {annotation?.badge ? (
           <span
-            className={`px-2 py-0.5 rounded text-xs font-semibold ${
+            className={`px-2 py-0.5 rounded finder-secondary ${
               annotation.badgeClass || 'bg-gray-100 text-gray-700'
             }`}
           >

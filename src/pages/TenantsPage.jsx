@@ -532,11 +532,11 @@ export default function TenantsPage() {
     return (
         <div className="space-y-6">
             <h2 className="text-3xl font-bold text-gray-800">Tenants</h2>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="finder-split">
                 <CreateTenantForm units={units} onTenantCreated={handleSuccess} />
                 <Card
                     title="Tenant Search"
-                    className="lg:col-span-2 max-h-[calc(100vh-160px)]"
+                    className="max-h-[calc(100vh-160px)]"
                     contentClassName="flex flex-col h-full"
                 >
                     <div className="flex flex-col h-full">
@@ -593,7 +593,7 @@ export default function TenantsPage() {
                     </div>
                     <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
                         <div className="overflow-auto h-full max-w-full">
-                        <table className="w-full divide-y divide-gray-200">
+                        <table className="finder-list w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
@@ -606,7 +606,7 @@ export default function TenantsPage() {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {displayedTenants.map(t => (
                                     <tr key={t.user_id} className={t.is_archived ? 'opacity-60 italic' : ''}>
-                                        <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                        <td className="px-1.5 py-2 text-left whitespace-nowrap">
                                             <div className="flex items-center space-x-4">
                                                 {!t.is_archived && (
                                                     <>
@@ -661,7 +661,7 @@ export default function TenantsPage() {
                                                 }
                                             }}>
                                                 {t.is_archived && (
-                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 mr-2">Archived</span>
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full finder-secondary bg-gray-100 text-gray-600 mr-2">Archived</span>
                                                 )}
                                                 <span className="cursor-help">{formatTenantName(t)}</span>
                                                 <div className="absolute left-0 top-full mt-2 z-50 hidden group-hover:block pointer-events-none tooltip-content">
@@ -671,22 +671,22 @@ export default function TenantsPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-1.5 py-2 text-sm text-gray-500">
+                                        <td className="px-1.5 py-2">
                                             <div className="space-y-1">
                                                 {t.email && (
-                                                    <div className="text-xs">
-                                                        <span className="font-medium">Email:</span> {t.email}
+                                                    <div>
+                                                        Email: {t.email}
                                                     </div>
                                                 )}
                                                 {t.contact_methods && t.contact_methods.length > 0 && (
                                                     <>
                                                         {t.contact_methods.slice(0, t.email ? 1 : 2).map((method, idx) => (
-                                                            <div key={idx} className="text-xs">
-                                                                <span className="font-medium capitalize">{method.method_type}:</span> {method.value}
+                                                            <div key={idx} className={t.email ? 'finder-secondary text-gray-500' : ''}>
+                                                                {method.method_type}: {method.value}
                                                             </div>
                                                         ))}
                                                         {t.contact_methods.length > (t.email ? 1 : 2) && (
-                                                            <div className="text-xs text-gray-400">+{t.contact_methods.length - (t.email ? 1 : 2)} more</div>
+                                                            <div className="finder-secondary text-gray-400">+{t.contact_methods.length - (t.email ? 1 : 2)} more</div>
                                                         )}
                                                     </>
                                                 )}
@@ -722,49 +722,49 @@ export default function TenantsPage() {
                                                 
                                                 if (t.lease_status === 'Future') {
                                                     return (
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800">
                                                             Future{dateRange ? ` - ${dateRange}` : ''}
                                                         </span>
                                                     );
                                                 } else if (t.lease_status === 'Active') {
                                                     return (
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800">
                                                             Active{dateRange ? ` - ${dateRange}` : ''}
                                                         </span>
                                                     );
                                                 } else if (t.lease_status === 'Ended') {
                                                     return (
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-red-100 text-red-800">
                                                             Ended{dateRange ? ` - ${dateRange}` : ''}
                                                         </span>
                                                     );
                                                 } else if (t.lease_status === 'Leased') {
                                                     return (
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-100 text-indigo-800">
                                                             Leased{dateRange ? ` - ${dateRange}` : ''}
                                                         </span>
                                                     );
                                                 } else if (t.lease_status === 'Assigned') {
                                                     return (
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
                                                             Assigned{dateRange ? ` - ${dateRange}` : ''}
                                                         </span>
                                                     );
                                                 } else if (t.lease_status === 'Applied') {
                                                     return (
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-purple-100 text-purple-800">
                                                             Applied{dateRange ? ` - ${dateRange}` : ''}
                                                         </span>
                                                     );
                                                 } else if (t.lease_status === 'Approved') {
                                                     return (
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800">
                                                             Approved{dateRange ? ` - ${dateRange}` : ''}
                                                         </span>
                                                     );
                                                 } else {
                                                     return (
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-800">
                                                             {t.lease_status || 'None'}
                                                         </span>
                                                     );
@@ -1170,7 +1170,7 @@ const CreateTenantForm = ({ units, onTenantCreated }) => {
     };
 
     return (
-        <Card hideTitle className="lg:col-span-1 max-h-[calc(100vh-160px)]" contentClassName="h-full">
+        <Card hideTitle className="max-h-[calc(100vh-160px)]" contentClassName="h-full">
             <form onSubmit={handleCreate} className="flex flex-col h-full" autoComplete="off">
                 <div className="flex items-start justify-between pb-4 mb-4 border-b">
                     <div>
@@ -1287,16 +1287,16 @@ const CreateTenantForm = ({ units, onTenantCreated }) => {
                                 <p className="text-xs text-red-600 mt-1">Please select a unit from the dropdown</p>
                             )}
                             {showUnitDropdown && filteredUnits.length > 0 && (
-                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto finder-list">
                                     {filteredUnits.slice(0, 20).map(unit => (
                                         <div
                                             key={unit.unit_id}
                                             onClick={() => handleUnitSelect(unit)}
                                             className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                                         >
-                                            <div className="font-medium text-gray-900">{formatUnitAddress(unit)}</div>
+                                            <div className="text-gray-900">{formatUnitAddress(unit)}</div>
                                             {occupiedUnitIds.has(unit.unit_id) && (
-                                                <div className="text-xs text-orange-600 mt-1">Occupied</div>
+                                                <div className="finder-secondary text-orange-600 mt-1">Occupied</div>
                                             )}
                                         </div>
                                     ))}
@@ -2495,7 +2495,7 @@ const AssignUnitForm = ({ tenant, units, onAssignmentSuccess, onClose }) => {
                     <h3 className="text-sm font-medium text-indigo-800 mb-2">Current Assignment</h3>
                     <div className="flex items-center space-x-3">
                         <div className="flex-shrink-0">
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full bg-indigo-100 text-indigo-800">
                                 Active
                             </span>
                         </div>
@@ -2535,7 +2535,7 @@ const AssignUnitForm = ({ tenant, units, onAssignmentSuccess, onClose }) => {
                             }`}>
                                 <div className="flex items-center space-x-3 flex-1 min-w-0">
                                     <div className="flex-shrink-0">
-                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                        <span className={`inline-flex items-center px-2 py-1 rounded-full ${
                                             isActive 
                                                 ? 'bg-green-100 text-green-800' 
                                                 : 'bg-gray-100 text-gray-800'
@@ -2544,10 +2544,10 @@ const AssignUnitForm = ({ tenant, units, onAssignmentSuccess, onClose }) => {
                                         </span>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                        <p className="finder-primary text-gray-900 truncate">
                                             {assignment.unit_address ? `${assignment.unit_address} - ` : ''}Unit {unitNumber}
                                         </p>
-                                        <p className="text-xs text-gray-600">
+                                        <p className="finder-secondary text-gray-500">
                                             {formatDate(assignment.start_date)} {assignment.end_date ? `to ${formatDate(assignment.end_date)}` : '(ongoing)'}
                                         </p>
                                     </div>
@@ -2628,7 +2628,7 @@ const AssignUnitForm = ({ tenant, units, onAssignmentSuccess, onClose }) => {
                                                         selectedUnit === unit.unit_id.toString() ? 'bg-indigo-100' : ''
                                                     }`}
                                                 >
-                                                    <div className="text-sm font-medium text-gray-900 truncate">{formatUnitAddress(unit)}</div>
+                                                    <div className="finder-primary text-gray-900 truncate">{formatUnitAddress(unit)}</div>
                                                 </button>
                                             ))
                                         )}

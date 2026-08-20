@@ -469,11 +469,11 @@ export default function PropertiesPage() {
     return (
         <div className="space-y-6">
             <h2 className="text-3xl font-bold text-gray-800">Properties</h2>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="finder-split">
                 <CreatePropertyForm landlords={landlords} propertyTypes={propertyTypes} onPropertyCreated={handlePropertyCreated} />
                 <Card
                     title="Property Search"
-                    className="lg:col-span-2 h-[calc(100vh-160px)] max-h-[calc(100vh-160px)] min-h-0 overflow-hidden"
+                    className="h-[calc(100vh-160px)] max-h-[calc(100vh-160px)] min-h-0 overflow-hidden"
                     contentClassName="flex min-h-0 flex-col overflow-hidden"
                 >
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -528,7 +528,7 @@ export default function PropertiesPage() {
                         </div>
                     </div>
                     <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-gray-200">
-                        <table className="w-full divide-y divide-gray-200">
+                        <table className="finder-list w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
@@ -542,7 +542,7 @@ export default function PropertiesPage() {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {displayedProperties.map(p => (
                                     <tr key={p.property_id} className={p.is_archived ? 'opacity-60 italic' : ''}>
-                                        <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                        <td className="px-1.5 py-2 text-left whitespace-nowrap">
                                              <div className="flex items-center space-x-4">
                                                 {!p.is_archived && (
                                                     <>
@@ -579,7 +579,7 @@ export default function PropertiesPage() {
                                                 <button onClick={() => setDeletingProperty(p)} className="text-red-600 hover:text-red-900" title={p.is_archived ? "Archive Property" : "Archive Property"}><Trash2 size={16}/></button>
                                             </div>
                                         </td>
-                                        <td className="px-1.5 py-2 text-sm text-gray-500">
+                                        <td className="px-1.5 py-2">
                                             <div className="relative group inline-block" onMouseEnter={(e) => {
                                                 const tooltip = e.currentTarget.querySelector('.tooltip-content');
                                                 if (tooltip) {
@@ -598,10 +598,10 @@ export default function PropertiesPage() {
                                             }}>
                                                 <div className="space-y-1">
                                                     {p.is_archived && (
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 mr-2">Archived</span>
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full finder-secondary bg-gray-100 text-gray-600 mr-2">Archived</span>
                                                     )}
                                                     {formatAddressMultiLine(p).map((line, index) => (
-                                                        <div key={index} className="block cursor-help">{line}</div>
+                                                        <div key={index} className={`block cursor-help ${index > 0 ? 'finder-secondary text-gray-500' : ''}`}>{line}</div>
                                                     ))}
                                                 </div>
                                                 <div className="absolute left-0 top-full mt-2 z-50 hidden group-hover:block pointer-events-none tooltip-content">
@@ -613,13 +613,13 @@ export default function PropertiesPage() {
                                         </td>
                                         <td className="px-1.5 py-2 whitespace-nowrap">{p.landlord_name}</td>
                                         <td className="px-1.5 py-2 whitespace-nowrap">{p.property_type}</td>
-                                        <td className="px-1.5 py-2 text-sm text-gray-700 whitespace-nowrap">{p.unit_count || 0}</td>
-                                        <td className="px-1.5 py-2 text-sm text-gray-500">
+                                        <td className="px-1.5 py-2 whitespace-nowrap">{p.unit_count || 0}</td>
+                                        <td className="px-1.5 py-2">
                                             {p.management_display?.company ? (
                                                 <div>
                                                     <div>{p.management_display.company}</div>
                                                     {p.management_display.manager && (
-                                                        <div className="text-xs text-gray-400">{p.management_display.manager}</div>
+                                                        <div className="finder-secondary text-gray-500">{p.management_display.manager}</div>
                                                     )}
                                                 </div>
                                             ) : (
@@ -1424,7 +1424,7 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
     };
 
     return (
-        <Card hideTitle className="lg:col-span-1 max-h-[calc(100vh-160px)]" contentClassName="h-full">
+        <Card hideTitle className="max-h-[calc(100vh-160px)]" contentClassName="h-full">
             <form onSubmit={handleCreate} className="flex flex-col h-full" autoComplete="off">
                 <div className="flex items-start justify-between pb-4 mb-4 border-b">
                     <div>
@@ -1462,7 +1462,7 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
                             className="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
                         />
                         {showLandlordDropdown && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto overflow-x-hidden">
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto overflow-x-hidden finder-list">
                                 {filteredLandlords.length === 0 ? (
                                     <div className="px-3 py-2 text-sm text-gray-500">No landlords found</div>
                                 ) : (
@@ -1477,12 +1477,12 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
                                             }}
                                             className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none min-w-0"
                                         >
-                                            <div className="font-medium truncate">{formatLandlordName(landlord)}</div>
+                                            <div className="finder-primary truncate">{formatLandlordName(landlord)}</div>
                                             {landlord.email && (
-                                                <div className="text-xs text-gray-500 truncate">{landlord.email}</div>
+                                                <div className="finder-secondary text-gray-500 truncate">{landlord.email}</div>
                                             )}
                                             {landlord.company_name && (
-                                                <div className="text-xs text-gray-500 truncate">{landlord.company_name}</div>
+                                                <div className="finder-secondary text-gray-500 truncate">{landlord.company_name}</div>
                                             )}
                                         </button>
                                     ))

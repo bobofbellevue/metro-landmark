@@ -416,7 +416,7 @@ const TenantSelectionModal = ({
                             {debouncedSearchTerm ? 'No tenants found matching your search.' : 'No tenants available.'}
                         </div>
                     ) : (
-                        <div className="space-y-2">
+                        <div className="finder-list space-y-2">
                             {sortedTenants.map(tenant => {
                                 const isSelected = selectedTenantIds.includes(tenant.user_id);
                                 const unitInfo = tenant.unitInfo || tenantUnits.get(tenant.user_id);
@@ -453,18 +453,18 @@ const TenantSelectionModal = ({
                                                     {isSelected && <Check size={12} className="text-white" />}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="font-medium text-gray-900 break-words">
+                                                    <div className="text-gray-900 break-words">
                                                         {formatTenantName(tenant)}
                                                     </div>
                                                     {unitInfo && (
-                                                        <div className="text-xs text-indigo-600 mt-1 font-medium">
+                                                        <div className="finder-secondary text-indigo-600 mt-1">
                                                             {unitInfo.unit_name}
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
                                             {isSelected && (
-                                                <div className="text-xs text-indigo-600 font-medium ml-2">
+                                                <div className="finder-secondary text-indigo-600 ml-2">
                                                     Selected
                                                 </div>
                                             )}

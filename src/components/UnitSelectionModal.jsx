@@ -146,7 +146,7 @@ export default function UnitSelectionModal({
               {debouncedSearchTerm ? 'No units found matching your search.' : emptyMessage}
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="finder-list space-y-2">
               {displayedUnits.map((unit) => {
                 const isSelected = String(unit.unit_id) === String(pendingUnitId);
                 return (
@@ -172,12 +172,12 @@ export default function UnitSelectionModal({
                         {isSelected && <Check size={12} className="text-white" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 whitespace-normal break-words">
+                        <div className="text-gray-900 whitespace-normal break-words">
                           {formatUnitPickerLabel(unit)}
                         </div>
                       </div>
                       {isSelected && (
-                        <div className="text-xs text-indigo-600 font-medium ml-2 flex-shrink-0">
+                        <div className="finder-secondary text-indigo-600 ml-2 flex-shrink-0">
                           Selected
                         </div>
                       )}

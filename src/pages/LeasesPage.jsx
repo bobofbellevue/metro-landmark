@@ -562,7 +562,7 @@ export default function LeasesPage() {
     return (
         <div className="space-y-6">
             <h2 className="text-3xl font-bold text-gray-800">Leases</h2>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="finder-split">
                 <CreateLeaseForm 
                     units={getEligibleUnits()} 
                     tenants={tenants}
@@ -570,7 +570,7 @@ export default function LeasesPage() {
                 />
                 <Card
                     title="Lease Search"
-                    className="lg:col-span-2 max-h-[calc(100vh-160px)]"
+                    className="max-h-[calc(100vh-160px)]"
                     contentClassName="flex flex-col h-full"
                 >
                     <div className="flex flex-col h-full">
@@ -627,31 +627,31 @@ export default function LeasesPage() {
                     </div>
                     <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
                         <div className="overflow-auto h-full max-w-full">
-                        <table className="w-full divide-y divide-gray-200">
+                        <table className="finder-list w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('unit_address')} className="flex items-center">
                                             Unit {getSortIndicator('unit_address')}
                                         </button>
                                     </th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('tenant_names')} className="flex items-center">
                                             Tenants {getSortIndicator('tenant_names')}
                                         </button>
                                     </th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('start_date')} className="flex items-center">
                                             Start Date {getSortIndicator('start_date')}
                                         </button>
                                     </th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('end_date')} className="flex items-center">
                                             End Date {getSortIndicator('end_date')}
                                         </button>
                                     </th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('status')} className="flex items-center">
                                             Status {getSortIndicator('status')}
                                         </button>
@@ -661,7 +661,7 @@ export default function LeasesPage() {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {displayedLeases.map(lease => (
                                     <tr key={lease.lease_id} className={lease.is_archived ? 'opacity-60 italic' : ''}>
-                                        <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                        <td className="px-1.5 py-2 text-left whitespace-nowrap">
                                             <div className="flex items-center space-x-4">
                                                 {!lease.is_archived && (
                                                     <>
@@ -719,27 +719,27 @@ export default function LeasesPage() {
                                                 </button>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-gray-500">
+                                        <td className="px-1.5 py-2">
                                             <div className="space-y-1">
                                                 {lease.is_archived && (
-                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 mr-2">Archived</span>
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full finder-secondary bg-gray-100 text-gray-600 mr-2">Archived</span>
                                                 )}
                                                 {formatUnitAddressMultiLine(lease.unit).map((line, index) => (
-                                                    <div key={index} className="block">{line}</div>
+                                                    <div key={index} className={`block ${index > 0 ? 'finder-secondary text-gray-500' : ''}`}>{line}</div>
                                                 ))}
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
+                                        <td className="px-1.5 py-2 whitespace-nowrap">
                                             {formatTenantNames(lease.tenants)}
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-gray-700 whitespace-nowrap">
+                                        <td className="px-1.5 py-2 whitespace-nowrap">
                                             {formatDate(lease.start_date)}
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-gray-700 whitespace-nowrap">
+                                        <td className="px-1.5 py-2 whitespace-nowrap">
                                             {formatDate(lease.end_date)}
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
-                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getLeaseStatusColor(lease.status)}`}>
+                                        <td className="px-1.5 py-2 whitespace-nowrap">
+                                            <span className={`inline-flex px-2 py-1 rounded-full ${getLeaseStatusColor(lease.status)}`}>
                                                 {lease.status ? lease.status.charAt(0).toUpperCase() + lease.status.slice(1).toLowerCase() : 'N/A'}
                                             </span>
                                         </td>
@@ -820,8 +820,8 @@ export default function LeasesPage() {
                                     >
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <div className="font-medium text-gray-900">{template.template_name}</div>
-                                                <div className="text-xs text-gray-500 mt-1">
+                                                <div className="finder-primary text-gray-900">{template.template_name}</div>
+                                                <div className="finder-secondary text-gray-500 mt-1">
                                                     {template.template_level} {template.is_default && '(Default)'}
                                                 </div>
                                             </div>
@@ -1018,10 +1018,10 @@ const ApplicationSelector = ({ applications, selectedApplicationIds, onSelection
                                                 className="mr-3 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                             />
                                             <div className="flex-1">
-                                                <div className="text-sm font-medium text-gray-900">
+                                                <div className="finder-primary text-gray-900">
                                                     {formatTenantName(app.tenant)}
                                                 </div>
-                                                <div className="text-xs text-gray-500">
+                                                <div className="finder-secondary text-gray-500">
                                                     {app.tenant.email}
                                                     {app.applied_at && (
                                                         <span className="ml-2">
@@ -1995,7 +1995,7 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
     }, [formData.tenant_ids, units]);
 
     return (
-        <Card hideTitle className="lg:col-span-1 max-h-[calc(100vh-160px)]" contentClassName="h-full">
+        <Card hideTitle className="max-h-[calc(100vh-160px)]" contentClassName="h-full">
             <form onSubmit={handleCreate} className="flex flex-col h-full">
                 <div className="flex items-start justify-between pb-4 mb-4 border-b">
                     <div>
@@ -2079,11 +2079,11 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
                                 <div className="flex items-start justify-between gap-3 text-sm">
                                     <div className="min-w-0 space-y-0.5">
                                         {getSelectedUnit() ? (
-                                            <div className="font-medium text-gray-900 whitespace-normal break-words">
+                                            <div className="finder-primary text-gray-900 whitespace-normal break-words">
                                                 {formatUnitPickerLabel(getSelectedUnit())}
                                             </div>
                                         ) : (
-                                            <div className="font-medium text-gray-900">Unit ID {formData.unit_id}</div>
+                                            <div className="finder-primary text-gray-900">Unit ID {formData.unit_id}</div>
                                         )}
                                     </div>
                                     {!isUnitDisabled && (
@@ -2659,11 +2659,11 @@ const EditLeaseModal = ({ lease, units, tenants, onClose, onUpdateSuccess }) => 
                                     <div className="flex items-start justify-between gap-3 text-sm">
                                         <div className="min-w-0 space-y-0.5">
                                             {getSelectedUnit() ? (
-                                                <div className="font-medium text-gray-900 whitespace-normal break-words">
+                                                <div className="finder-primary text-gray-900 whitespace-normal break-words">
                                                     {formatUnitPickerLabel(getSelectedUnit())}
                                                 </div>
                                             ) : (
-                                                <div className="font-medium text-gray-900">Unit ID {formData.unit_id}</div>
+                                                <div className="finder-primary text-gray-900">Unit ID {formData.unit_id}</div>
                                             )}
                                         </div>
                                         <button
@@ -4192,15 +4192,15 @@ const FillLeaseModal = ({ lease, onClose, onSuccess }) => {
                                                 />
                                                 <div className="ml-3 flex-1">
                                                     <div className="flex items-center justify-between">
-                                                        <div className="text-sm font-medium text-gray-900">
+                                                        <div className="finder-primary text-gray-900">
                                                             {template.template_name}
                                                             {template.is_default && (
-                                                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                                                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded finder-secondary bg-indigo-100 text-indigo-800">
                                                                     Default
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="text-xs text-gray-500 capitalize">
+                                                        <div className="finder-secondary text-gray-500 capitalize">
                                                             {template.template_level}
                                                         </div>
                                                     </div>

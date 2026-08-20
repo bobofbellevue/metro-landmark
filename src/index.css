@@ -45,3 +45,37 @@ body,
   margin: 0;
   padding: 0;
 }
+
+/*
+  Landlords / Properties / Vendors / Applicants / Tenants / Leases / Payments:
+  Add column is 1fr, Search is 2fr, neither can grow from table min-content.
+*/
+.finder-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  width: 100%;
+}
+@media (min-width: 1024px) {
+  .finder-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+}
+.finder-split > * {
+  min-width: 0;
+}
+
+/* List contents: 12px / weight 100. Subsidiary follow-on lines: 10px / weight 75. */
+.finder-list,
+.finder-list tbody td,
+.finder-primary {
+  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 12px;
+  font-weight: 100;
+}
+.finder-list .finder-secondary,
+.finder-secondary {
+  font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 10px;
+  font-weight: 75;
+}
