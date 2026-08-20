@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { DollarSign, PlusCircle, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { AuthContext } from '../contexts';
 import { api } from '../api';
 import { Card } from '../components/ui';
@@ -68,6 +68,8 @@ function applyPeriodToForm(form, period) {
   };
 }
 
+const fieldClass = 'block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm';
+
 export default function PaymentsPage() {
   const { user } = useContext(AuthContext);
   const locale = localeContextFromBrowser();
@@ -81,7 +83,7 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [formError, setFormError] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [kindFilter, setKindFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -89,7 +91,6 @@ export default function PaymentsPage() {
   const [checkoutUrl, setCheckoutUrl] = useState('');
   const [addingCategory, setAddingCategory] = useState('');
   const [newCatalogLabel, setNewCatalogLabel] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
   const [voidTarget, setVoidTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
@@ -139,15 +140,8 @@ export default function PaymentsPage() {
 
   const setField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    setSuccess('');
+    setFormError('');
     setCheckoutUrl('');
-  };
-
-  const closeAdd = () => {
-    setShowAdd(false);
-    setForm(emptyForm());
-    setAddingCategory('');
-    setNewCatalogLabel('');
   };
 
   const handleLeaseChange = (leaseId, lease) => {
@@ -167,7 +161,7 @@ export default function PaymentsPage() {
       const period = currentPeriod(leasePeriods(lease));
       return applyPeriodToForm(next, period);
     });
-    setSuccess('');
+    setFormError('');
   };
 
   const handleKindChange = (kind) => {
@@ -191,8 +185,7 @@ export default function PaymentsPage() {
     event.preventDefault();
     if (!canEdit) return;
     setSaving(true);
-    setError('');
-    setSuccess('');
+    setFormError('');
     setCheckoutUrl('');
     const status = form.intent === 'received' ? 'paid' : 'due';
     try {
@@ -219,20 +212,21 @@ export default function PaymentsPage() {
         user
       );
       if (!data?.success) {
-        setError(data?.error || 'Could not save to the ledger.');
+        setFormError(data?.error || 'Could not save to the ledger.');
         return;
       }
       if (data.checkoutError && !data.checkoutUrl) {
-        setError(data.checkoutError);
+        setFormError(data.checkoutError);
       } else if (data.warning) {
-        setError(data.warning);
+        setFormError(data.warning);
       }
-      setSuccess(status === 'due' ? 'Open charge saved.' : 'Payment recorded.');
       setCheckoutUrl(data.checkoutUrl || '');
-      closeAdd();
+      setForm(emptyForm());
+      setAddingCategory('');
+      setNewCatalogLabel('');
       await load();
     } catch {
-      setError('Could not save to the ledger.');
+      setFormError('Could not save to the ledger.');
     } finally {
       setSaving(false);
     }
@@ -241,17 +235,13 @@ export default function PaymentsPage() {
   const updatePayment = async (paymentId, patch) => {
     setSaving(true);
     setError('');
-    setSuccess('');
     try {
       const data = await api.put('/payments', { paymentId, ...patch }, user);
       if (!data?.success) {
         setError(data?.error || 'Could not update payment.');
         return false;
       }
-      if (data.warning) {
-        setError(data.warning);
-      }
-      setSuccess('Payment updated.');
+      if (data.warning) setError(data.warning);
       await load();
       return true;
     } catch {
@@ -267,7 +257,6 @@ export default function PaymentsPage() {
     if (!data?.success) {
       throw new Error(data?.error || 'Could not delete payment.');
     }
-    setSuccess('Payment deleted.');
     await load();
   };
 
@@ -275,7 +264,7 @@ export default function PaymentsPage() {
     event.preventDefault();
     if (!addingCategory || !newCatalogLabel.trim()) return;
     setSaving(true);
-    setError('');
+    setFormError('');
     try {
       const data = await api.post(
         '/payment-catalog',
@@ -283,7 +272,7 @@ export default function PaymentsPage() {
         user
       );
       if (!data?.success) {
-        setError(data?.error || 'Could not add that item.');
+        setFormError(data?.error || 'Could not add that item.');
         return;
       }
       if (data.types) setTypes(data.types);
@@ -297,108 +286,73 @@ export default function PaymentsPage() {
       setAddingCategory('');
       setNewCatalogLabel('');
     } catch {
-      setError('Could not add that item.');
+      setFormError('Could not add that item.');
     } finally {
       setSaving(false);
     }
   };
 
+  const handleClear = () => {
+    setForm(emptyForm());
+    setFormError('');
+    setCheckoutUrl('');
+    setAddingCategory('');
+    setNewCatalogLabel('');
+  };
+
   const isCharge = form.intent === 'charge';
   const unit = form.lease?.units || form.lease?.unit;
 
-  const fieldClass = 'block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm';
-
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <DollarSign className="w-6 h-6 text-indigo-600" />
-          Payments
-        </h2>
+    <div className="space-y-6">
+      <h2 className="text-3xl font-bold text-gray-800">Payments</h2>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {canEdit && (
-          <button
-            type="button"
-            onClick={() => {
-              setForm(emptyForm());
-              setShowAdd(true);
-              setError('');
-              setSuccess('');
-            }}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-          >
-            <PlusCircle size={16} />
-            Add to ledger
-          </button>
-        )}
-      </div>
+          <Card hideTitle className="lg:col-span-1 max-h-[calc(100vh-160px)]" contentClassName="h-full">
+            <form onSubmit={handleCreate} className="flex flex-col h-full">
+              <div className="flex items-start justify-between pb-4 mb-4 border-b">
+                <h2 className="text-2xl font-bold text-gray-800">Add Payment</h2>
+              </div>
+              <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+                <fieldset className="flex flex-wrap gap-4 text-sm">
+                  <legend className="sr-only">What to add</legend>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="intent"
+                      checked={isCharge}
+                      onChange={() => setField('intent', 'charge')}
+                    />
+                    Open charge
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="intent"
+                      checked={!isCharge}
+                      onChange={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          intent: 'received',
+                          receiptDate:
+                            prev.receiptDate ||
+                            formatWorkflowDateMMDDYYYY(todayWorkflowDate()),
+                        }));
+                      }}
+                    />
+                    Already received
+                  </label>
+                </fieldset>
 
-      <div className="flex flex-wrap gap-x-8 gap-y-1 text-sm text-gray-600">
-        <p>
-          Open charges{' '}
-          <span className="font-semibold text-gray-900">
-            {formatCurrencyDisplay(summary.dueAmount, locale) || '$0.00'}
-          </span>
-          <span className="text-gray-500"> · {summary.dueCount}</span>
-        </p>
-        <p>
-          Paid{' '}
-          <span className="font-semibold text-gray-900">
-            {formatCurrencyDisplay(summary.paidAmount, locale) || '$0.00'}
-          </span>
-          <span className="text-gray-500"> · {summary.paidCount}</span>
-        </p>
-      </div>
+                <LeaseSelectionPicker
+                  value={form.leaseId}
+                  onChange={handleLeaseChange}
+                  showRent
+                  showDeposit
+                />
 
-      {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Add to ledger</h3>
-              <button type="button" onClick={closeAdd} className="text-gray-400 hover:text-gray-600">
-                <X size={22} />
-              </button>
-            </div>
-            <form onSubmit={handleCreate} className="px-6 py-4 space-y-4">
-              <fieldset className="flex flex-wrap gap-4 text-sm">
-                <legend className="sr-only">What to add</legend>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="intent"
-                    checked={isCharge}
-                    onChange={() => setField('intent', 'charge')}
-                  />
-                  Open charge
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="intent"
-                    checked={!isCharge}
-                    onChange={() => {
-                      setForm((prev) => ({
-                        ...prev,
-                        intent: 'received',
-                        receiptDate:
-                          prev.receiptDate ||
-                          formatWorkflowDateMMDDYYYY(todayWorkflowDate()),
-                      }));
-                    }}
-                  />
-                  Payment already received
-                </label>
-              </fieldset>
-
-              <LeaseSelectionPicker
-                value={form.leaseId}
-                onChange={handleLeaseChange}
-                showRent
-                showDeposit
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <label className="block text-sm font-medium text-gray-700">Type</label>
                   <select
                     value={form.kind}
                     onChange={(e) => handleKindChange(e.target.value)}
@@ -434,13 +388,9 @@ export default function PaymentsPage() {
                   value={form.dueDate}
                   onChange={(e) => setField('dueDate', e.target.value)}
                 />
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Covered period
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Covered period</label>
                   <select
                     value={form.periodKey}
                     onChange={(e) => handlePeriodKeyChange(e.target.value)}
@@ -458,31 +408,31 @@ export default function PaymentsPage() {
                     ))}
                   </select>
                 </div>
-                <DateInput
-                  label="Period start"
-                  value={form.periodStart}
-                  onChange={(e) => {
-                    setForm((prev) => ({
-                      ...prev,
-                      periodStart: e.target.value,
-                      periodKey: '',
-                    }));
-                  }}
-                />
-                <DateInput
-                  label="Period end"
-                  value={form.periodEnd}
-                  onChange={(e) => {
-                    setForm((prev) => ({
-                      ...prev,
-                      periodEnd: e.target.value,
-                      periodKey: '',
-                    }));
-                  }}
-                />
-              </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <DateInput
+                    label="Period start"
+                    value={form.periodStart}
+                    onChange={(e) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        periodStart: e.target.value,
+                        periodKey: '',
+                      }));
+                    }}
+                  />
+                  <DateInput
+                    label="Period end"
+                    value={form.periodEnd}
+                    onChange={(e) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        periodEnd: e.target.value,
+                        periodKey: '',
+                      }));
+                    }}
+                  />
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {!isCharge && (
                   <DateInput
                     label="Date of receipt"
@@ -491,7 +441,7 @@ export default function PaymentsPage() {
                   />
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
+                  <label className="block text-sm font-medium text-gray-700">Method</label>
                   <select
                     value={form.method}
                     onChange={(e) => setField('method', e.target.value)}
@@ -518,12 +468,10 @@ export default function PaymentsPage() {
                     </button>
                   )}
                 </div>
-              </div>
 
-              {addingCategory && (
-                <div className="flex flex-wrap items-end gap-2 rounded-md border border-gray-200 bg-gray-50 p-3">
-                  <div className="flex-1 min-w-[12rem]">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                {addingCategory && (
+                  <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+                    <label className="block text-sm font-medium text-gray-700">
                       New {addingCategory} label
                     </label>
                     <input
@@ -532,266 +480,333 @@ export default function PaymentsPage() {
                       onChange={(e) => setNewCatalogLabel(e.target.value)}
                       className={fieldClass}
                     />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddCatalog}
+                        disabled={saving || !newCatalogLabel.trim()}
+                        className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddingCategory('');
+                          setNewCatalogLabel('');
+                        }}
+                        className="px-3 py-1.5 text-sm text-gray-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Memo</label>
+                  <textarea
+                    value={form.memo}
+                    onChange={(e) => setField('memo', e.target.value)}
+                    rows={3}
+                    maxLength={MEMO_MAX_LENGTH}
+                    className={fieldClass}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Proof of payment</label>
+                  <div className="mt-1">
+                    <WorkflowFileField
+                      value={form.proof}
+                      onChange={(fileMeta) => setField('proof', fileMeta)}
+                      leaseId={form.leaseId}
+                      propertyId={unit?.properties?.property_id || unit?.property_id}
+                      unitId={unit?.unit_id}
+                      userId={user?.user_id}
+                      documentType={PROOF_OF_PAYMENT_TYPE}
+                      acceptedTypes={PROOF_OF_SERVICE_ACCEPT}
+                    />
+                  </div>
+                </div>
+
+                {onlinePaymentsEnabled && isCharge && (
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={form.collectOnline}
+                      onChange={(e) => setField('collectOnline', e.target.checked)}
+                    />
+                    Stripe Checkout link
+                  </label>
+                )}
+              </div>
+              <div className="pt-4 mt-4 border-t flex flex-col gap-3 flex-shrink-0">
+                {formError && (
+                  <p className="text-sm text-red-600 whitespace-pre-wrap">{formError}</p>
+                )}
+                <div className="flex justify-end gap-3 flex-wrap">
                   <button
                     type="button"
-                    onClick={handleAddCatalog}
-                    disabled={saving || !newCatalogLabel.trim()}
-                    className="px-3 py-2 bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50"
+                    onClick={handleClear}
+                    className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
                   >
-                    Save
+                    Clear
                   </button>
                   <button
-                    type="button"
-                    onClick={() => {
-                      setAddingCategory('');
-                      setNewCatalogLabel('');
-                    }}
-                    className="px-3 py-2 text-sm text-gray-600"
+                    type="submit"
+                    disabled={saving || !form.leaseId || form.amount == null}
+                    className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 disabled:opacity-50"
                   >
-                    Cancel
+                    {saving
+                      ? 'Saving…'
+                      : isCharge
+                        ? 'Create open charge'
+                        : 'Record payment'}
                   </button>
                 </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Memo</label>
-                <textarea
-                  value={form.memo}
-                  onChange={(e) => setField('memo', e.target.value)}
-                  rows={3}
-                  maxLength={MEMO_MAX_LENGTH}
-                  className={fieldClass}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Proof of payment
-                </label>
-                <WorkflowFileField
-                  value={form.proof}
-                  onChange={(fileMeta) => setField('proof', fileMeta)}
-                  leaseId={form.leaseId}
-                  propertyId={unit?.properties?.property_id || unit?.property_id}
-                  unitId={unit?.unit_id}
-                  userId={user?.user_id}
-                  documentType={PROOF_OF_PAYMENT_TYPE}
-                  acceptedTypes={PROOF_OF_SERVICE_ACCEPT}
-                />
-              </div>
-
-              {onlinePaymentsEnabled && isCharge && (
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={form.collectOnline}
-                    onChange={(e) => setField('collectOnline', e.target.checked)}
-                  />
-                  Stripe Checkout link
-                </label>
-              )}
-
-              {error && <p className="text-sm text-red-600 whitespace-pre-wrap">{error}</p>}
-
-              <div className="flex justify-end gap-3 pt-2 border-t">
-                <button
-                  type="button"
-                  onClick={closeAdd}
-                  className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-md"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving || !form.leaseId || form.amount == null}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {saving
-                    ? 'Saving…'
-                    : isCharge
-                      ? 'Create open charge'
-                      : 'Record payment'}
-                </button>
               </div>
             </form>
+          </Card>
+        )}
+
+        <Card
+          title="Payment Search"
+          className={`${canEdit ? 'lg:col-span-2' : 'lg:col-span-3'} max-h-[calc(100vh-160px)]`}
+          contentClassName="flex flex-col h-full"
+        >
+          <div className="flex flex-col h-full">
+            <div className="mb-4 flex-shrink-0">
+              <div className="flex items-center gap-4 mb-2 flex-wrap">
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search property, tenant, memo…"
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      title="Clear search"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm"
+                >
+                  <option value="all">All statuses</option>
+                  {PAYMENT_STATUSES.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={kindFilter}
+                  onChange={(e) => setKindFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm"
+                >
+                  <option value="all">All types</option>
+                  {types.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mt-2 text-sm text-gray-600">
+                {searchTerm ? (
+                  visible.length === 0 ? (
+                    <span className="text-red-600">No payments found matching "{searchTerm}"</span>
+                  ) : (
+                    <span>
+                      Showing {visible.length} of {payments.length} payments
+                    </span>
+                  )
+                ) : (
+                  <span>
+                    Showing {payments.length} of {payments.length} payments
+                    {' · '}
+                    Open {formatCurrencyDisplay(summary.dueAmount, locale) || '$0.00'}
+                    {' · '}
+                    Paid {formatCurrencyDisplay(summary.paidAmount, locale) || '$0.00'}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {error && (
+              <p className="mb-3 text-sm text-red-600 whitespace-pre-wrap flex-shrink-0">{error}</p>
+            )}
+            {checkoutUrl && (
+              <p className="mb-3 text-sm flex-shrink-0">
+                <a
+                  href={checkoutUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                  Open Stripe Checkout
+                </a>
+              </p>
+            )}
+
+            {loading ? (
+              <p className="text-sm text-gray-500">Loading payments…</p>
+            ) : visible.length === 0 ? (
+              <p className="text-sm text-gray-500">No payments match these filters.</p>
+            ) : (
+              <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
+                <div className="overflow-auto h-full max-w-full">
+                  <table className="w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {canEdit && (
+                          <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                            Actions
+                          </th>
+                        )}
+                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Due
+                        </th>
+                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Received
+                        </th>
+                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Lease
+                        </th>
+                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Type
+                        </th>
+                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Amount
+                        </th>
+                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Status
+                        </th>
+                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          Method
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {visible.map((row) => (
+                        <tr key={row.paymentId} className="align-top">
+                          {canEdit && (
+                            <td className="px-4 py-3 space-x-2 whitespace-nowrap">
+                              {row.status === 'due' && (
+                                <button
+                                  type="button"
+                                  disabled={saving}
+                                  onClick={() =>
+                                    updatePayment(row.paymentId, {
+                                      status: 'paid',
+                                      method: row.method || 'other',
+                                      receiptDate: todayWorkflowDate(),
+                                    })
+                                  }
+                                  className="text-indigo-600 hover:text-indigo-800 font-medium"
+                                >
+                                  Mark paid
+                                </button>
+                              )}
+                              {row.status === 'void' && (
+                                <button
+                                  type="button"
+                                  disabled={saving}
+                                  onClick={() =>
+                                    updatePayment(row.paymentId, {
+                                      status: restoreStatusForVoided(row),
+                                      method: row.method || 'other',
+                                    })
+                                  }
+                                  className="text-indigo-600 hover:text-indigo-800 font-medium"
+                                >
+                                  Restore
+                                </button>
+                              )}
+                              {row.status !== 'void' && (
+                                <button
+                                  type="button"
+                                  disabled={saving}
+                                  onClick={() => setVoidTarget(row)}
+                                  className="text-gray-500 hover:text-gray-800"
+                                >
+                                  Void
+                                </button>
+                              )}
+                              {row.status === 'void' && (
+                                <button
+                                  type="button"
+                                  disabled={saving}
+                                  onClick={() => setDeleteTarget(row)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </td>
+                          )}
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {row.dueDate ? formatWorkflowDateMMDDYYYY(row.dueDate) : '—'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {row.receiptDate ? formatWorkflowDateMMDDYYYY(row.receiptDate) : '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-900">{row.leaseLabel}</div>
+                            {row.periodLabel && (
+                              <div className="text-xs text-gray-500">{row.periodLabel}</div>
+                            )}
+                            {row.memo && (
+                              <div className="text-xs text-gray-500 whitespace-pre-wrap mt-1">
+                                {row.memo}
+                              </div>
+                            )}
+                            {row.documentName && (
+                              <div className="text-xs text-indigo-600 mt-1">
+                                Proof: {row.documentName}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">{row.typeLabel || row.kindLabel}</td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {formatCurrencyDisplay(row.amount, locale)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`px-2 py-0.5 rounded text-xs font-semibold ${statusClass(row.status)}`}
+                            >
+                              {row.statusLabel}
+                            </span>
+                            {row.paidAt && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {formatDateTime(row.paidAt, locale)}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">{row.methodLabel || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
-
-      <Card title="Ledger">
-        <div className="flex flex-col md:flex-row gap-3 mb-4">
-          <input
-            type="search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search property, tenant, memo…"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-          />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-          >
-            <option value="all">All statuses</option>
-            {PAYMENT_STATUSES.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={kindFilter}
-            onChange={(e) => setKindFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-          >
-            <option value="all">All types</option>
-            {types.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {error && !showAdd && (
-          <p className="mb-3 text-sm text-red-600 whitespace-pre-wrap">{error}</p>
-        )}
-        {success && <p className="mb-3 text-sm text-green-700">{success}</p>}
-        {checkoutUrl && (
-          <p className="mb-3 text-sm">
-            <a
-              href={checkoutUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-indigo-600 hover:text-indigo-800 font-medium"
-            >
-              Open Stripe Checkout
-            </a>
-          </p>
-        )}
-
-        {loading ? (
-          <p className="text-sm text-gray-500">Loading payments…</p>
-        ) : visible.length === 0 ? (
-          <p className="text-sm text-gray-500">No payments match these filters.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 border-b">
-                  <th className="py-2 pr-4 font-medium">Due</th>
-                  <th className="py-2 pr-4 font-medium">Received</th>
-                  <th className="py-2 pr-4 font-medium">Lease</th>
-                  <th className="py-2 pr-4 font-medium">Type</th>
-                  <th className="py-2 pr-4 font-medium">Amount</th>
-                  <th className="py-2 pr-4 font-medium">Status</th>
-                  <th className="py-2 pr-4 font-medium">Method</th>
-                  {canEdit && <th className="py-2 font-medium">Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((row) => (
-                  <tr key={row.paymentId} className="border-b last:border-0 align-top">
-                    <td className="py-2 pr-4 whitespace-nowrap">
-                      {row.dueDate ? formatWorkflowDateMMDDYYYY(row.dueDate) : '—'}
-                    </td>
-                    <td className="py-2 pr-4 whitespace-nowrap">
-                      {row.receiptDate ? formatWorkflowDateMMDDYYYY(row.receiptDate) : '—'}
-                    </td>
-                    <td className="py-2 pr-4">
-                      <div className="font-medium text-gray-900">{row.leaseLabel}</div>
-                      {row.periodLabel && (
-                        <div className="text-xs text-gray-500">{row.periodLabel}</div>
-                      )}
-                      {row.memo && (
-                        <div className="text-xs text-gray-500 whitespace-pre-wrap mt-1">
-                          {row.memo}
-                        </div>
-                      )}
-                      {row.documentName && (
-                        <div className="text-xs text-indigo-600 mt-1">
-                          Proof: {row.documentName}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4">{row.typeLabel || row.kindLabel}</td>
-                    <td className="py-2 pr-4 whitespace-nowrap">
-                      {formatCurrencyDisplay(row.amount, locale)}
-                    </td>
-                    <td className="py-2 pr-4">
-                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${statusClass(row.status)}`}>
-                        {row.statusLabel}
-                      </span>
-                      {row.paidAt && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          {formatDateTime(row.paidAt, locale)}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4">{row.methodLabel || '—'}</td>
-                    {canEdit && (
-                      <td className="py-2 space-x-2 whitespace-nowrap">
-                        {row.status === 'due' && (
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() =>
-                              updatePayment(row.paymentId, {
-                                status: 'paid',
-                                method: row.method || 'other',
-                                receiptDate: todayWorkflowDate(),
-                              })
-                            }
-                            className="text-indigo-600 hover:text-indigo-800 font-medium"
-                          >
-                            Mark paid
-                          </button>
-                        )}
-                        {row.status === 'void' && (
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() =>
-                              updatePayment(row.paymentId, {
-                                status: restoreStatusForVoided(row),
-                                method: row.method || 'other',
-                              })
-                            }
-                            className="text-indigo-600 hover:text-indigo-800 font-medium"
-                          >
-                            Restore
-                          </button>
-                        )}
-                        {row.status !== 'void' && (
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() => setVoidTarget(row)}
-                            className="text-gray-500 hover:text-gray-800"
-                          >
-                            Void
-                          </button>
-                        )}
-                        {row.status === 'void' && (
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() => setDeleteTarget(row)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+        </Card>
+      </div>
 
       {voidTarget && (
         <PaymentVoidModal
