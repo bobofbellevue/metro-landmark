@@ -1,8 +1,9 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { ArrowUpDown, Search, X } from 'lucide-react';
 import { AuthContext } from '../contexts';
 import { api } from '../api';
 import { Card } from '../components/ui';
+import { useSortableData } from '../hooks';
 import CurrencyInput, { formatCurrencyDisplay } from '../components/CurrencyInput';
 import DateInput from '../components/DateInput';
 import LeaseSelectionPicker from '../components/LeaseSelectionPicker';
@@ -133,10 +134,21 @@ export default function PaymentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.user_id, statusFilter, kindFilter]);
 
-  const visible = useMemo(
+  const filtered = useMemo(
     () => filterPaymentsBySearch(payments, searchTerm),
     [payments, searchTerm]
   );
+  const { items: visible, requestSort, sortConfig } = useSortableData(filtered, {
+    key: 'dueDate',
+    direction: 'descending',
+  });
+
+  const getSortIndicator = (name) => {
+    if (!sortConfig || sortConfig.key !== name) {
+      return <ArrowUpDown size={14} className="ml-2 text-gray-400" />;
+    }
+    return sortConfig.direction === 'ascending' ? ' 🔼' : ' 🔽';
+  };
 
   const setField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -669,42 +681,71 @@ export default function PaymentsPage() {
             ) : (
               <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
                 <div className="overflow-auto h-full max-w-full">
-                  <table className="w-full divide-y divide-gray-200 text-sm">
+                  <table className="w-max min-w-full divide-y divide-gray-200 text-sm">
                     <thead className="bg-gray-50">
                       <tr>
                         {canEdit && (
-                          <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                          <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                             Actions
                           </th>
                         )}
-                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                          Due
+                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button type="button" onClick={() => requestSort('dueDate')} className="flex items-center">
+                            Due {getSortIndicator('dueDate')}
+                          </button>
                         </th>
-                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                          Received
+                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button type="button" onClick={() => requestSort('receiptDate')} className="flex items-center">
+                            Received {getSortIndicator('receiptDate')}
+                          </button>
                         </th>
-                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                          Lease
+                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button type="button" onClick={() => requestSort('leaseLabel')} className="flex items-center">
+                            Lease {getSortIndicator('leaseLabel')}
+                          </button>
                         </th>
-                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                          Type
+                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button type="button" onClick={() => requestSort('periodStart')} className="flex items-center">
+                            Period {getSortIndicator('periodStart')}
+                          </button>
                         </th>
-                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                          Amount
+                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button type="button" onClick={() => requestSort('memo')} className="flex items-center">
+                            Memo {getSortIndicator('memo')}
+                          </button>
                         </th>
-                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                          Status
+                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button type="button" onClick={() => requestSort('documentName')} className="flex items-center">
+                            Proof {getSortIndicator('documentName')}
+                          </button>
                         </th>
-                        <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                          Method
+                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button type="button" onClick={() => requestSort('typeLabel')} className="flex items-center">
+                            Type {getSortIndicator('typeLabel')}
+                          </button>
+                        </th>
+                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button type="button" onClick={() => requestSort('amount')} className="flex items-center">
+                            Amount {getSortIndicator('amount')}
+                          </button>
+                        </th>
+                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button type="button" onClick={() => requestSort('statusLabel')} className="flex items-center">
+                            Status {getSortIndicator('statusLabel')}
+                          </button>
+                        </th>
+                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button type="button" onClick={() => requestSort('methodLabel')} className="flex items-center">
+                            Method {getSortIndicator('methodLabel')}
+                          </button>
                         </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {visible.map((row) => (
-                        <tr key={row.paymentId} className="align-top">
+                        <tr key={row.paymentId}>
                           {canEdit && (
-                            <td className="px-4 py-3 space-x-2 whitespace-nowrap">
+                            <td className="px-6 py-4 space-x-2 whitespace-nowrap">
                               {row.status === 'due' && (
                                 <button
                                   type="button"
@@ -758,33 +799,31 @@ export default function PaymentsPage() {
                               )}
                             </td>
                           )}
-                          <td className="px-4 py-3 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             {row.dueDate ? formatWorkflowDateMMDDYYYY(row.dueDate) : '—'}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             {row.receiptDate ? formatWorkflowDateMMDDYYYY(row.receiptDate) : '—'}
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="font-medium text-gray-900">{row.leaseLabel}</div>
-                            {row.periodLabel && (
-                              <div className="text-xs text-gray-500">{row.periodLabel}</div>
-                            )}
-                            {row.memo && (
-                              <div className="text-xs text-gray-500 whitespace-pre-wrap mt-1">
-                                {row.memo}
-                              </div>
-                            )}
-                            {row.documentName && (
-                              <div className="text-xs text-indigo-600 mt-1">
-                                Proof: {row.documentName}
-                              </div>
-                            )}
+                          <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                            {row.leaseLabel || '—'}
                           </td>
-                          <td className="px-4 py-3">{row.typeLabel || row.kindLabel}</td>
-                          <td className="px-4 py-3 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {row.periodLabel || '—'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {row.memo || '—'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {row.documentName || '—'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {row.typeLabel || row.kindLabel || '—'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             {formatCurrencyDisplay(row.amount, locale)}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span
                               className={`px-2 py-0.5 rounded text-xs font-semibold ${statusClass(row.status)}`}
                             >
@@ -796,7 +835,7 @@ export default function PaymentsPage() {
                               </div>
                             )}
                           </td>
-                          <td className="px-4 py-3">{row.methodLabel || '—'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{row.methodLabel || '—'}</td>
                         </tr>
                       ))}
                     </tbody>
