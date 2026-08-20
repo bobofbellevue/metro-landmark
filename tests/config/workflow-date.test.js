@@ -2,6 +2,7 @@ import {
   addDaysToWorkflowDate,
   calendarDaysBetween,
   calendarDaysUntil,
+  firstOfNextMonth,
   formatWorkflowDateForLocale,
   isCompleteWorkflowDate,
   parseWorkflowDateParts,
@@ -46,5 +47,11 @@ describe('workflow-date helpers', () => {
     expect(calendarDaysBetween('2026-09-01', '2027-03-01')).toBe(181);
     expect(toWorkflowDateString('2027-03-01')).toBe('2027-03-01');
     expect(calendarDaysUntil('2026-08-16', new Date(2026, 7, 16))).toBe(0);
+  });
+
+  test('firstOfNextMonth is the first day of the following month', () => {
+    expect(firstOfNextMonth(new Date(2026, 7, 20))).toBe('2026-09-01');
+    expect(firstOfNextMonth(new Date(2026, 11, 31))).toBe('2027-01-01');
+    expect(firstOfNextMonth(new Date(2026, 0, 1))).toBe('2026-02-01');
   });
 });

@@ -600,6 +600,12 @@ export default async function handler(req, res) {
     }
 
     const nextStatus = req.body?.status != null ? String(req.body.status) : existing.status;
+    const documentId =
+      req.body?.documentId !== undefined
+        ? req.body.documentId
+        : req.body?.document_id !== undefined
+          ? req.body.document_id
+          : existing.document_id;
     const parsed = validatePaymentWrite(
       {
         leaseId: existing.lease_id,
@@ -611,7 +617,7 @@ export default async function handler(req, res) {
         periodLabel: req.body?.periodLabel ?? req.body?.period_label ?? existing.period_label,
         periodStart: req.body?.periodStart ?? req.body?.period_start ?? existing.period_start,
         periodEnd: req.body?.periodEnd ?? req.body?.period_end ?? existing.period_end,
-        documentId: req.body?.documentId ?? req.body?.document_id ?? existing.document_id,
+        documentId,
         receiptDate: req.body?.receiptDate ?? req.body?.receipt_date ?? existing.receipt_date,
       },
       { requireLease: true, requireKind: true, requireAmount: true }

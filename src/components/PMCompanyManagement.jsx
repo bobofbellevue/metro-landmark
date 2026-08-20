@@ -210,14 +210,14 @@ export default function PMCompanyManagement() {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
-                                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
+                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('company_name')} className="flex items-center">Company Name {getSortIndicator('company_name')}</button>
                                 </th>
-                                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                      <button onClick={() => requestSort('address')} className="flex items-center">Address {getSortIndicator('address')}</button>
                                 </th>
-                                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('contact')} className="flex items-center">Contact {getSortIndicator('contact')}</button>
                                 </th>
                             </tr>
@@ -225,7 +225,7 @@ export default function PMCompanyManagement() {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {displayedCompanies.map(c => (
                                 <tr key={c.pmc_id}>
-                                    <td className="px-6 py-4 text-sm font-medium text-left whitespace-nowrap">
+                                    <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
                                         <div className="flex items-center space-x-4">
                                             <button onClick={() => {
 
@@ -234,9 +234,9 @@ export default function PMCompanyManagement() {
                                             <button onClick={() => setDeletingCompany(c)} className="text-red-600 hover:text-red-900" title="Delete PM Company"><Trash2 size={16}/></button>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap font-medium">{c.company_name}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{formatAddress(c)}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                    <td className="px-3 py-2 whitespace-nowrap font-medium">{c.company_name}</td>
+                                    <td className="px-3 py-2 text-sm text-gray-500 whitespace-nowrap">{formatAddress(c)}</td>
+                                    <td className="px-3 py-2 text-sm text-gray-500">
                                         {c.contact?.methods && c.contact.methods.length > 0 ? (
                                             <div className="space-y-1">
                                                 {c.contact.methods.map((method, idx) => (

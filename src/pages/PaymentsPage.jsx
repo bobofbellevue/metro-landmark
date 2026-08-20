@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { ArrowUpDown, Search, X } from 'lucide-react';
+import { ArrowUpDown, CheckCircle, Pencil, RotateCcw, Search, Trash2, X } from 'lucide-react';
 import { AuthContext } from '../contexts';
 import { api } from '../api';
 import { Card } from '../components/ui';
@@ -19,6 +19,8 @@ import {
   PAYMENT_METHODS as DEFAULT_METHODS,
   PAYMENT_STATUSES,
   PAYMENT_TYPES as DEFAULT_TYPES,
+  canEditPaymentCatalog,
+  canEditPayments,
   defaultAmountForKind,
   filterPaymentsBySearch,
   restoreStatusForVoided,
@@ -50,6 +52,29 @@ const emptyForm = () => ({
   proof: null,
 });
 
+function formFromPayment(row) {
+  return {
+    intent: row.status === 'paid' ? 'received' : 'charge',
+    leaseId: row.leaseId,
+    lease: null,
+    kind: row.kind || row.type || 'rent',
+    amount: row.amount,
+    dueDate: row.dueDate ? formatWorkflowDateMMDDYYYY(row.dueDate) : '',
+    receiptDate: row.receiptDate
+      ? formatWorkflowDateMMDDYYYY(row.receiptDate)
+      : formatWorkflowDateMMDDYYYY(todayWorkflowDate()),
+    method: row.method || '',
+    memo: row.memo || '',
+    periodKey: '',
+    periodStart: row.periodStart ? formatWorkflowDateMMDDYYYY(row.periodStart) : '',
+    periodEnd: row.periodEnd ? formatWorkflowDateMMDDYYYY(row.periodEnd) : '',
+    collectOnline: false,
+    proof: row.documentId
+      ? { document_id: row.documentId, file_name: row.documentName }
+      : null,
+  };
+}
+
 function statusClass(status) {
   if (status === 'paid') return 'bg-green-100 text-green-800';
   if (status === 'void') return 'bg-gray-100 text-gray-600';
@@ -78,8 +103,6 @@ export default function PaymentsPage() {
   const [summary, setSummary] = useState(summarizePayments([]));
   const [types, setTypes] = useState(DEFAULT_TYPES);
   const [methods, setMethods] = useState(DEFAULT_METHODS);
-  const [canEdit, setCanEdit] = useState(false);
-  const [canEditCatalog, setCanEditCatalog] = useState(false);
   const [onlinePaymentsEnabled, setOnlinePaymentsEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -94,6 +117,10 @@ export default function PaymentsPage() {
   const [newCatalogLabel, setNewCatalogLabel] = useState('');
   const [voidTarget, setVoidTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [editingPayment, setEditingPayment] = useState(null);
+
+  const canEdit = canEditPayments(user?.role);
+  const canEditCatalog = canEditPaymentCatalog(user?.role);
 
   const periods = useMemo(
     () => (form.lease ? leasePeriods(form.lease) : []),
@@ -119,8 +146,6 @@ export default function PaymentsPage() {
       setSummary(data.summary || summarizePayments(data.payments || []));
       if (data.types?.length) setTypes(data.types);
       if (data.methods?.length) setMethods(data.methods);
-      setCanEdit(Boolean(data.canEdit));
-      setCanEditCatalog(Boolean(data.canEditCatalog));
       setOnlinePaymentsEnabled(Boolean(data.onlinePaymentsEnabled));
     } catch {
       setError('Could not load payments.');
@@ -200,29 +225,34 @@ export default function PaymentsPage() {
     setFormError('');
     setCheckoutUrl('');
     const status = form.intent === 'received' ? 'paid' : 'due';
+    const payload = {
+      type: form.kind,
+      kind: form.kind,
+      amount: form.amount,
+      dueDate: form.dueDate,
+      receiptDate: status === 'paid' ? form.receiptDate : null,
+      method:
+        status === 'paid' || form.collectOnline
+          ? form.method || 'card'
+          : form.method,
+      status,
+      memo: form.memo,
+      periodStart: form.periodStart,
+      periodEnd: form.periodEnd,
+      documentId: form.proof?.document_id || null,
+    };
     try {
-      const data = await api.post(
-        '/payments',
-        {
-          leaseId: form.leaseId,
-          type: form.kind,
-          kind: form.kind,
-          amount: form.amount,
-          dueDate: form.dueDate,
-          receiptDate: status === 'paid' ? form.receiptDate : null,
-          method:
-            status === 'paid' || form.collectOnline
-              ? form.method || 'card'
-              : form.method,
-          status,
-          memo: form.memo,
-          periodStart: form.periodStart,
-          periodEnd: form.periodEnd,
-          documentId: form.proof?.document_id || null,
-          collectOnline: form.collectOnline && status === 'due',
-        },
-        user
-      );
+      const data = editingPayment
+        ? await api.put('/payments', { paymentId: editingPayment.paymentId, ...payload }, user)
+        : await api.post(
+            '/payments',
+            {
+              ...payload,
+              leaseId: form.leaseId,
+              collectOnline: form.collectOnline && status === 'due',
+            },
+            user
+          );
       if (!data?.success) {
         setFormError(data?.error || 'Could not save to the ledger.');
         return;
@@ -234,6 +264,7 @@ export default function PaymentsPage() {
       }
       setCheckoutUrl(data.checkoutUrl || '');
       setForm(emptyForm());
+      setEditingPayment(null);
       setAddingCategory('');
       setNewCatalogLabel('');
       await load();
@@ -306,6 +337,16 @@ export default function PaymentsPage() {
 
   const handleClear = () => {
     setForm(emptyForm());
+    setEditingPayment(null);
+    setFormError('');
+    setCheckoutUrl('');
+    setAddingCategory('');
+    setNewCatalogLabel('');
+  };
+
+  const startEdit = (row) => {
+    setEditingPayment(row);
+    setForm(formFromPayment(row));
     setFormError('');
     setCheckoutUrl('');
     setAddingCategory('');
@@ -323,7 +364,9 @@ export default function PaymentsPage() {
           <Card hideTitle className="lg:col-span-1 max-h-[calc(100vh-160px)]" contentClassName="h-full">
             <form onSubmit={handleCreate} className="flex flex-col h-full">
               <div className="flex items-start justify-between pb-4 mb-4 border-b">
-                <h2 className="text-2xl font-bold text-gray-800">Add Payment</h2>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {editingPayment ? 'Edit Payment' : 'Add Payment'}
+                </h2>
               </div>
               <div className="flex-1 overflow-y-auto pr-1 space-y-4">
                 <fieldset className="flex flex-wrap gap-4 text-sm">
@@ -356,12 +399,21 @@ export default function PaymentsPage() {
                   </label>
                 </fieldset>
 
-                <LeaseSelectionPicker
-                  value={form.leaseId}
-                  onChange={handleLeaseChange}
-                  showRent
-                  showDeposit
-                />
+                {editingPayment ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Lease</label>
+                    <div className="mt-1 text-sm font-medium text-gray-900">
+                      {editingPayment.leaseLabel || '—'}
+                    </div>
+                  </div>
+                ) : (
+                  <LeaseSelectionPicker
+                    value={form.leaseId}
+                    onChange={handleLeaseChange}
+                    showRent
+                    showDeposit
+                  />
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Type</label>
@@ -542,7 +594,7 @@ export default function PaymentsPage() {
                   </div>
                 </div>
 
-                {onlinePaymentsEnabled && isCharge && (
+                {onlinePaymentsEnabled && isCharge && !editingPayment && (
                   <label className="flex items-center gap-2 text-sm text-gray-700">
                     <input
                       type="checkbox"
@@ -572,9 +624,11 @@ export default function PaymentsPage() {
                   >
                     {saving
                       ? 'Saving…'
-                      : isCharge
-                        ? 'Create open charge'
-                        : 'Record payment'}
+                      : editingPayment
+                        ? 'Save changes'
+                        : isCharge
+                          ? 'Create open charge'
+                          : 'Record payment'}
                   </button>
                 </div>
               </div>
@@ -685,56 +739,56 @@ export default function PaymentsPage() {
                     <thead className="bg-gray-50">
                       <tr>
                         {canEdit && (
-                          <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                             Actions
                           </th>
                         )}
-                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('dueDate')} className="flex items-center">
                             Due {getSortIndicator('dueDate')}
                           </button>
                         </th>
-                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('receiptDate')} className="flex items-center">
                             Received {getSortIndicator('receiptDate')}
                           </button>
                         </th>
-                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('leaseLabel')} className="flex items-center">
                             Lease {getSortIndicator('leaseLabel')}
                           </button>
                         </th>
-                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('periodStart')} className="flex items-center">
                             Period {getSortIndicator('periodStart')}
                           </button>
                         </th>
-                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('memo')} className="flex items-center">
                             Memo {getSortIndicator('memo')}
                           </button>
                         </th>
-                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('documentName')} className="flex items-center">
                             Proof {getSortIndicator('documentName')}
                           </button>
                         </th>
-                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('typeLabel')} className="flex items-center">
                             Type {getSortIndicator('typeLabel')}
                           </button>
                         </th>
-                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('amount')} className="flex items-center">
                             Amount {getSortIndicator('amount')}
                           </button>
                         </th>
-                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('statusLabel')} className="flex items-center">
                             Status {getSortIndicator('statusLabel')}
                           </button>
                         </th>
-                        <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('methodLabel')} className="flex items-center">
                             Method {getSortIndicator('methodLabel')}
                           </button>
@@ -743,87 +797,104 @@ export default function PaymentsPage() {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {visible.map((row) => (
-                        <tr key={row.paymentId}>
+                        <tr key={row.paymentId} className="align-top">
                           {canEdit && (
-                            <td className="px-6 py-4 space-x-2 whitespace-nowrap">
-                              {row.status === 'due' && (
-                                <button
-                                  type="button"
-                                  disabled={saving}
-                                  onClick={() =>
-                                    updatePayment(row.paymentId, {
-                                      status: 'paid',
-                                      method: row.method || 'other',
-                                      receiptDate: todayWorkflowDate(),
-                                    })
-                                  }
-                                  className="text-indigo-600 hover:text-indigo-800 font-medium"
-                                >
-                                  Mark paid
-                                </button>
-                              )}
-                              {row.status === 'void' && (
-                                <button
-                                  type="button"
-                                  disabled={saving}
-                                  onClick={() =>
-                                    updatePayment(row.paymentId, {
-                                      status: restoreStatusForVoided(row),
-                                      method: row.method || 'other',
-                                    })
-                                  }
-                                  className="text-indigo-600 hover:text-indigo-800 font-medium"
-                                >
-                                  Restore
-                                </button>
-                              )}
-                              {row.status !== 'void' && (
-                                <button
-                                  type="button"
-                                  disabled={saving}
-                                  onClick={() => setVoidTarget(row)}
-                                  className="text-gray-500 hover:text-gray-800"
-                                >
-                                  Void
-                                </button>
-                              )}
-                              {row.status === 'void' && (
-                                <button
-                                  type="button"
-                                  disabled={saving}
-                                  onClick={() => setDeleteTarget(row)}
-                                  className="text-red-600 hover:text-red-800"
-                                >
-                                  Delete
-                                </button>
-                              )}
+                            <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
+                              <div className="flex items-center space-x-3">
+                                {row.status !== 'void' && (
+                                  <button
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={() => startEdit(row)}
+                                    className="text-indigo-600 hover:text-indigo-900"
+                                    title="Edit Payment"
+                                  >
+                                    <Pencil size={16} />
+                                  </button>
+                                )}
+                                {row.status === 'due' && (
+                                  <button
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={() =>
+                                      updatePayment(row.paymentId, {
+                                        status: 'paid',
+                                        method: row.method || 'other',
+                                        receiptDate: todayWorkflowDate(),
+                                      })
+                                    }
+                                    className="text-green-600 hover:text-green-800"
+                                    title="Mark paid"
+                                  >
+                                    <CheckCircle size={16} />
+                                  </button>
+                                )}
+                                {row.status === 'void' && (
+                                  <button
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={() =>
+                                      updatePayment(row.paymentId, {
+                                        status: restoreStatusForVoided(row),
+                                        method: row.method || 'other',
+                                      })
+                                    }
+                                    className="text-green-600 hover:text-green-900"
+                                    title="Restore Payment"
+                                  >
+                                    <RotateCcw size={16} />
+                                  </button>
+                                )}
+                                {row.status !== 'void' && (
+                                  <button
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={() => setVoidTarget(row)}
+                                    className="text-red-600 hover:text-red-800"
+                                    title="Void"
+                                  >
+                                    <X size={20} strokeWidth={2.5} />
+                                  </button>
+                                )}
+                                {row.status === 'void' && (
+                                  <button
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={() => setDeleteTarget(row)}
+                                    className="text-red-600 hover:text-red-900"
+                                    title="Delete Payment"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           )}
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 whitespace-nowrap">
                             {row.dueDate ? formatWorkflowDateMMDDYYYY(row.dueDate) : '—'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 whitespace-nowrap">
                             {row.receiptDate ? formatWorkflowDateMMDDYYYY(row.receiptDate) : '—'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                          <td className="px-3 py-2 max-w-[12rem] whitespace-normal break-words font-medium text-gray-900">
                             {row.leaseLabel || '—'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 max-w-[10rem] whitespace-normal break-words">
                             {row.periodLabel || '—'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 max-w-[12rem] whitespace-normal break-words">
                             {row.memo || '—'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 max-w-[10rem] whitespace-normal break-words">
                             {row.documentName || '—'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 whitespace-nowrap">
                             {row.typeLabel || row.kindLabel || '—'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 whitespace-nowrap">
                             {formatCurrencyDisplay(row.amount, locale)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-2 whitespace-nowrap">
                             <span
                               className={`px-2 py-0.5 rounded text-xs font-semibold ${statusClass(row.status)}`}
                             >
@@ -835,7 +906,7 @@ export default function PaymentsPage() {
                               </div>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">{row.methodLabel || '—'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">{row.methodLabel || '—'}</td>
                         </tr>
                       ))}
                     </tbody>

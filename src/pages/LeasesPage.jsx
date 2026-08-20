@@ -20,6 +20,7 @@ import {
   formatWorkflowDateForLocale,
   formatWorkflowDateMMDDYYYY,
   isCompleteWorkflowDate,
+  firstOfNextMonth,
   todayWorkflowDate,
   toWorkflowDateString,
 } from '../utils/workflow-date.js';
@@ -627,28 +628,28 @@ export default function LeasesPage() {
                         <table className="w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
-                                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
+                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('unit_address')} className="flex items-center">
                                             Unit {getSortIndicator('unit_address')}
                                         </button>
                                     </th>
-                                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('tenant_names')} className="flex items-center">
                                             Tenants {getSortIndicator('tenant_names')}
                                         </button>
                                     </th>
-                                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('start_date')} className="flex items-center">
                                             Start Date {getSortIndicator('start_date')}
                                         </button>
                                     </th>
-                                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('end_date')} className="flex items-center">
                                             End Date {getSortIndicator('end_date')}
                                         </button>
                                     </th>
-                                    <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('status')} className="flex items-center">
                                             Status {getSortIndicator('status')}
                                         </button>
@@ -658,7 +659,7 @@ export default function LeasesPage() {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {displayedLeases.map(lease => (
                                     <tr key={lease.lease_id} className={lease.is_archived ? 'opacity-60 italic' : ''}>
-                                        <td className="px-6 py-4 text-sm font-medium text-left whitespace-nowrap">
+                                        <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
                                             <div className="flex items-center space-x-4">
                                                 {!lease.is_archived && (
                                                     <>
@@ -716,7 +717,7 @@ export default function LeasesPage() {
                                                 </button>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                        <td className="px-3 py-2 text-sm text-gray-500">
                                             <div className="space-y-1">
                                                 {lease.is_archived && (
                                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 mr-2">Archived</span>
@@ -726,16 +727,16 @@ export default function LeasesPage() {
                                                 ))}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-3 py-2 whitespace-nowrap">
                                             {formatTenantNames(lease.tenants)}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                                        <td className="px-3 py-2 text-sm text-gray-700 whitespace-nowrap">
                                             {formatDate(lease.start_date)}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                                        <td className="px-3 py-2 text-sm text-gray-700 whitespace-nowrap">
                                             {formatDate(lease.end_date)}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-3 py-2 whitespace-nowrap">
                                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getLeaseStatusColor(lease.status)}`}>
                                                 {lease.status ? lease.status.charAt(0).toUpperCase() + lease.status.slice(1).toLowerCase() : 'N/A'}
                                             </span>
@@ -1055,11 +1056,11 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
     const { user } = useContext(AuthContext);
     const [formData, setFormData] = useState({
         unit_id: '',
-        start_date: '',
+        start_date: firstOfNextMonth(),
         end_date: '',
         monthly_rent_amount: '',
         status: 'active',
-        date_of_agreement: '',
+        date_of_agreement: todayWorkflowDate(),
         security_deposit_amount: '',
         pet_deposit_amount: '',
         dependent_names: '',
@@ -1095,7 +1096,11 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
     
     // Form persistence (excluding search terms and modal state)
     const { clearPersistedData } = useFormPersistence('add-lease', formData, (state) => {
-        setFormData(state);
+        setFormData({
+            ...state,
+            start_date: state.start_date || firstOfNextMonth(),
+            date_of_agreement: state.date_of_agreement || todayWorkflowDate(),
+        });
     });
 
     // Fetch available lease templates
@@ -1592,11 +1597,11 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
     const resetForm = useCallback(() => {
         setFormData({
             unit_id: '',
-            start_date: '',
+            start_date: firstOfNextMonth(),
             end_date: '',
             monthly_rent_amount: '',
             status: 'active',
-            date_of_agreement: '',
+            date_of_agreement: todayWorkflowDate(),
             security_deposit_amount: '',
             pet_deposit_amount: '',
             dependent_names: '',

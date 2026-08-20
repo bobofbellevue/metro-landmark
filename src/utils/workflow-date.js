@@ -154,6 +154,19 @@ export function todayWorkflowDate(now = new Date()) {
 }
 
 /**
+ * First calendar day of the month after `now`.
+ * @param {Date} [now]
+ * @returns {string} YYYY-MM-DD
+ */
+export function firstOfNextMonth(now = new Date()) {
+  const today = todayWorkflowDate(now);
+  const parts = parseWorkflowDateParts(today);
+  if (!parts) return '';
+  const firstOfThisMonth = `${parts.year}-${String(parts.month).padStart(2, '0')}-01`;
+  return addMonthsToWorkflowDate(firstOfThisMonth, 1);
+}
+
+/**
  * Calendar date as a local midnight Date. Never use `new Date('YYYY-MM-DD')`
  * (UTC midnight, which shifts a day west of UTC).
  * @param {string|Date|null|undefined} value

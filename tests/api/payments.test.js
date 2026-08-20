@@ -421,6 +421,38 @@ describe('api/payments', () => {
     expect(res.jsonData.payment.status).toBe('due');
   });
 
+  test('PUT edits amount, memo, and can clear proof', async () => {
+    db.payments.push({
+      payment_id: 13,
+      pmc_id: 9,
+      lease_id: 10,
+      kind: 'rent',
+      amount: 1850,
+      status: 'due',
+      method: null,
+      memo: 'old',
+      document_id: 44,
+    });
+    const res = createRes();
+    await handler(
+      {
+        method: 'PUT',
+        headers: { 'x-user-id': '2' },
+        body: {
+          paymentId: 13,
+          amount: 1900,
+          memo: 'new memo',
+          documentId: null,
+        },
+      },
+      res
+    );
+    expect(res.statusCode).toBe(200);
+    expect(db.payments[0].amount).toBe(1900);
+    expect(db.payments[0].memo).toBe('new memo');
+    expect(db.payments[0].document_id).toBeNull();
+  });
+
   test('manager cannot see another company payment', async () => {
     db.payments.push({
       payment_id: 8,

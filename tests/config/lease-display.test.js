@@ -3,6 +3,8 @@ import {
   formatPersonDisplayName,
   formatPropertyAddressLine,
   formatTenantNamesList,
+  leasePickerHoverText,
+  leasePickerPrimaryLabel,
   leaseSearchHaystack,
 } from '../../src/utils/lease-display.js';
 
@@ -59,5 +61,28 @@ describe('lease-display helpers', () => {
     expect(filterLeasesBySearch(leases, 'metro')).toHaveLength(1);
     expect(filterLeasesBySearch(leases, '2000')).toHaveLength(1);
     expect(leaseSearchHaystack(leases[0])).toContain('pine court');
+  });
+
+  test('compact picker label and hover details', () => {
+    const lease = {
+      monthly_rent_amount: 1850,
+      security_deposit_amount: 1850,
+      status: 'active',
+      units: { unit_number: '2A', properties: { property_name: 'Pine Court' } },
+      tenantNames: 'Ada Lovelace',
+      landlordName: 'Salish Holdings',
+      addressLine: '123 Main St, Seattle, WA',
+    };
+    expect(leasePickerPrimaryLabel(lease)).toBe('Pine Court · Ada Lovelace');
+    expect(leasePickerHoverText(lease, { showRent: true, showDeposit: true })).toBe(
+      [
+        'Unit 2A',
+        '123 Main St, Seattle, WA',
+        'Landlord: Salish Holdings',
+        'Active',
+        '$1,850/mo',
+        'Deposit $1,850',
+      ].join('\n')
+    );
   });
 });

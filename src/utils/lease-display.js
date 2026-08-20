@@ -79,3 +79,45 @@ export function filterLeasesBySearch(leases, searchTerm) {
   if (!q) return list;
   return list.filter((lease) => leaseSearchHaystack(lease).includes(q));
 }
+
+/**
+ * Compact picker line: property name · tenant names.
+ * @param {object} lease
+ * @returns {string}
+ */
+export function leasePickerPrimaryLabel(lease) {
+  const propertyName =
+    lease?.units?.properties?.property_name ||
+    lease?.unit?.properties?.property_name ||
+    'Property';
+  const tenants = (lease?.tenantNames || '').trim();
+  return [propertyName, tenants].filter(Boolean).join(' · ');
+}
+
+/**
+ * Hover details for a compact lease picker row.
+ * @param {object} lease
+ * @param {{ showRent?: boolean, showDeposit?: boolean }} [options]
+ * @returns {string}
+ */
+export function leasePickerHoverText(lease, { showRent = true, showDeposit = false } = {}) {
+  if (!lease) return '';
+  const unitNumber = lease.units?.unit_number ?? lease.unit?.unit_number;
+  const lines = [];
+  if (unitNumber != null && String(unitNumber).trim() !== '') {
+    lines.push(`Unit ${unitNumber}`);
+  }
+  if (lease.addressLine) lines.push(lease.addressLine);
+  if (lease.landlordName) lines.push(`Landlord: ${lease.landlordName}`);
+  if (lease.status) {
+    const status = String(lease.status);
+    lines.push(status.charAt(0).toUpperCase() + status.slice(1));
+  }
+  if (showRent && lease.monthly_rent_amount != null) {
+    lines.push(`$${Number(lease.monthly_rent_amount).toLocaleString()}/mo`);
+  }
+  if (showDeposit && lease.security_deposit_amount != null) {
+    lines.push(`Deposit $${Number(lease.security_deposit_amount).toLocaleString()}`);
+  }
+  return lines.join('\n');
+}

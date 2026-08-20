@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Check, X } from 'lucide-react';
 import { useFinderLimit } from '../hooks/useFinderLimit.js';
-import { filterLeasesBySearch } from '../utils/lease-display.js';
+import { filterLeasesBySearch, leasePickerHoverText, leasePickerPrimaryLabel } from '../utils/lease-display.js';
 import { fetchEnrichedLeases } from '../utils/fetch-enriched-leases.js';
 
 const DEFAULT_STATUSES = ['active', 'pending', 'future'];
@@ -136,7 +136,7 @@ export default function LeaseSelectionPicker({
 
         {selectedLease ? (
           <div
-            className={`flex items-start justify-between gap-3 p-3 rounded-md border ${
+            className={`flex items-start justify-between gap-3 p-2 rounded-md border ${
               error ? 'border-red-300 bg-red-50' : 'border-indigo-200 bg-indigo-50'
             }`}
           >
@@ -283,7 +283,7 @@ function LeaseGroup({
                 key={lease.lease_id}
                 type="button"
                 onClick={() => onSelect(lease)}
-                className={`w-full text-left p-3 hover:bg-gray-50 transition-colors ${
+                className={`w-full text-left p-2 hover:bg-gray-50 transition-colors ${
                   isSelected ? 'bg-indigo-50' : 'bg-white'
                 }`}
               >
@@ -314,24 +314,12 @@ function LeaseGroup({
 }
 
 function LeaseRowContent({ lease, showRent, showDeposit, annotation }) {
-  const propertyName = lease.units?.properties?.property_name || 'Property';
-  const unitNumber = lease.units?.unit_number ?? '—';
-  const rentLabel =
-    showRent && lease.monthly_rent_amount != null
-      ? `$${Number(lease.monthly_rent_amount).toLocaleString()}/mo`
-      : null;
-  const depositLabel =
-    showDeposit && lease.security_deposit_amount != null
-      ? `Deposit $${Number(lease.security_deposit_amount).toLocaleString()}`
-      : null;
+  const hover = leasePickerHoverText(lease, { showRent, showDeposit });
 
   return (
-    <div className="flex-1 min-w-0 space-y-0.5">
+    <div className="flex-1 min-w-0" title={hover}>
       <div className="font-medium text-gray-900 flex flex-wrap items-center gap-2">
-        <span>
-          {propertyName}
-          <span className="text-gray-500 font-normal"> · Unit {unitNumber}</span>
-        </span>
+        <span className="truncate">{leasePickerPrimaryLabel(lease)}</span>
         {annotation?.badge ? (
           <span
             className={`px-2 py-0.5 rounded text-xs font-semibold ${
@@ -341,22 +329,6 @@ function LeaseRowContent({ lease, showRent, showDeposit, annotation }) {
             {annotation.badge}
           </span>
         ) : null}
-      </div>
-      {lease.addressLine && (
-        <div className="text-sm text-gray-600 truncate">{lease.addressLine}</div>
-      )}
-      <div className="text-sm text-gray-700">
-        <span className="text-gray-500">Tenant: </span>
-        {lease.tenantNames || '—'}
-      </div>
-      <div className="text-sm text-gray-700">
-        <span className="text-gray-500">Landlord: </span>
-        {lease.landlordName || '—'}
-      </div>
-      <div className="text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-0.5">
-        {lease.status && <span className="capitalize">{lease.status}</span>}
-        {rentLabel && <span>{rentLabel}</span>}
-        {depositLabel && <span>{depositLabel}</span>}
       </div>
     </div>
   );
