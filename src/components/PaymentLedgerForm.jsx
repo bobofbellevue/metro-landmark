@@ -11,6 +11,58 @@ import { PROOF_OF_SERVICE_ACCEPT } from '../utils/proof-of-service-file.js';
 const PROOF_OF_PAYMENT_TYPE = 'proof_of_payment';
 const fieldClass = PAYMENT_FORM_FIELD_CLASS;
 
+function CatalogAddFields({
+  category,
+  addingCategory,
+  setAddingCategory,
+  newCatalogLabel,
+  setNewCatalogLabel,
+  onAddCatalog,
+  saving,
+}) {
+  if (addingCategory !== category) return null;
+  return (
+    <div className="mt-2 space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+      <label className="block text-sm font-medium text-gray-700">
+        New {category} label
+      </label>
+      <input
+        type="text"
+        value={newCatalogLabel}
+        onChange={(e) => setNewCatalogLabel(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            onAddCatalog(e);
+          }
+        }}
+        className={fieldClass}
+        autoFocus
+      />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onAddCatalog}
+          disabled={saving || !newCatalogLabel.trim()}
+          className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setAddingCategory('');
+            setNewCatalogLabel('');
+          }}
+          className="px-3 py-1.5 text-sm text-gray-600"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function PaymentLedgerForm({
   form,
   setForm,
@@ -31,6 +83,7 @@ export default function PaymentLedgerForm({
   leaseLabel = '',
   user,
   onlinePaymentsEnabled = false,
+  onPreviewProof,
 }) {
   const isCharge = form.intent === 'charge';
   const isEdit = mode === 'edit';
@@ -105,13 +158,22 @@ export default function PaymentLedgerForm({
             type="button"
             className="mt-1 text-xs text-indigo-600 hover:text-indigo-800"
             onClick={() => {
-              setAddingCategory('type');
+              setAddingCategory((prev) => (prev === 'type' ? '' : 'type'));
               setNewCatalogLabel('');
             }}
           >
             Add type…
           </button>
         )}
+        <CatalogAddFields
+          category="type"
+          addingCategory={addingCategory}
+          setAddingCategory={setAddingCategory}
+          newCatalogLabel={newCatalogLabel}
+          setNewCatalogLabel={setNewCatalogLabel}
+          onAddCatalog={onAddCatalog}
+          saving={saving}
+        />
       </div>
       <CurrencyInput
         label="Amount"
@@ -196,48 +258,23 @@ export default function PaymentLedgerForm({
             type="button"
             className="mt-1 text-xs text-indigo-600 hover:text-indigo-800"
             onClick={() => {
-              setAddingCategory('method');
+              setAddingCategory((prev) => (prev === 'method' ? '' : 'method'));
               setNewCatalogLabel('');
             }}
           >
             Add method…
           </button>
         )}
+        <CatalogAddFields
+          category="method"
+          addingCategory={addingCategory}
+          setAddingCategory={setAddingCategory}
+          newCatalogLabel={newCatalogLabel}
+          setNewCatalogLabel={setNewCatalogLabel}
+          onAddCatalog={onAddCatalog}
+          saving={saving}
+        />
       </div>
-
-      {addingCategory && (
-        <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
-          <label className="block text-sm font-medium text-gray-700">
-            New {addingCategory} label
-          </label>
-          <input
-            type="text"
-            value={newCatalogLabel}
-            onChange={(e) => setNewCatalogLabel(e.target.value)}
-            className={fieldClass}
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onAddCatalog}
-              disabled={saving || !newCatalogLabel.trim()}
-              className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50"
-            >
-              Save
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAddingCategory('');
-                setNewCatalogLabel('');
-              }}
-              className="px-3 py-1.5 text-sm text-gray-600"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700">Memo</label>
@@ -256,6 +293,7 @@ export default function PaymentLedgerForm({
           <WorkflowFileField
             value={form.proof}
             onChange={(fileMeta) => setField('proof', fileMeta)}
+            onPreview={onPreviewProof}
             leaseId={form.leaseId}
             propertyId={unit?.properties?.property_id || unit?.property_id}
             unitId={unit?.unit_id}

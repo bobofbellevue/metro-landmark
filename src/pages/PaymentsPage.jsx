@@ -7,6 +7,7 @@ import { useSortableData } from '../hooks';
 import PaymentEditModal from '../components/PaymentEditModal';
 import PaymentLedgerForm from '../components/PaymentLedgerForm';
 import PaymentVoidModal from '../components/PaymentVoidModal';
+import DocumentPreview from '../components/DocumentPreview';
 import { formatCurrencyDisplay } from '../components/CurrencyInput';
 import { formatDateTime, localeContextFromBrowser } from '../config/locale.js';
 import { formatWorkflowDateMMDDYYYY, todayWorkflowDate } from '../utils/workflow-date.js';
@@ -36,6 +37,18 @@ function statusClass(status) {
   if (status === 'paid') return 'bg-green-100 text-green-800';
   if (status === 'void') return 'bg-gray-100 text-gray-600';
   return 'bg-amber-100 text-amber-800';
+}
+
+function proofPreviewDocument(source) {
+  const documentId = source?.documentId || source?.document_id;
+  if (!documentId) return null;
+  return {
+    document_id: documentId,
+    file_name:
+      source.documentName || source.file_name || source.document_name || 'Proof of payment',
+    file_type: source.mime_type || source.file_type || null,
+    document_type: 'proof_of_payment',
+  };
 }
 
 function PaymentPeriodCell({ start, end, label }) {
@@ -79,6 +92,7 @@ export default function PaymentsPage() {
   const [voidTarget, setVoidTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editingPayment, setEditingPayment] = useState(null);
+  const [previewDocument, setPreviewDocument] = useState(null);
 
   const canEdit = canEditPayments(user?.role);
   const canEditCatalog = canEditPaymentCatalog(user?.role);
@@ -310,6 +324,7 @@ export default function PaymentsPage() {
                   mode="create"
                   user={user}
                   onlinePaymentsEnabled={onlinePaymentsEnabled}
+                  onPreviewProof={(file) => setPreviewDocument(proofPreviewDocument(file))}
                 />
               </div>
               <div className="pt-4 mt-4 border-t flex flex-col gap-3 flex-shrink-0">
@@ -595,7 +610,17 @@ export default function PaymentsPage() {
                             {row.memo || '—'}
                           </td>
                           <td className="px-1.5 py-2 max-w-[10rem] whitespace-normal break-words">
-                            {row.documentName || '—'}
+                            {row.documentId ? (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewDocument(proofPreviewDocument(row))}
+                                className="text-indigo-600 hover:text-indigo-800 hover:underline text-left"
+                              >
+                                {row.documentName || 'View'}
+                              </button>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           <td className="px-1.5 py-2 whitespace-nowrap">
                             {row.typeLabel || row.kindLabel || '—'}
@@ -639,6 +664,7 @@ export default function PaymentsPage() {
             const ok = await updatePayment(editingPayment.paymentId, payload);
             if (!ok) throw new Error('Could not update payment.');
           }}
+          onPreviewProof={(file) => setPreviewDocument(proofPreviewDocument(file))}
         />
       )}
       {voidTarget && (
@@ -664,6 +690,11 @@ export default function PaymentsPage() {
           onPermanentDelete={() => deletePayment(deleteTarget.paymentId)}
         />
       )}
+      <DocumentPreview
+        document={previewDocument}
+        isOpen={Boolean(previewDocument)}
+        onClose={() => setPreviewDocument(null)}
+      />
     </div>
   );
 }

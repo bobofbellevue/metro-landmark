@@ -19,6 +19,7 @@ export default function PaymentEditModal({
   user,
   onClose,
   onSave,
+  onPreviewProof,
 }) {
   const [form, setForm] = useState(() => paymentFormFromRow(payment));
   const [lease, setLease] = useState(null);
@@ -162,6 +163,7 @@ export default function PaymentEditModal({
               mode="edit"
               leaseLabel={payment.leaseLabel}
               user={user}
+              onPreviewProof={onPreviewProof}
             />
             {formError && (
               <p className="mt-4 text-sm text-red-600 whitespace-pre-wrap">{formError}</p>

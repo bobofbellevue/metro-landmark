@@ -69,7 +69,7 @@ export default function DocumentPreview({ document, isOpen, onClose, onDownload 
     /\.(jpg|jpeg|png|gif|webp)$/i.test(document.file_name || '');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-75">
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">

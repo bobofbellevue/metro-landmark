@@ -14,6 +14,7 @@ import {
 export default function WorkflowFileField({
   value,
   onChange,
+  onPreview,
   error,
   leaseId,
   propertyId,
@@ -50,15 +51,38 @@ export default function WorkflowFileField({
       {fileLabel ? (
         <div className="flex items-start justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 p-3">
           <div className="flex min-w-0 items-center gap-2">
-            {isImage ? (
-              <ImageIcon className="h-5 w-5 shrink-0 text-gray-500" />
+            {value?.document_id && onPreview ? (
+              <button
+                type="button"
+                onClick={() => onPreview(value)}
+                className="flex min-w-0 items-center gap-2 text-left"
+                title="View proof"
+              >
+                {isImage ? (
+                  <ImageIcon className="h-5 w-5 shrink-0 text-indigo-500" />
+                ) : (
+                  <FileText className="h-5 w-5 shrink-0 text-indigo-500" />
+                )}
+                <span className="min-w-0">
+                  <span className="block truncate text-sm text-indigo-600 hover:text-indigo-800 hover:underline">
+                    {fileLabel}
+                  </span>
+                  <span className="block text-xs text-gray-500">Saved to Documents</span>
+                </span>
+              </button>
             ) : (
-              <FileText className="h-5 w-5 shrink-0 text-gray-500" />
+              <>
+                {isImage ? (
+                  <ImageIcon className="h-5 w-5 shrink-0 text-gray-500" />
+                ) : (
+                  <FileText className="h-5 w-5 shrink-0 text-gray-500" />
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-gray-800">{fileLabel}</p>
+                  <p className="text-xs text-gray-500">Saved to Documents</p>
+                </div>
+              </>
             )}
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-gray-800">{fileLabel}</p>
-              <p className="text-xs text-gray-500">Saved to Documents</p>
-            </div>
           </div>
           <button
             type="button"

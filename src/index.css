@@ -65,17 +65,17 @@ body,
   min-width: 0;
 }
 
-/* List contents: 12px / weight 100. Subsidiary follow-on lines: 10px / weight 75. */
+/* List contents: 14px / weight 100. Subsidiary follow-on lines: 12px / weight 75. */
 .finder-list,
 .finder-list tbody td,
 .finder-primary {
   font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 100;
 }
 .finder-list .finder-secondary,
 .finder-secondary {
   font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 75;
 }
