@@ -460,13 +460,13 @@ export default function ApplicantsPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="finder-page">
             <h2 className="text-3xl font-bold text-gray-800">Applicants</h2>
             <div className="finder-split">
                 <CreateApplicantForm onApplicantCreated={handleSuccess} />
                 <Card
                     title="Applicant Search"
-                    className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]"
+                    className="max-h-[calc(100vh-160px)] min-h-0 lg:max-h-none"
                     contentClassName="flex min-h-0 flex-col h-full"
                 >
                     <div className="flex min-h-0 flex-col h-full">
@@ -2072,7 +2072,7 @@ const CreateApplicantForm = ({ onApplicantCreated }) => {
     };
 
     return (
-        <Card hideTitle className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]" contentClassName="flex min-h-0 flex-col h-full">
+        <Card hideTitle className="max-h-[calc(100vh-160px)] min-h-0 lg:max-h-none" contentClassName="flex min-h-0 flex-col h-full">
             <form onSubmit={handleCreate} className="flex min-h-0 flex-col h-full" autoComplete="off">
                 <div className="flex items-start justify-between pb-4 mb-4 border-b">
                     <div>

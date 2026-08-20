@@ -18,7 +18,7 @@ export default function LandlordsPage() {
     }
     
     return (
-        <div className="space-y-6">
+        <div className="finder-page">
             <h2 className="text-3xl font-bold text-gray-800">Landlords</h2>
             <LandlordManagement />
         </div>

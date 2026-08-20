@@ -21,7 +21,7 @@ export default function VendorLayout({ children }) {
         <VendorSidebar />
         <div className="flex flex-col flex-1 min-w-0">
           <VendorHeader />
-          <main className="app-main flex-1 min-w-0 min-h-0 p-2 overflow-y-auto overflow-x-hidden md:p-3 lg:p-4">{children}</main>
+          <main className="app-main flex flex-col flex-1 min-w-0 min-h-0 p-2 overflow-y-auto overflow-x-hidden md:p-3 lg:p-4">{children}</main>
         </div>
       </div>
     </SidebarContext.Provider>

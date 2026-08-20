@@ -62,18 +62,64 @@ body,
     grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
     grid-template-rows: minmax(0, 1fr);
   }
+  .finder-fill {
+    grid-template-rows: minmax(0, 1fr);
+  }
 }
 .finder-split > * {
   min-width: 0;
   min-height: 0;
 }
+.finder-fill {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
 
 /*
-  Reserve the vertical scrollbar so finder columns stay the same width
-  whether the page scrolls (Payments table overflow) or not (Tenants).
+  Finder pages fill main so Add/Search cards get a real height. Inner tables
+  scroll inside the card; main does not grow a page scrollbar.
 */
 .app-main {
-  scrollbar-gutter: stable;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.finder-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+.finder-page > :not(.finder-split):not(.finder-fill) {
+  flex-shrink: 0;
+}
+@media (min-width: 1024px) {
+  .finder-page {
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+  .finder-page > .finder-split,
+  .finder-page > .finder-fill {
+    flex: 1 1 0%;
+    min-height: 0;
+  }
+  .finder-split > *,
+  .finder-fill > * {
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+.app-sidebar .sidebar-nav-item {
+  font-size: 15px;
+}
+.app-sidebar .sidebar-nav-item svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
 }
 
 /* List contents: 14px / weight 100. Subsidiary follow-on lines: 12px / weight 75. */

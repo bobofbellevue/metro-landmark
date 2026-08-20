@@ -282,7 +282,7 @@ export default function LandlordManagement() {
             <CreateLandlordForm companies={companies} onLandlordCreated={handleSuccess} />
             <Card
                 title="Landlord Search"
-                className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]"
+                className="max-h-[calc(100vh-160px)] min-h-0 lg:max-h-none"
                 contentClassName="flex min-h-0 flex-col h-full"
             >
                 <div className="flex min-h-0 flex-col h-full">
@@ -709,7 +709,7 @@ const CreateLandlordForm = ({ companies, onLandlordCreated }) => {
     };
 
     return (
-        <Card hideTitle className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]" contentClassName="flex min-h-0 flex-col h-full">
+        <Card hideTitle className="max-h-[calc(100vh-160px)] min-h-0 lg:max-h-none" contentClassName="flex min-h-0 flex-col h-full">
             <form onSubmit={handleCreate} className="flex min-h-0 flex-col h-full">
                 <div className="flex items-start justify-between pb-4 mb-4 border-b">
                     <div>

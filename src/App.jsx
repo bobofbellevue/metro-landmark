@@ -478,7 +478,7 @@ function MainAppLayout() {
         <Sidebar />
         <div className="flex flex-col flex-1 min-w-0">
           <TopHeader />
-          <main className="app-main flex-1 min-w-0 min-h-0 p-2 overflow-y-auto overflow-x-hidden md:p-3 lg:p-4">{renderActivePage()}</main>
+          <main className="app-main flex flex-col flex-1 min-w-0 min-h-0 p-2 overflow-y-auto overflow-x-hidden md:p-3 lg:p-4">{renderActivePage()}</main>
         </div>
       </div>
     </SidebarContext.Provider>
@@ -576,10 +576,10 @@ function Sidebar() {
 
   return (
     <>
-      <aside className={`fixed top-0 left-0 z-20 h-full bg-gray-800 text-white transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:flex-shrink-0 overflow-x-hidden ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} ${expanded ? 'w-64' : 'w-20'}`}>
+      <aside className={`app-sidebar fixed top-0 left-0 z-20 h-full bg-gray-800 text-white transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:flex-shrink-0 overflow-x-hidden ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} ${expanded ? 'w-64' : 'w-20'}`}>
         <nav className="flex flex-col h-full">
           <SidebarHeader />
-          <ul className="flex-1 px-4 overflow-y-auto overflow-x-hidden">
+          <ul className="flex-1 min-h-0 px-3 overflow-y-auto overflow-x-hidden">
             {menuItems.map((item, index) => (
               <SidebarItem key={index} icon={item.icon} text={item.text} />
             ))}
@@ -620,7 +620,7 @@ function SidebarItem({ icon, text }) {
   const { expanded, activePage, setActivePage } = useContext(SidebarContext);
   const isActive = activePage === text;
   return (
-    <li onClick={() => setActivePage(text)} className={`relative flex items-center py-2 px-3 my-1 font-medium rounded-md cursor-pointer transition-colors group ${isActive ? "bg-gradient-to-tr from-indigo-200 to-indigo-100 text-indigo-800" : "hover:bg-indigo-500 text-gray-300"}`}>
+    <li onClick={() => setActivePage(text)} className={`sidebar-nav-item relative flex items-center py-1.5 px-3 my-0.5 font-medium rounded-md cursor-pointer transition-colors group ${isActive ? "bg-gradient-to-tr from-indigo-200 to-indigo-100 text-indigo-800" : "hover:bg-indigo-500 text-gray-300"}`}>
       {icon}
       <span className={`overflow-hidden transition-all ${expanded ? "w-52 ml-3" : "w-0"}`}>{text}</span>
       {!expanded && (<div className={`absolute left-full rounded-md px-2 py-1 ml-6 bg-indigo-100 text-indigo-800 text-sm invisible opacity-20 -translate-x-3 transition-all group-hover:visible group-hover:opacity-100 group-hover:translate-x-0`}>{text}</div>)}

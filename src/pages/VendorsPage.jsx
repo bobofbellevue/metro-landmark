@@ -427,13 +427,13 @@ export default function VendorsPage() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="finder-page">
             <h2 className="text-3xl font-bold text-gray-800">Vendors</h2>
             <div className="finder-split">
                 <CreateVendorForm onVendorCreated={handleSuccess} />
                 <Card
                     title="Vendor Search"
-                    className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]"
+                    className="max-h-[calc(100vh-160px)] min-h-0 lg:max-h-none"
                     contentClassName="flex min-h-0 flex-col h-full"
                 >
                     <div className="flex min-h-0 flex-col h-full">
@@ -1734,7 +1734,7 @@ const CreateVendorForm = ({ onVendorCreated }) => {
     return (
         <Card 
             hideTitle
-            className="max-h-[calc(100vh-160px)] min-h-0 lg:h-[calc(100vh-160px)]"
+            className="max-h-[calc(100vh-160px)] min-h-0 lg:max-h-none"
             contentClassName="flex min-h-0 flex-col h-full"
         >
             <form onSubmit={handleCreate} className="flex min-h-0 flex-col h-full">
