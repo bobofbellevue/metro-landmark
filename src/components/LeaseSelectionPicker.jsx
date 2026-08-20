@@ -318,7 +318,7 @@ function LeaseRowContent({ lease, showRent, showDeposit, annotation }) {
 
   return (
     <div className="flex-1 min-w-0" title={hover}>
-      <div className="font-medium text-gray-900 flex flex-wrap items-center gap-2">
+      <div className="text-gray-900 flex flex-wrap items-center gap-2">
         <span className="whitespace-normal break-words">{leasePickerPrimaryLabel(lease)}</span>
         {annotation?.badge ? (
           <span

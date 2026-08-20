@@ -581,7 +581,7 @@ export default function PaymentsPage() {
                           <td className="px-1.5 py-2 whitespace-nowrap">
                             {row.receiptDate ? formatWorkflowDateMMDDYYYY(row.receiptDate) : '—'}
                           </td>
-                          <td className="px-1.5 py-2 max-w-[12rem] whitespace-normal break-words font-medium text-gray-900">
+                          <td className="px-1.5 py-2 max-w-[12rem] whitespace-normal break-words text-gray-900">
                             {row.leaseLabel || '—'}
                           </td>
                           <td className="px-1.5 py-2 whitespace-normal">

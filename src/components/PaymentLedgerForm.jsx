@@ -74,7 +74,7 @@ export default function PaymentLedgerForm({
       {isEdit ? (
         <div>
           <label className="block text-sm font-medium text-gray-700">Lease</label>
-          <div className="mt-1 text-sm font-medium text-gray-900 break-words">
+          <div className="mt-1 text-sm text-gray-900 break-words">
             {leaseLabel || '—'}
           </div>
         </div>
