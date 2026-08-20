@@ -46,7 +46,10 @@ async function getPrimaryKey(supabase, tableName) {
     'contacts': 'contact_id',
     'contact_methods': 'method_id',
     'addresses': 'address_id',
-    'pm_companies': 'pmc_id'
+    'pm_companies': 'pmc_id',
+    'payments': 'payment_id',
+    'payment_catalog': 'payment_catalog_id',
+    'phone_resources': 'phone_resource_id',
   };
 
   return idColumnMap[tableName] || `${tableName.slice(0, -1)}_id`;

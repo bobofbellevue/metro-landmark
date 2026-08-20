@@ -348,7 +348,7 @@ async function maybeCheckout(req, paymentRow, publicRow) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
     'Content-Type, Authorization, x-user-id, x-user-role'
@@ -360,7 +360,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!['GET', 'POST', 'PUT'].includes(req.method)) {
+  if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) {
     res.status(405).json({ success: false, error: 'Method not allowed' });
     return;
   }
@@ -548,7 +548,13 @@ export default async function handler(req, res) {
       return;
     }
 
-    const paymentId = parseInt(req.body?.paymentId ?? req.body?.payment_id, 10);
+    const paymentId = parseInt(
+      req.body?.paymentId ??
+        req.body?.payment_id ??
+        req.query?.paymentId ??
+        req.query?.payment_id,
+      10
+    );
     if (!Number.isInteger(paymentId) || paymentId <= 0) {
       res.status(400).json({ success: false, error: 'A payment id is required.' });
       return;
@@ -574,6 +580,22 @@ export default async function handler(req, res) {
 
     if (user.role !== 'global_admin' && user.pmc_id && existing.pmc_id !== user.pmc_id) {
       res.status(403).json({ success: false, error: 'That payment is not in this company.' });
+      return;
+    }
+
+    if (req.method === 'DELETE') {
+      const { error: deleteError } = await supabase
+        .from('payments')
+        .delete()
+        .eq('payment_id', paymentId);
+      if (deleteError) {
+        res.status(500).json({
+          success: false,
+          error: paymentsWriteErrorMessage(deleteError),
+        });
+        return;
+      }
+      res.status(200).json({ success: true, paymentId });
       return;
     }
 

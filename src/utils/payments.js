@@ -505,3 +505,21 @@ export function filterPaymentsBySearch(payments, searchTerm) {
   if (!q) return list;
   return list.filter((payment) => paymentSearchHaystack(payment).includes(q));
 }
+
+export function restoreStatusForVoided(row = {}) {
+  if (row.paidAt || row.paid_at || row.receiptDate || row.receipt_date) {
+    return 'paid';
+  }
+  return 'due';
+}
+
+export function paymentDeleteConfirmName(payment = {}) {
+  const parts = [
+    payment.leaseLabel,
+    payment.typeLabel || payment.kindLabel,
+    payment.amount != null ? String(payment.amount) : '',
+  ]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean);
+  return parts.join(' ') || `payment-${payment.paymentId || payment.payment_id || ''}`;
+}

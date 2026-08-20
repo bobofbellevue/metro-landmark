@@ -180,8 +180,8 @@ export default function DocumentUpload({
 
   return (
     <div className="w-full">
-      <div
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+      <label
+        className={`block cursor-pointer border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
           dragActive
             ? 'border-blue-500 bg-blue-50'
             : 'border-gray-300 hover:border-gray-400'
@@ -194,7 +194,7 @@ export default function DocumentUpload({
         <input
           ref={fileInputRef}
           type="file"
-          className="hidden"
+          className="sr-only"
           accept={[...acceptedTypes, '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.heic', '.heif'].join(',')}
           onChange={handleChange}
           disabled={uploading}
@@ -206,9 +206,9 @@ export default function DocumentUpload({
             <p className="text-gray-600">Uploading...</p>
           </div>
         ) : (
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center pointer-events-none">
             <svg
-              className="w-12 h-12 text-gray-400 mb-4"
+              className="w-10 h-10 text-gray-400 mb-2"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -220,22 +220,10 @@ export default function DocumentUpload({
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="text-gray-600 mb-2">
-              Drag and drop a file here, or{' '}
-              <button
-                type="button"
-                className="text-blue-600 hover:text-blue-800 underline"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                browse
-              </button>
-            </p>
-            <p className="text-sm text-gray-500">
-              PDF or image, max {maxSize}MB. Photos are compressed automatically.
-            </p>
+            <p className="text-sm text-gray-600">Drop or click</p>
           </div>
         )}
-      </div>
+      </label>
     </div>
   );
 }

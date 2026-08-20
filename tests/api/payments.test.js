@@ -71,6 +71,10 @@ function createQuery(db, table) {
       state.insertRow = row;
       return query;
     },
+    delete: () => {
+      state.deleting = true;
+      return query;
+    },
     update: (patch) => {
       state.patch = patch;
       return query;
@@ -106,6 +110,11 @@ function createQuery(db, table) {
       };
       rows.push(created);
       return { data: created, error: null };
+    }
+    if (state.deleting) {
+      const remaining = rows.filter((row) => !state.filters.every((fn) => fn(row)));
+      db[table].splice(0, db[table].length, ...remaining);
+      return { data: remaining, error: null };
     }
     const matched = rows.filter((row) => state.filters.every((fn) => fn(row)));
     if (state.patch) {
@@ -363,6 +372,53 @@ describe('api/payments', () => {
     expect(res.jsonData.payment.receiptDate).toBeTruthy();
     expect(db.payments[0].paid_at).toBeTruthy();
     expect(db.payments[0].receipt_date).toBeTruthy();
+  });
+
+  test('DELETE removes a payment row', async () => {
+    db.payments.push({
+      payment_id: 11,
+      pmc_id: 9,
+      lease_id: 10,
+      kind: 'rent',
+      amount: 1850,
+      status: 'void',
+    });
+    const res = createRes();
+    await handler(
+      {
+        method: 'DELETE',
+        headers: { 'x-user-id': '1' },
+        query: { paymentId: '11' },
+        body: {},
+      },
+      res
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.jsonData.success).toBe(true);
+    expect(db.payments).toHaveLength(0);
+  });
+
+  test('PUT restore sets a void unpaid charge back to due', async () => {
+    db.payments.push({
+      payment_id: 12,
+      pmc_id: 9,
+      lease_id: 10,
+      kind: 'rent',
+      amount: 1850,
+      status: 'void',
+      method: null,
+    });
+    const res = createRes();
+    await handler(
+      {
+        method: 'PUT',
+        headers: { 'x-user-id': '2' },
+        body: { paymentId: 12, status: 'due' },
+      },
+      res
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.jsonData.payment.status).toBe('due');
   });
 
   test('manager cannot see another company payment', async () => {

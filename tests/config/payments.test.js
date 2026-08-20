@@ -12,6 +12,8 @@ import {
   parsePaymentAmount,
   paymentsSchemaWarning,
   paymentsWriteErrorMessage,
+  restoreStatusForVoided,
+  paymentDeleteConfirmName,
   publicPayment,
   stripeOnlineEnabled,
   stripeSecretKey,
@@ -211,5 +213,20 @@ describe('payment helpers', () => {
     expect(filterPaymentsBySearch([row], 'zzz')).toHaveLength(0);
     expect(leaseLabelFromParts({ propertyName: 'Oak' })).toBe('Oak');
     expect(currentRentPeriodLabel(new Date(2026, 7, 19))).toBe('2026-08');
+  });
+
+  test('void restore and delete confirmation name', () => {
+    expect(restoreStatusForVoided({ status: 'void' })).toBe('due');
+    expect(restoreStatusForVoided({ status: 'void', paid_at: '2026-08-18T12:00:00Z' })).toBe(
+      'paid'
+    );
+    expect(restoreStatusForVoided({ receiptDate: '2026-08-18' })).toBe('paid');
+    expect(
+      paymentDeleteConfirmName({
+        leaseLabel: 'Pine Court · Unit 2A',
+        typeLabel: 'Rent',
+        amount: 1850,
+      })
+    ).toBe('Pine Court · Unit 2A Rent 1850');
   });
 });

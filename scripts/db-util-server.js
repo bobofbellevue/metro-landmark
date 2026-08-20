@@ -2453,6 +2453,18 @@ async function ensurePaymentsTable(sql) {
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_lease ON payments (lease_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_status_due ON payments (status, due_date)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_receipt_date ON payments (receipt_date)`;
+    try {
+      await sql.unsafe(`
+        ALTER TABLE payments
+          ADD CONSTRAINT payments_document_id_fkey
+          FOREIGN KEY (document_id) REFERENCES documents(document_id) ON DELETE SET NULL
+      `);
+    } catch (fkError) {
+      const message = String(fkError?.message || '');
+      if (!/already exists/i.test(message) && fkError.code !== '42710') {
+        throw fkError;
+      }
+    }
     await ensurePermissiveRls(sql, 'payments');
     logDetail('✅ payments verified/created');
   } catch (error) {

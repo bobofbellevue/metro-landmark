@@ -149,6 +149,15 @@ app.put('/api/payments', async (req, res) => {
   }
 });
 
+app.delete('/api/payments', async (req, res) => {
+  try {
+    await paymentsHandler(req, res);
+  } catch (error) {
+    console.error('Payments error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 app.get('/api/payment-catalog', async (req, res) => {
   try {
     await paymentCatalogHandler(req, res);
