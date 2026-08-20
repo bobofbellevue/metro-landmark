@@ -531,18 +531,18 @@ export default function PropertiesPage() {
                         <table className="w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('address')} className="flex items-center">Address {getSortIndicator('address')}</button></th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('landlord_name')} className="flex items-center">Landlord {getSortIndicator('landlord_name')}</button></th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('property_type')} className="flex items-center">Type {getSortIndicator('property_type')}</button></th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('unit_count')} className="flex items-center">Units {getSortIndicator('unit_count')}</button></th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('management_display')} className="flex items-center">Management {getSortIndicator('management_display')}</button></th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('address')} className="flex items-center">Address {getSortIndicator('address')}</button></th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('landlord_name')} className="flex items-center">Landlord {getSortIndicator('landlord_name')}</button></th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('property_type')} className="flex items-center">Type {getSortIndicator('property_type')}</button></th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('unit_count')} className="flex items-center">Units {getSortIndicator('unit_count')}</button></th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('management_display')} className="flex items-center">Management {getSortIndicator('management_display')}</button></th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {displayedProperties.map(p => (
                                     <tr key={p.property_id} className={p.is_archived ? 'opacity-60 italic' : ''}>
-                                        <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                        <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
                                              <div className="flex items-center space-x-4">
                                                 {!p.is_archived && (
                                                     <>
@@ -579,7 +579,7 @@ export default function PropertiesPage() {
                                                 <button onClick={() => setDeletingProperty(p)} className="text-red-600 hover:text-red-900" title={p.is_archived ? "Archive Property" : "Archive Property"}><Trash2 size={16}/></button>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-gray-500">
+                                        <td className="px-1.5 py-2 text-sm text-gray-500">
                                             <div className="relative group inline-block" onMouseEnter={(e) => {
                                                 const tooltip = e.currentTarget.querySelector('.tooltip-content');
                                                 if (tooltip) {
@@ -611,10 +611,10 @@ export default function PropertiesPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">{p.landlord_name}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap">{p.property_type}</td>
-                                        <td className="px-3 py-2 text-sm text-gray-700 whitespace-nowrap">{p.unit_count || 0}</td>
-                                        <td className="px-3 py-2 text-sm text-gray-500">
+                                        <td className="px-1.5 py-2 whitespace-nowrap">{p.landlord_name}</td>
+                                        <td className="px-1.5 py-2 whitespace-nowrap">{p.property_type}</td>
+                                        <td className="px-1.5 py-2 text-sm text-gray-700 whitespace-nowrap">{p.unit_count || 0}</td>
+                                        <td className="px-1.5 py-2 text-sm text-gray-500">
                                             {p.management_display?.company ? (
                                                 <div>
                                                     <div>{p.management_display.company}</div>

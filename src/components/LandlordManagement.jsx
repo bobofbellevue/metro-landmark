@@ -340,17 +340,17 @@ export default function LandlordManagement() {
                     <table className="w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('last_name')} className="flex items-center">Landlord Name {getSortIndicator('last_name')}</button>
                                 </th>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('email')} className="flex items-center">Contact {getSortIndicator('email')}</button>
                                 </th>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('property_count')} className="flex items-center">Properties {getSortIndicator('property_count')}</button>
                                 </th>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('city')} className="flex items-center">Location {getSortIndicator('city')}</button>
                                 </th>
                             </tr>
@@ -358,7 +358,7 @@ export default function LandlordManagement() {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {displayedLandlords.map(l => (
                                 <tr key={l.landlord_id}>
-                                    <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                    <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
                                         <div className="flex items-center space-x-4">
                                             <div className="relative group" onMouseEnter={(e) => {
                                                 const tooltip = e.currentTarget.querySelector('.tooltip-content');
@@ -386,7 +386,7 @@ export default function LandlordManagement() {
                                             <button onClick={() => setDeletingLandlord(l)} className="text-red-600 hover:text-red-900" title="Delete Landlord"><Trash2 size={16}/></button>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-2 whitespace-nowrap">
+                                    <td className="px-1.5 py-2 whitespace-nowrap">
                                         <div className="relative group inline-block" onMouseEnter={(e) => {
                                             const tooltip = e.currentTarget.querySelector('.tooltip-content');
                                             if (tooltip) {
@@ -411,7 +411,7 @@ export default function LandlordManagement() {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-2 text-sm whitespace-nowrap">
+                                    <td className="px-1.5 py-2 text-sm whitespace-nowrap">
                                         <div className="space-y-1">
                                             {l.email && (
                                                 <div className="font-medium text-gray-900">
@@ -431,11 +431,11 @@ export default function LandlordManagement() {
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-3 py-2 text-sm text-gray-500 whitespace-nowrap">
+                                    <td className="px-1.5 py-2 text-sm text-gray-500 whitespace-nowrap">
                                         <div>{l.property_count || 0} {l.property_count === 1 ? 'property' : 'properties'}</div>
                                         <div className="text-xs text-gray-400">{l.unit_count || 0} {l.unit_count === 1 ? 'unit' : 'units'}</div>
                                     </td>
-                                    <td className="px-3 py-2 text-sm text-gray-500 whitespace-nowrap">
+                                    <td className="px-1.5 py-2 text-sm text-gray-500 whitespace-nowrap">
                                         {l.city && l.state_province_region ? `${l.city}, ${l.state_province_region}` : 
                                          l.city ? l.city : 
                                          l.state_province_region ? l.state_province_region : 

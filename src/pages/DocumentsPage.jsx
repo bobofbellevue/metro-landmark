@@ -709,7 +709,7 @@ export default function DocumentsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
                       <button
                         onClick={handleSelectAll}
                         className="text-gray-400 hover:text-gray-600"
@@ -722,25 +722,25 @@ export default function DocumentsPage() {
                         )}
                       </button>
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       File Name
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Type
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Entity
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Size
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Uploaded
                     </th>
                   </tr>
@@ -754,7 +754,7 @@ export default function DocumentsPage() {
                       onDoubleClick={(e) => handleRowDoubleClick(doc, e)}
                       title="Click to view · Double-click to download"
                     >
-                      <td className="px-3 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-1.5 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => handleSelectDocument(doc.document_id)}
                           className="text-gray-400 hover:text-gray-600"
@@ -766,7 +766,7 @@ export default function DocumentsPage() {
                           )}
                         </button>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-left text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-1.5 py-2 whitespace-nowrap text-left text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-start gap-2">
                           <button
                             onClick={() => handleView(doc)}
@@ -810,7 +810,7 @@ export default function DocumentsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
+                      <td className="px-1.5 py-2 whitespace-nowrap">
                         <div className="flex items-center">
                           <FileText className="w-5 h-5 text-gray-400 mr-2" />
                           <span className="text-sm font-medium text-gray-900">{doc.file_name}</span>
@@ -821,18 +821,18 @@ export default function DocumentsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
+                      <td className="px-1.5 py-2 whitespace-nowrap">
                         <span className="px-2 py-1 text-xs font-medium text-blue-800 bg-blue-100 rounded">
                           {formatDocumentTypeLabel(doc.document_type)}
                         </span>
                       </td>
-                      <td className="px-3 py-2 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         <DocumentEntityCell doc={doc} />
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-1.5 py-2 whitespace-nowrap text-sm text-gray-500">
                         {formatFileSize(doc.file_size)}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
+                      <td className="px-1.5 py-2 whitespace-nowrap">
                         {doc.is_signed ? (
                           <span className="px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
                             Signed
@@ -855,7 +855,7 @@ export default function DocumentsPage() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-1.5 py-2 whitespace-nowrap text-sm text-gray-500">
                         {formatDate(doc.uploaded_at || doc.created_at)}
                       </td>
                     </tr>

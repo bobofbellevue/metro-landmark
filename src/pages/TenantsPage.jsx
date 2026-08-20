@@ -596,17 +596,17 @@ export default function TenantsPage() {
                         <table className="w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('name')} className="flex items-center">Name {getSortIndicator('name')}</button></th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('contact')} className="flex items-center">Contact {getSortIndicator('contact')}</button></th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('property')}>Property / Unit {getSortIndicator('property')}</button></th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('lease_status')}>Lease Status {getSortIndicator('lease_status')}</button></th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('name')} className="flex items-center">Name {getSortIndicator('name')}</button></th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('contact')} className="flex items-center">Contact {getSortIndicator('contact')}</button></th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('property')}>Property / Unit {getSortIndicator('property')}</button></th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"><button onClick={() => requestSort('lease_status')}>Lease Status {getSortIndicator('lease_status')}</button></th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {displayedTenants.map(t => (
                                     <tr key={t.user_id} className={t.is_archived ? 'opacity-60 italic' : ''}>
-                                        <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                        <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
                                             <div className="flex items-center space-x-4">
                                                 {!t.is_archived && (
                                                     <>
@@ -643,7 +643,7 @@ export default function TenantsPage() {
                                                 <button onClick={() => setDeletingTenant(t)} className="text-red-600 hover:text-red-900" title="Archive Tenant"><Trash2 size={16}/></button>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
+                                        <td className="px-1.5 py-2 whitespace-nowrap">
                                             <div className="relative group inline-block" onMouseEnter={(e) => {
                                                 const tooltip = e.currentTarget.querySelector('.tooltip-content');
                                                 if (tooltip) {
@@ -671,7 +671,7 @@ export default function TenantsPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-gray-500">
+                                        <td className="px-1.5 py-2 text-sm text-gray-500">
                                             <div className="space-y-1">
                                                 {t.email && (
                                                     <div className="text-xs">
@@ -695,8 +695,8 @@ export default function TenantsPage() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">{t.address_line_1 ? `${t.address_line_1}${t.unit_number ? `, Unit ${t.unit_number}` : ''}` : 'None'}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
+                                        <td className="px-1.5 py-2 whitespace-nowrap">{t.address_line_1 ? `${t.address_line_1}${t.unit_number ? `, Unit ${t.unit_number}` : ''}` : 'None'}</td>
+                                        <td className="px-1.5 py-2 whitespace-nowrap">
                                             {(() => {
                                                 const formatDate = (dateStr) => {
                                                     if (!dateStr) return null;

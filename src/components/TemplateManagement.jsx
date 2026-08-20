@@ -258,29 +258,29 @@ export default function TemplateManagement() {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('template_name')} className="flex items-center">
                                         Name {getSortIndicator('template_name')}
                                     </button>
                                 </th>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('template_type')} className="flex items-center">
                                         Type {getSortIndicator('template_type')}
                                     </button>
                                 </th>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('template_level')} className="flex items-center">
                                         Level {getSortIndicator('template_level')}
                                     </button>
                                 </th>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Default</th>
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Default</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {sortedTemplates.map(template => (
                                 <tr key={template.template_id}>
-                                    <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                    <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
                                         <div className="flex items-center space-x-2">
                                             <button
                                                 onClick={() => setEditingTemplate(template)}
@@ -312,10 +312,10 @@ export default function TemplateManagement() {
                                             </button>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-2 whitespace-nowrap font-medium">{template.template_name}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap">{template.template_type}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap">{getLevelLabel(template)}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap">
+                                    <td className="px-1.5 py-2 whitespace-nowrap font-medium">{template.template_name}</td>
+                                    <td className="px-1.5 py-2 whitespace-nowrap">{template.template_type}</td>
+                                    <td className="px-1.5 py-2 whitespace-nowrap">{getLevelLabel(template)}</td>
+                                    <td className="px-1.5 py-2 whitespace-nowrap">
                                         {template.is_default ? (
                                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                 Default

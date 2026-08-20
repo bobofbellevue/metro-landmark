@@ -1,6 +1,7 @@
 import {
   filterUnitsBySearch,
   formatUnitAddressLine,
+  formatUnitPickerLabel,
   sortUnitsForPicker,
   unitSearchHaystack,
 } from '../../src/utils/unit-display.js';
@@ -51,5 +52,14 @@ describe('unit-display helpers', () => {
 
     const sorted = sortUnitsForPicker(units);
     expect(sorted.map((u) => u.unit_id)).toEqual([2, 3, 1]);
+  });
+
+  test('compact unit picker label is property plus unit name', () => {
+    expect(
+      formatUnitPickerLabel({
+        unit_number: '2A',
+        properties: { property_name: 'Pine Court' },
+      })
+    ).toBe('Pine Court · 2A');
   });
 });

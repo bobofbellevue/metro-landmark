@@ -4,18 +4,13 @@ import { AuthContext } from '../contexts';
 import { api } from '../api';
 import { Card } from '../components/ui';
 import { useSortableData } from '../hooks';
-import CurrencyInput, { formatCurrencyDisplay } from '../components/CurrencyInput';
-import DateInput from '../components/DateInput';
-import LeaseSelectionPicker from '../components/LeaseSelectionPicker';
-import WorkflowFileField from '../components/WorkflowFileField';
+import PaymentEditModal from '../components/PaymentEditModal';
+import PaymentLedgerForm from '../components/PaymentLedgerForm';
 import PaymentVoidModal from '../components/PaymentVoidModal';
+import { formatCurrencyDisplay } from '../components/CurrencyInput';
 import { formatDateTime, localeContextFromBrowser } from '../config/locale.js';
+import { formatWorkflowDateMMDDYYYY, todayWorkflowDate } from '../utils/workflow-date.js';
 import {
-  formatWorkflowDateMMDDYYYY,
-  todayWorkflowDate,
-} from '../utils/workflow-date.js';
-import {
-  MEMO_MAX_LENGTH,
   PAYMENT_METHODS as DEFAULT_METHODS,
   PAYMENT_STATUSES,
   PAYMENT_TYPES as DEFAULT_TYPES,
@@ -27,74 +22,20 @@ import {
   summarizePayments,
 } from '../utils/payments.js';
 import {
+  applyPeriodToPaymentForm,
+  emptyPaymentForm,
+  paymentWritePayload,
+} from '../utils/payment-form.js';
+import {
   currentLeasePeriod as currentPeriod,
   leaseAlignedPeriods as leasePeriods,
-  suggestedDueDate as dueFromPeriod,
 } from '../utils/payment-periods.js';
-import { PROOF_OF_SERVICE_ACCEPT } from '../utils/proof-of-service-file.js';
-
-const PROOF_OF_PAYMENT_TYPE = 'proof_of_payment';
-
-const emptyForm = () => ({
-  intent: 'charge',
-  leaseId: null,
-  lease: null,
-  kind: 'rent',
-  amount: null,
-  dueDate: formatWorkflowDateMMDDYYYY(todayWorkflowDate()),
-  receiptDate: formatWorkflowDateMMDDYYYY(todayWorkflowDate()),
-  method: '',
-  memo: '',
-  periodKey: '',
-  periodStart: '',
-  periodEnd: '',
-  collectOnline: false,
-  proof: null,
-});
-
-function formFromPayment(row) {
-  return {
-    intent: row.status === 'paid' ? 'received' : 'charge',
-    leaseId: row.leaseId,
-    lease: null,
-    kind: row.kind || row.type || 'rent',
-    amount: row.amount,
-    dueDate: row.dueDate ? formatWorkflowDateMMDDYYYY(row.dueDate) : '',
-    receiptDate: row.receiptDate
-      ? formatWorkflowDateMMDDYYYY(row.receiptDate)
-      : formatWorkflowDateMMDDYYYY(todayWorkflowDate()),
-    method: row.method || '',
-    memo: row.memo || '',
-    periodKey: '',
-    periodStart: row.periodStart ? formatWorkflowDateMMDDYYYY(row.periodStart) : '',
-    periodEnd: row.periodEnd ? formatWorkflowDateMMDDYYYY(row.periodEnd) : '',
-    collectOnline: false,
-    proof: row.documentId
-      ? { document_id: row.documentId, file_name: row.documentName }
-      : null,
-  };
-}
 
 function statusClass(status) {
   if (status === 'paid') return 'bg-green-100 text-green-800';
   if (status === 'void') return 'bg-gray-100 text-gray-600';
   return 'bg-amber-100 text-amber-800';
 }
-
-function applyPeriodToForm(form, period) {
-  if (!period) {
-    return { ...form, periodKey: '', periodStart: '', periodEnd: '' };
-  }
-  return {
-    ...form,
-    periodKey: period.id,
-    periodStart: formatWorkflowDateMMDDYYYY(period.start),
-    periodEnd: formatWorkflowDateMMDDYYYY(period.end),
-    dueDate: formatWorkflowDateMMDDYYYY(dueFromPeriod(period)),
-  };
-}
-
-const fieldClass = 'block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm';
 
 export default function PaymentsPage() {
   const { user } = useContext(AuthContext);
@@ -111,7 +52,7 @@ export default function PaymentsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [kindFilter, setKindFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(emptyPaymentForm);
   const [checkoutUrl, setCheckoutUrl] = useState('');
   const [addingCategory, setAddingCategory] = useState('');
   const [newCatalogLabel, setNewCatalogLabel] = useState('');
@@ -175,12 +116,6 @@ export default function PaymentsPage() {
     return sortConfig.direction === 'ascending' ? ' 🔼' : ' 🔽';
   };
 
-  const setField = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    setFormError('');
-    setCheckoutUrl('');
-  };
-
   const handleLeaseChange = (leaseId, lease) => {
     setForm((prev) => {
       const nextKind = prev.kind || 'rent';
@@ -196,7 +131,7 @@ export default function PaymentsPage() {
         amount: keepAmount ? prev.amount : suggested,
       };
       const period = currentPeriod(leasePeriods(lease));
-      return applyPeriodToForm(next, period);
+      return applyPeriodToPaymentForm(next, period);
     });
     setFormError('');
   };
@@ -215,7 +150,7 @@ export default function PaymentsPage() {
       return;
     }
     const period = periods.find((p) => p.id === key);
-    setForm((prev) => applyPeriodToForm(prev, period));
+    setForm((prev) => applyPeriodToPaymentForm(prev, period));
   };
 
   const handleCreate = async (event) => {
@@ -224,35 +159,12 @@ export default function PaymentsPage() {
     setSaving(true);
     setFormError('');
     setCheckoutUrl('');
-    const status = form.intent === 'received' ? 'paid' : 'due';
-    const payload = {
-      type: form.kind,
-      kind: form.kind,
-      amount: form.amount,
-      dueDate: form.dueDate,
-      receiptDate: status === 'paid' ? form.receiptDate : null,
-      method:
-        status === 'paid' || form.collectOnline
-          ? form.method || 'card'
-          : form.method,
-      status,
-      memo: form.memo,
-      periodStart: form.periodStart,
-      periodEnd: form.periodEnd,
-      documentId: form.proof?.document_id || null,
-    };
     try {
-      const data = editingPayment
-        ? await api.put('/payments', { paymentId: editingPayment.paymentId, ...payload }, user)
-        : await api.post(
-            '/payments',
-            {
-              ...payload,
-              leaseId: form.leaseId,
-              collectOnline: form.collectOnline && status === 'due',
-            },
-            user
-          );
+      const data = await api.post(
+        '/payments',
+        paymentWritePayload(form, { includeLease: true, includeCollectOnline: true }),
+        user
+      );
       if (!data?.success) {
         setFormError(data?.error || 'Could not save to the ledger.');
         return;
@@ -263,8 +175,7 @@ export default function PaymentsPage() {
         setFormError(data.warning);
       }
       setCheckoutUrl(data.checkoutUrl || '');
-      setForm(emptyForm());
-      setEditingPayment(null);
+      setForm(emptyPaymentForm());
       setAddingCategory('');
       setNewCatalogLabel('');
       await load();
@@ -336,17 +247,7 @@ export default function PaymentsPage() {
   };
 
   const handleClear = () => {
-    setForm(emptyForm());
-    setEditingPayment(null);
-    setFormError('');
-    setCheckoutUrl('');
-    setAddingCategory('');
-    setNewCatalogLabel('');
-  };
-
-  const startEdit = (row) => {
-    setEditingPayment(row);
-    setForm(formFromPayment(row));
+    setForm(emptyPaymentForm());
     setFormError('');
     setCheckoutUrl('');
     setAddingCategory('');
@@ -354,7 +255,6 @@ export default function PaymentsPage() {
   };
 
   const isCharge = form.intent === 'charge';
-  const unit = form.lease?.units || form.lease?.unit;
 
   return (
     <div className="space-y-6">
@@ -364,246 +264,33 @@ export default function PaymentsPage() {
           <Card hideTitle className="lg:col-span-1 max-h-[calc(100vh-160px)]" contentClassName="h-full">
             <form onSubmit={handleCreate} className="flex flex-col h-full">
               <div className="flex items-start justify-between pb-4 mb-4 border-b">
-                <h2 className="text-2xl font-bold text-gray-800">
-                  {editingPayment ? 'Edit Payment' : 'Add Payment'}
-                </h2>
+                <h2 className="text-2xl font-bold text-gray-800">Add Payment</h2>
               </div>
-              <div className="flex-1 overflow-y-auto pr-1 space-y-4">
-                <fieldset className="flex flex-wrap gap-4 text-sm">
-                  <legend className="sr-only">What to add</legend>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="intent"
-                      checked={isCharge}
-                      onChange={() => setField('intent', 'charge')}
-                    />
-                    Open charge
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="intent"
-                      checked={!isCharge}
-                      onChange={() => {
-                        setForm((prev) => ({
-                          ...prev,
-                          intent: 'received',
-                          receiptDate:
-                            prev.receiptDate ||
-                            formatWorkflowDateMMDDYYYY(todayWorkflowDate()),
-                        }));
-                      }}
-                    />
-                    Already received
-                  </label>
-                </fieldset>
-
-                {editingPayment ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Lease</label>
-                    <div className="mt-1 text-sm font-medium text-gray-900">
-                      {editingPayment.leaseLabel || '—'}
-                    </div>
-                  </div>
-                ) : (
-                  <LeaseSelectionPicker
-                    value={form.leaseId}
-                    onChange={handleLeaseChange}
-                    showRent
-                    showDeposit
-                  />
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Type</label>
-                  <select
-                    value={form.kind}
-                    onChange={(e) => handleKindChange(e.target.value)}
-                    className={fieldClass}
-                  >
-                    {types.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                  {canEditCatalog && (
-                    <button
-                      type="button"
-                      className="mt-1 text-xs text-indigo-600 hover:text-indigo-800"
-                      onClick={() => {
-                        setAddingCategory('type');
-                        setNewCatalogLabel('');
-                      }}
-                    >
-                      Add type…
-                    </button>
-                  )}
-                </div>
-                <CurrencyInput
-                  label="Amount"
-                  required
-                  value={form.amount}
-                  onChange={(value) => setField('amount', value)}
+              <div className="flex-1 overflow-y-auto pr-1">
+                <PaymentLedgerForm
+                  form={form}
+                  setForm={(updater) => {
+                    setForm(updater);
+                    setFormError('');
+                    setCheckoutUrl('');
+                  }}
+                  types={types}
+                  methods={methods}
+                  canEditCatalog={canEditCatalog}
+                  addingCategory={addingCategory}
+                  setAddingCategory={setAddingCategory}
+                  newCatalogLabel={newCatalogLabel}
+                  setNewCatalogLabel={setNewCatalogLabel}
+                  onAddCatalog={handleAddCatalog}
+                  saving={saving}
+                  periods={periods}
+                  onLeaseChange={handleLeaseChange}
+                  onKindChange={handleKindChange}
+                  onPeriodKeyChange={handlePeriodKeyChange}
+                  mode="create"
+                  user={user}
+                  onlinePaymentsEnabled={onlinePaymentsEnabled}
                 />
-                <DateInput
-                  label="Due date"
-                  value={form.dueDate}
-                  onChange={(e) => setField('dueDate', e.target.value)}
-                />
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Covered period</label>
-                  <select
-                    value={form.periodKey}
-                    onChange={(e) => handlePeriodKeyChange(e.target.value)}
-                    disabled={!form.leaseId}
-                    className={`${fieldClass} disabled:bg-gray-100`}
-                  >
-                    <option value="">
-                      {form.leaseId ? 'Custom date range' : 'Select a lease first'}
-                    </option>
-                    {periods.map((period) => (
-                      <option key={period.id} value={period.id}>
-                        {period.label}
-                        {period.current ? ' (current)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <DateInput
-                    label="Period start"
-                    value={form.periodStart}
-                    onChange={(e) => {
-                      setForm((prev) => ({
-                        ...prev,
-                        periodStart: e.target.value,
-                        periodKey: '',
-                      }));
-                    }}
-                  />
-                  <DateInput
-                    label="Period end"
-                    value={form.periodEnd}
-                    onChange={(e) => {
-                      setForm((prev) => ({
-                        ...prev,
-                        periodEnd: e.target.value,
-                        periodKey: '',
-                      }));
-                    }}
-                  />
-                </div>
-
-                {!isCharge && (
-                  <DateInput
-                    label="Date of receipt"
-                    value={form.receiptDate}
-                    onChange={(e) => setField('receiptDate', e.target.value)}
-                  />
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Method</label>
-                  <select
-                    value={form.method}
-                    onChange={(e) => setField('method', e.target.value)}
-                    required={!isCharge}
-                    className={fieldClass}
-                  >
-                    <option value="">{isCharge ? '' : 'Select…'}</option>
-                    {methods.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                  {canEditCatalog && (
-                    <button
-                      type="button"
-                      className="mt-1 text-xs text-indigo-600 hover:text-indigo-800"
-                      onClick={() => {
-                        setAddingCategory('method');
-                        setNewCatalogLabel('');
-                      }}
-                    >
-                      Add method…
-                    </button>
-                  )}
-                </div>
-
-                {addingCategory && (
-                  <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
-                    <label className="block text-sm font-medium text-gray-700">
-                      New {addingCategory} label
-                    </label>
-                    <input
-                      type="text"
-                      value={newCatalogLabel}
-                      onChange={(e) => setNewCatalogLabel(e.target.value)}
-                      className={fieldClass}
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleAddCatalog}
-                        disabled={saving || !newCatalogLabel.trim()}
-                        className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm disabled:opacity-50"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAddingCategory('');
-                          setNewCatalogLabel('');
-                        }}
-                        className="px-3 py-1.5 text-sm text-gray-600"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Memo</label>
-                  <textarea
-                    value={form.memo}
-                    onChange={(e) => setField('memo', e.target.value)}
-                    rows={3}
-                    maxLength={MEMO_MAX_LENGTH}
-                    className={fieldClass}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Proof of payment</label>
-                  <div className="mt-1">
-                    <WorkflowFileField
-                      value={form.proof}
-                      onChange={(fileMeta) => setField('proof', fileMeta)}
-                      leaseId={form.leaseId}
-                      propertyId={unit?.properties?.property_id || unit?.property_id}
-                      unitId={unit?.unit_id}
-                      userId={user?.user_id}
-                      documentType={PROOF_OF_PAYMENT_TYPE}
-                      acceptedTypes={PROOF_OF_SERVICE_ACCEPT}
-                    />
-                  </div>
-                </div>
-
-                {onlinePaymentsEnabled && isCharge && !editingPayment && (
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={form.collectOnline}
-                      onChange={(e) => setField('collectOnline', e.target.checked)}
-                    />
-                    Stripe Checkout link
-                  </label>
-                )}
               </div>
               <div className="pt-4 mt-4 border-t flex flex-col gap-3 flex-shrink-0">
                 {formError && (
@@ -624,11 +311,9 @@ export default function PaymentsPage() {
                   >
                     {saving
                       ? 'Saving…'
-                      : editingPayment
-                        ? 'Save changes'
-                        : isCharge
-                          ? 'Create open charge'
-                          : 'Record payment'}
+                      : isCharge
+                        ? 'Create open charge'
+                        : 'Record payment'}
                   </button>
                 </div>
               </div>
@@ -735,60 +420,60 @@ export default function PaymentsPage() {
             ) : (
               <div className="flex-1 overflow-hidden rounded-lg border border-gray-200">
                 <div className="overflow-auto h-full max-w-full">
-                  <table className="w-max min-w-full divide-y divide-gray-200 text-sm">
+                  <table className="w-max divide-y divide-gray-200 text-sm">
                     <thead className="bg-gray-50">
                       <tr>
                         {canEdit && (
-                          <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                             Actions
                           </th>
                         )}
-                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('dueDate')} className="flex items-center">
                             Due {getSortIndicator('dueDate')}
                           </button>
                         </th>
-                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('receiptDate')} className="flex items-center">
                             Received {getSortIndicator('receiptDate')}
                           </button>
                         </th>
-                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('leaseLabel')} className="flex items-center">
                             Lease {getSortIndicator('leaseLabel')}
                           </button>
                         </th>
-                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('periodStart')} className="flex items-center">
                             Period {getSortIndicator('periodStart')}
                           </button>
                         </th>
-                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('memo')} className="flex items-center">
                             Memo {getSortIndicator('memo')}
                           </button>
                         </th>
-                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('documentName')} className="flex items-center">
                             Proof {getSortIndicator('documentName')}
                           </button>
                         </th>
-                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('typeLabel')} className="flex items-center">
                             Type {getSortIndicator('typeLabel')}
                           </button>
                         </th>
-                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('amount')} className="flex items-center">
                             Amount {getSortIndicator('amount')}
                           </button>
                         </th>
-                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('statusLabel')} className="flex items-center">
                             Status {getSortIndicator('statusLabel')}
                           </button>
                         </th>
-                        <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button type="button" onClick={() => requestSort('methodLabel')} className="flex items-center">
                             Method {getSortIndicator('methodLabel')}
                           </button>
@@ -799,13 +484,13 @@ export default function PaymentsPage() {
                       {visible.map((row) => (
                         <tr key={row.paymentId} className="align-top">
                           {canEdit && (
-                            <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
+                            <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
                               <div className="flex items-center space-x-3">
                                 {row.status !== 'void' && (
                                   <button
                                     type="button"
                                     disabled={saving}
-                                    onClick={() => startEdit(row)}
+                                    onClick={() => setEditingPayment(row)}
                                     className="text-indigo-600 hover:text-indigo-900"
                                     title="Edit Payment"
                                   >
@@ -851,7 +536,7 @@ export default function PaymentsPage() {
                                     disabled={saving}
                                     onClick={() => setVoidTarget(row)}
                                     className="text-red-600 hover:text-red-800"
-                                    title="Void"
+                                    title="Void Payment"
                                   >
                                     <X size={20} strokeWidth={2.5} />
                                   </button>
@@ -870,31 +555,31 @@ export default function PaymentsPage() {
                               </div>
                             </td>
                           )}
-                          <td className="px-3 py-2 whitespace-nowrap">
+                          <td className="px-1.5 py-2 whitespace-nowrap">
                             {row.dueDate ? formatWorkflowDateMMDDYYYY(row.dueDate) : '—'}
                           </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
+                          <td className="px-1.5 py-2 whitespace-nowrap">
                             {row.receiptDate ? formatWorkflowDateMMDDYYYY(row.receiptDate) : '—'}
                           </td>
-                          <td className="px-3 py-2 max-w-[12rem] whitespace-normal break-words font-medium text-gray-900">
+                          <td className="px-1.5 py-2 max-w-[12rem] whitespace-normal break-words font-medium text-gray-900">
                             {row.leaseLabel || '—'}
                           </td>
-                          <td className="px-3 py-2 max-w-[10rem] whitespace-normal break-words">
+                          <td className="px-1.5 py-2 max-w-[10rem] whitespace-normal break-words">
                             {row.periodLabel || '—'}
                           </td>
-                          <td className="px-3 py-2 max-w-[12rem] whitespace-normal break-words">
+                          <td className="px-1.5 py-2 max-w-[12rem] whitespace-normal break-words">
                             {row.memo || '—'}
                           </td>
-                          <td className="px-3 py-2 max-w-[10rem] whitespace-normal break-words">
+                          <td className="px-1.5 py-2 max-w-[10rem] whitespace-normal break-words">
                             {row.documentName || '—'}
                           </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
+                          <td className="px-1.5 py-2 whitespace-nowrap">
                             {row.typeLabel || row.kindLabel || '—'}
                           </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
+                          <td className="px-1.5 py-2 whitespace-nowrap">
                             {formatCurrencyDisplay(row.amount, locale)}
                           </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
+                          <td className="px-1.5 py-2 whitespace-nowrap">
                             <span
                               className={`px-2 py-0.5 rounded text-xs font-semibold ${statusClass(row.status)}`}
                             >
@@ -906,7 +591,7 @@ export default function PaymentsPage() {
                               </div>
                             )}
                           </td>
-                          <td className="px-3 py-2 whitespace-nowrap">{row.methodLabel || '—'}</td>
+                          <td className="px-1.5 py-2 whitespace-nowrap">{row.methodLabel || '—'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -918,6 +603,20 @@ export default function PaymentsPage() {
         </Card>
       </div>
 
+      {editingPayment && (
+        <PaymentEditModal
+          payment={editingPayment}
+          types={types}
+          methods={methods}
+          canEditCatalog={canEditCatalog}
+          user={user}
+          onClose={() => setEditingPayment(null)}
+          onSave={async (payload) => {
+            const ok = await updatePayment(editingPayment.paymentId, payload);
+            if (!ok) throw new Error('Could not update payment.');
+          }}
+        />
+      )}
       {voidTarget && (
         <PaymentVoidModal
           payment={voidTarget}

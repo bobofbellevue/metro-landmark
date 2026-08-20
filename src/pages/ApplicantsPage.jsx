@@ -499,23 +499,23 @@ export default function ApplicantsPage() {
                         <table className="w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('name')} className="flex items-center">
                                             Name {getSortIndicator('name')}
                                         </button>
                                     </th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('contact')} className="flex items-center">
                                             Contact {getSortIndicator('contact')}
                                         </button>
                                     </th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('application_status')}>
                                             Application Status {getSortIndicator('application_status')}
                                         </button>
                                     </th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('property')}>
                                             Property / Unit {getSortIndicator('property')}
                                         </button>
@@ -525,7 +525,7 @@ export default function ApplicantsPage() {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {displayedApplicants.map(a => (
                                     <tr key={a.user_id} className={a.is_archived ? 'opacity-60 italic' : ''}>
-                                        <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                        <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
                                             <div className="flex items-center space-x-4">
                                                 {!a.is_archived && (
                                                     <>
@@ -593,7 +593,7 @@ export default function ApplicantsPage() {
                                                 </button>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
+                                        <td className="px-1.5 py-2 whitespace-nowrap">
                                             <div className="relative group inline-block" onMouseEnter={(e) => {
                                                 const tooltip = e.currentTarget.querySelector('.tooltip-content');
                                                 if (tooltip) {
@@ -621,7 +621,7 @@ export default function ApplicantsPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
+                                        <td className="px-1.5 py-2 whitespace-nowrap">
                                             <div className="space-y-1">
                                                 {a.email && (
                                                     <div className="text-sm text-gray-900">
@@ -641,7 +641,7 @@ export default function ApplicantsPage() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
+                                        <td className="px-1.5 py-2 whitespace-nowrap">
                                             {a.application_status === 'Future' ? (
                                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                     Future - {a.application_date ? new Date(a.application_date).toLocaleDateString() : 'N/A'}
@@ -652,7 +652,7 @@ export default function ApplicantsPage() {
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-3 py-2">
+                                        <td className="px-1.5 py-2">
                                             {(() => {
                                                 // Format: "address, Unit number" -> split on comma, display on 2 lines max
                                                 if (a.unit_number && a.address_line_1) {

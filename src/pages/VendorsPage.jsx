@@ -493,23 +493,23 @@ export default function VendorsPage() {
                         <table className="w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('name')} className="flex items-center">
                                             Name {getSortIndicator('name')}
                                         </button>
                                     </th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('phone')} className="flex items-center">
                                             Contact {getSortIndicator('phone')}
                                         </button>
                                     </th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('services')} className="flex items-center">
                                             Services {getSortIndicator('services')}
                                         </button>
                                     </th>
-                                    <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                    <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         <button onClick={() => requestSort('service_areas_sort')} className="flex items-center">
                                             Service Areas {getSortIndicator('service_areas_sort')}
                                         </button>
@@ -519,7 +519,7 @@ export default function VendorsPage() {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {displayedVendors.map(v => (
                                     <tr key={v.vendor_id} className={v.is_archived ? 'opacity-60 italic' : ''}>
-                                        <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                        <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
                                             <div className="flex items-center space-x-4">
                                                 {!v.is_archived && (
                                                     <>
@@ -561,7 +561,7 @@ export default function VendorsPage() {
                                                 </button>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
+                                        <td className="px-1.5 py-2 whitespace-nowrap">
                                             <div className="relative group inline-block" onMouseEnter={(e) => {
                                                 const tooltip = e.currentTarget.querySelector('.tooltip-content');
                                                 if (tooltip) {
@@ -608,7 +608,7 @@ export default function VendorsPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-gray-500">
+                                        <td className="px-1.5 py-2 text-sm text-gray-500">
                                             <div className="space-y-1">
                                                 {v.email && (
                                                     <div className="text-xs">
@@ -631,7 +631,7 @@ export default function VendorsPage() {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-gray-500">
+                                        <td className="px-1.5 py-2 text-sm text-gray-500">
                                             {v.keywords && v.keywords.length > 0 ? (
                                                 <div 
                                                     className="flex flex-wrap gap-1 max-h-12 overflow-hidden relative group cursor-help"
@@ -657,7 +657,7 @@ export default function VendorsPage() {
                                                 <span className="text-gray-400">No services</span>
                                             )}
                                         </td>
-                                        <td className="px-3 py-2 text-sm">
+                                        <td className="px-1.5 py-2 text-sm">
                                             {v.service_areas && v.service_areas.length > 0 ? (
                                                 <div 
                                                     className="flex flex-wrap gap-1 max-h-12 overflow-hidden relative group cursor-help"

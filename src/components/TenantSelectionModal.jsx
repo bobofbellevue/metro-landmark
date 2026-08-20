@@ -453,14 +453,9 @@ const TenantSelectionModal = ({
                                                     {isSelected && <Check size={12} className="text-white" />}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="font-medium text-gray-900">
+                                                    <div className="font-medium text-gray-900 break-words">
                                                         {formatTenantName(tenant)}
                                                     </div>
-                                                    {tenant.email && (
-                                                        <div className="text-sm text-gray-500">
-                                                            {tenant.email}
-                                                        </div>
-                                                    )}
                                                     {unitInfo && (
                                                         <div className="text-xs text-indigo-600 mt-1 font-medium">
                                                             {unitInfo.unit_name}

@@ -69,3 +69,17 @@ export function sortUnitsForPicker(units) {
     });
   });
 }
+
+/**
+ * Compact picker line: property name · unit name.
+ * @param {object} unit
+ * @returns {string}
+ */
+export function formatUnitPickerLabel(unit) {
+  const propertyName = unit?.properties?.property_name || 'Property';
+  const unitName =
+    unit?.unit_number != null && String(unit.unit_number).trim() !== ''
+      ? String(unit.unit_number).trim()
+      : '';
+  return [propertyName, unitName].filter(Boolean).join(' · ');
+}

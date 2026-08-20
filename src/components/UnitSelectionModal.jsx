@@ -4,6 +4,7 @@ import { useFinderLimit } from '../hooks/useFinderLimit.js';
 import {
   filterUnitsBySearch,
   formatUnitAddressLine,
+  formatUnitPickerLabel,
   sortUnitsForPicker,
 } from '../utils/unit-display.js';
 
@@ -148,11 +149,11 @@ export default function UnitSelectionModal({
             <div className="space-y-2">
               {displayedUnits.map((unit) => {
                 const isSelected = String(unit.unit_id) === String(pendingUnitId);
-                const propertyName = unit.properties?.property_name || 'Property';
                 return (
                   <button
                     key={unit.unit_id}
                     type="button"
+                    title={unit.addressLine || undefined}
                     onClick={() => setPendingUnitId(unit.unit_id)}
                     className={`w-full text-left rounded-lg border p-3 transition-colors ${
                       isSelected
@@ -170,19 +171,10 @@ export default function UnitSelectionModal({
                       >
                         {isSelected && <Check size={12} className="text-white" />}
                       </div>
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <div className="font-medium text-gray-900">
-                          {propertyName}
-                          <span className="text-gray-500 font-normal">
-                            {' '}
-                            · Unit {unit.unit_number ?? '—'}
-                          </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 whitespace-normal break-words">
+                          {formatUnitPickerLabel(unit)}
                         </div>
-                        {unit.addressLine ? (
-                          <div className="text-sm text-gray-600">{unit.addressLine}</div>
-                        ) : (
-                          <div className="text-sm text-gray-400">No address on file</div>
-                        )}
                       </div>
                       {isSelected && (
                         <div className="text-xs text-indigo-600 font-medium ml-2 flex-shrink-0">

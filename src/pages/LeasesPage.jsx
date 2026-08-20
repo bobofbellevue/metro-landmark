@@ -21,9 +21,11 @@ import {
   formatWorkflowDateMMDDYYYY,
   isCompleteWorkflowDate,
   firstOfNextMonth,
+  parseWorkflowDateParts,
   todayWorkflowDate,
   toWorkflowDateString,
 } from '../utils/workflow-date.js';
+import { formatUnitPickerLabel } from '../utils/unit-display.js';
 import {
   convertDateToOrdinalWord,
   describeLeaseTerm,
@@ -1096,9 +1098,20 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
     
     // Form persistence (excluding search terms and modal state)
     const { clearPersistedData } = useFormPersistence('add-lease', formData, (state) => {
+        const tenants = state.tenant_ids || [];
+        const start = state.start_date || '';
+        const startParts = parseWorkflowDateParts(toWorkflowDateString(start));
+        const now = new Date();
+        const looksLikeYearStartDefault =
+            !tenants.length &&
+            !state.unit_id &&
+            startParts &&
+            startParts.month === 1 &&
+            startParts.day === 1 &&
+            startParts.year === now.getFullYear();
         setFormData({
             ...state,
-            start_date: state.start_date || firstOfNextMonth(),
+            start_date: start && !looksLikeYearStartDefault ? start : firstOfNextMonth(),
             date_of_agreement: state.date_of_agreement || todayWorkflowDate(),
         });
     });
@@ -1597,11 +1610,11 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
     const resetForm = useCallback(() => {
         setFormData({
             unit_id: '',
-            start_date: firstOfNextMonth(),
+            start_date: '',
             end_date: '',
             monthly_rent_amount: '',
             status: 'active',
-            date_of_agreement: todayWorkflowDate(),
+            date_of_agreement: '',
             security_deposit_amount: '',
             pet_deposit_amount: '',
             dependent_names: '',
@@ -2010,12 +2023,12 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
                                 </div>
                                 <div className="space-y-1">
                                     {getSelectedTenants().map(tenant => (
-                                        <div key={tenant.user_id} className="flex items-center justify-between text-sm">
-                                            <span className="text-gray-700">{formatTenantName(tenant)}</span>
+                                        <div key={tenant.user_id} className="flex items-center justify-between gap-2 text-sm">
+                                            <span className="text-gray-700 whitespace-normal break-words min-w-0">{formatTenantName(tenant)}</span>
                                             <button
                                                 type="button"
                                                 onClick={() => handleTenantSelection(tenant.user_id, false)}
-                                                className="text-red-600 hover:text-red-800"
+                                                className="text-red-600 hover:text-red-800 flex-shrink-0"
                                             >
                                                 Remove
                                             </button>
@@ -2066,17 +2079,9 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
                                 <div className="flex items-start justify-between gap-3 text-sm">
                                     <div className="min-w-0 space-y-0.5">
                                         {getSelectedUnit() ? (
-                                            <>
-                                                <div className="font-medium text-gray-900">
-                                                    {getSelectedUnit().properties?.property_name || 'Property'}
-                                                    <span className="text-gray-500 font-normal">
-                                                        {' '}· Unit {getSelectedUnit().unit_number ?? '—'}
-                                                    </span>
-                                                </div>
-                                                {formatUnitAddressMultiLine(getSelectedUnit()).slice(1).map((line, index) => (
-                                                    <div key={index} className="text-gray-600">{line}</div>
-                                                ))}
-                                            </>
+                                            <div className="font-medium text-gray-900 whitespace-normal break-words">
+                                                {formatUnitPickerLabel(getSelectedUnit())}
+                                            </div>
                                         ) : (
                                             <div className="font-medium text-gray-900">Unit ID {formData.unit_id}</div>
                                         )}
@@ -2654,17 +2659,9 @@ const EditLeaseModal = ({ lease, units, tenants, onClose, onUpdateSuccess }) => 
                                     <div className="flex items-start justify-between gap-3 text-sm">
                                         <div className="min-w-0 space-y-0.5">
                                             {getSelectedUnit() ? (
-                                                <>
-                                                    <div className="font-medium text-gray-900">
-                                                        {getSelectedUnit().properties?.property_name || 'Property'}
-                                                        <span className="text-gray-500 font-normal">
-                                                            {' '}· Unit {getSelectedUnit().unit_number ?? '—'}
-                                                        </span>
-                                                    </div>
-                                                    {formatUnitAddressMultiLine(getSelectedUnit()).slice(1).map((line, index) => (
-                                                        <div key={index} className="text-gray-600">{line}</div>
-                                                    ))}
-                                                </>
+                                                <div className="font-medium text-gray-900 whitespace-normal break-words">
+                                                    {formatUnitPickerLabel(getSelectedUnit())}
+                                                </div>
                                             ) : (
                                                 <div className="font-medium text-gray-900">Unit ID {formData.unit_id}</div>
                                             )}

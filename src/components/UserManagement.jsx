@@ -371,14 +371,14 @@ export default function UserManagement() {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Actions</th>
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('name')} className="flex items-center">Name {getSortIndicator('name')}</button>
                                 </th>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('contact')} className="flex items-center">Contact {getSortIndicator('contact')}</button>
                                 </th>
-                                <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                     <button onClick={() => requestSort('role')} className="flex items-center">Role / Scope {getSortIndicator('role')}</button>
                                 </th>
                             </tr>
@@ -394,7 +394,7 @@ export default function UserManagement() {
                                 }
                                 return displayedUsers.map(u => (
                                 <tr key={u.user_id}>
-                                    <td className="px-3 py-2 text-sm font-medium text-left whitespace-nowrap">
+                                    <td className="px-1.5 py-2 text-sm font-medium text-left whitespace-nowrap">
                                         <div className="flex items-center space-x-4">
                                             <div className="relative group" onMouseEnter={(e) => {
                                                 const tooltip = e.currentTarget.querySelector('.tooltip-content');
@@ -444,7 +444,7 @@ export default function UserManagement() {
                                             </button>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-2 whitespace-nowrap">
+                                    <td className="px-1.5 py-2 whitespace-nowrap">
                                         <div className="relative group inline-block" onMouseEnter={(e) => {
                                             const tooltip = e.currentTarget.querySelector('.tooltip-content');
                                             if (tooltip) {
@@ -469,7 +469,7 @@ export default function UserManagement() {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-2 text-sm whitespace-nowrap">
+                                    <td className="px-1.5 py-2 text-sm whitespace-nowrap">
                                         <div className="space-y-1">
                                             {u.email && (
                                                 <div className="font-medium text-gray-900">
@@ -491,7 +491,7 @@ export default function UserManagement() {
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-3 py-2 whitespace-nowrap">
+                                    <td className="px-1.5 py-2 whitespace-nowrap">
                                         <div className="font-medium text-gray-900 capitalize">{u.role.replace('_', ' ')}</div>
                                         <div className="text-sm text-gray-500">{u.company?.company_name || (isGlobalAdminUser(u) ? 'Global' : 'No Company')}</div>
                                         {u.role === 'manager' && (u.property_count !== undefined || u.unit_count !== undefined) && (
