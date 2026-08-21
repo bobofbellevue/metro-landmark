@@ -20,7 +20,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 
 | Item | Notes |
 |------|--------|
-| E5 Listing syndication | Operator **Listings** page for vacant units (no active/future lease, and no current tenant assignment without a lease). Asking rent, available date, description, and a **Listed** flag. XML (HotPads-like) and CSV export of vacancies for channel upload; Listed is not the export filter. Live Zillow/Apartments.com APIs are later. Without E11 subsidy flags, reserved units are not auto-excluded. |
+| E5 Listing syndication | Operator **Listings** page matches the other finder pages: **Add Listing** (Select Unit) on the left, **Listing Search** with Actions on the right. Vacant units only (no active/future lease, and no current tenant assignment without a lease). Asking rent, available date, description, and a **Listed** flag. Search filters include listed/unlisted, owner, PM, and PMC. XML and CSV export the current search results; Listed is a flag in the file, not the export filter. Live Zillow/Apartments.com APIs are later. Without E11 subsidy flags, reserved units are not auto-excluded. |
 | Compliance Center | Rent Increase, Lease Renewal, Eviction, Lease Termination, and Tenant Screening are operator-ready. Remaining catalog tiles are leftover stubs (E13–E17). |
 | Documents | Staff registry + type catalog exist; contextual panels incomplete across landlord/maintenance/portals |
 | Voice / chat maintenance | Works with Vapi/OpenAI when configured; numbers can be assigned per purpose (E3), with a shared env DID as fallback |

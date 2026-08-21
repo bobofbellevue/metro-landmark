@@ -1,9 +1,13 @@
 import {
   canEditListings,
   canViewListings,
+  filterListings,
   filterListingsBySearch,
+  formatListingLandlordName,
+  formatListingManagerName,
   isOccupiedLeaseStatus,
   lastRentByUnit,
+  listingAsPickerUnit,
   listingLabel,
   listingsToCsv,
   listingsToZillowXml,
@@ -11,6 +15,7 @@ import {
   missingListingsTable,
   occupiedUnitIds,
   parseAskingRent,
+  uniqueListingFilters,
   unitsAssignedWithoutLease,
   validateListingWrite,
   xmlEscape,
@@ -135,13 +140,79 @@ describe('listing helpers', () => {
     expect(missingListingsTable({ message: 'permission denied' })).toBe(false);
   });
 
-  test('filterListingsBySearch', async () => {
-    const { filterListingsBySearch } = await import('../../src/utils/listings.js');
+  test('filterListingsBySearch', () => {
     const rows = [
       { propertyName: 'Cedar Court', unitNumber: '4', city: 'Seattle' },
       { propertyName: 'Oak', unitNumber: '1', city: 'Tacoma' },
     ];
     expect(filterListingsBySearch(rows, 'cedar')).toHaveLength(1);
     expect(filterListingsBySearch(rows, 'TAC')).toHaveLength(1);
+  });
+
+  test('filterListings by listed, owner, PM, and PMC', () => {
+    const rows = [
+      {
+        propertyName: 'Cedar',
+        city: 'Seattle',
+        listed: false,
+        landlordId: 1,
+        landlordName: 'Kelly, Bob',
+        managerId: 8,
+        managerName: 'Pat Manager',
+        pmcId: 9,
+        pmcName: 'Metro PMC',
+      },
+      {
+        propertyName: 'Oak',
+        city: 'Tacoma',
+        listed: true,
+        landlordId: 2,
+        landlordName: 'Lee, Ann',
+        managerId: 8,
+        managerName: 'Pat Manager',
+        pmcId: 9,
+        pmcName: 'Metro PMC',
+      },
+      {
+        propertyName: 'Pine',
+        city: 'Seattle',
+        listed: false,
+        landlordId: 1,
+        landlordName: 'Kelly, Bob',
+        managerId: 12,
+        managerName: 'Sam Staff',
+        pmcId: 4,
+        pmcName: 'Other PMC',
+      },
+    ];
+    expect(filterListings(rows, { searchTerm: 'seattle', listed: 'unlisted' })).toHaveLength(2);
+    expect(
+      filterListings(rows, { searchTerm: 'seattle', listed: 'unlisted', landlordId: 1, managerId: 8 })
+    ).toEqual([rows[0]]);
+    expect(filterListings(rows, { pmcId: 4 })).toEqual([rows[2]]);
+    expect(filterListings(rows, { listed: 'listed' })).toEqual([rows[1]]);
+  });
+
+  test('uniqueListingFilters and name formatters', () => {
+    expect(formatListingLandlordName({ first_name: 'Bob', last_name: 'Kelly', middle_name: 'T' })).toBe(
+      'Kelly, Bob T.'
+    );
+    expect(formatListingManagerName({ first_name: 'Pat', last_name: 'Manager', middle_name: 'Ann' })).toBe(
+      'Pat A. Manager'
+    );
+    expect(formatListingLandlordName(null)).toBe('');
+    const filters = uniqueListingFilters([
+      { landlordId: 2, landlordName: 'Lee, Ann', pmcId: 9, pmcName: 'Metro PMC', managerId: 8, managerName: 'Pat Manager' },
+      { landlordId: 1, landlordName: 'Kelly, Bob', pmcId: 9, pmcName: 'Metro PMC', managerId: 12, managerName: 'Sam Staff' },
+      { landlordId: 1, landlordName: 'Kelly, Bob' },
+    ]);
+    expect(filters.landlords.map((item) => item.name)).toEqual(['Kelly, Bob', 'Lee, Ann']);
+    expect(filters.pmcs).toEqual([{ id: 9, name: 'Metro PMC' }]);
+    expect(filters.managers.map((item) => item.name)).toEqual(['Pat Manager', 'Sam Staff']);
+    expect(listingAsPickerUnit({ unitId: 21, unitNumber: '3B', propertyName: 'Pine Court' })).toMatchObject({
+      unit_id: 21,
+      unit_number: '3B',
+      properties: { property_name: 'Pine Court' },
+    });
   });
 });

@@ -497,11 +497,13 @@ export default function TenantsPage() {
         if (user) fetchData();
     }, [user, showArchived]);
 
-    const handleSuccess = () => {
+    const handleSuccess = (options = {}) => {
         setEditingTenant(null);
         setDeletingTenant(null);
-        setManagingUnitsFor(null);
-        fetchData(); // This will refresh the tenant list with current assignments
+        if (!options.keepAssignModal) {
+            setManagingUnitsFor(null);
+        }
+        fetchData();
     };
 
     const handleRestore = async (clientId) => {
@@ -2149,6 +2151,7 @@ const AssignUnitForm = ({ tenant, units, onAssignmentSuccess, onClose }) => {
 
             setShowDeleteConfirm(false);
             setFormError('');
+            onAssignmentSuccess?.({ keepAssignModal: true });
         } catch (err) {
             setFormError('Could not connect to server.');
         } finally {

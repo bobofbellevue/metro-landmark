@@ -177,6 +177,15 @@ app.put('/api/listings', async (req, res) => {
   }
 });
 
+app.delete('/api/listings', async (req, res) => {
+  try {
+    await listingsHandler(req, res);
+  } catch (error) {
+    console.error('Listings error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 app.get('/api/payment-catalog', async (req, res) => {
   try {
     await paymentCatalogHandler(req, res);

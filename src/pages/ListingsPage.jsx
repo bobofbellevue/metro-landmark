@@ -1,22 +1,25 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
-import { ArrowUpDown, Download, Search, X } from 'lucide-react';
+import { ArrowUpDown, Download, Home, Pencil, Search, Trash2, X } from 'lucide-react';
 import { AuthContext } from '../contexts';
 import { api } from '../api';
-import { Card } from '../components/ui';
+import { Card, ConfirmationModal } from '../components/ui';
 import CurrencyInput, { formatCurrencyDisplay } from '../components/CurrencyInput';
 import DateInput from '../components/DateInput';
+import UnitSelectionModal from '../components/UnitSelectionModal';
 import { useSortableData } from '../hooks';
 import { localeContextFromBrowser } from '../config/locale.js';
 import { formatWorkflowDateMMDDYYYY } from '../utils/workflow-date.js';
 import {
   canEditListings,
-  filterListingsBySearch,
+  filterListings,
+  listingAsPickerUnit,
   listingLabel,
   listingStreet,
+  listingsToCsv,
+  listingsToZillowXml,
+  uniqueListingFilters,
 } from '../utils/listings.js';
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000/api');
+import { formatUnitPickerLabel } from '../utils/unit-display.js';
 
 function emptyForm() {
   return {
@@ -39,6 +42,18 @@ function formFromRow(row) {
   };
 }
 
+function downloadText(filename, text, mime) {
+  const blob = new Blob([text], { type: mime });
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = downloadUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(downloadUrl);
+  document.body.removeChild(a);
+}
+
 export default function ListingsPage() {
   const { user } = useContext(AuthContext);
   const locale = localeContextFromBrowser();
@@ -50,8 +65,13 @@ export default function ListingsPage() {
   const [formError, setFormError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [listedFilter, setListedFilter] = useState('all');
+  const [landlordFilter, setLandlordFilter] = useState('');
+  const [pmcFilter, setPmcFilter] = useState('');
+  const [managerFilter, setManagerFilter] = useState('');
   const [form, setForm] = useState(emptyForm);
-  const [selectedUnitId, setSelectedUnitId] = useState(null);
+  const [editingUnitId, setEditingUnitId] = useState(null);
+  const [showUnitModal, setShowUnitModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const canEdit = canEditListings(user?.role);
 
@@ -80,16 +100,24 @@ export default function ListingsPage() {
   }, [user?.user_id]);
 
   const selected = useMemo(
-    () => listings.find((row) => Number(row.unitId) === Number(selectedUnitId)) || null,
-    [listings, selectedUnitId]
+    () => listings.find((row) => Number(row.unitId) === Number(form.unitId)) || null,
+    [listings, form.unitId]
   );
 
-  const filtered = useMemo(() => {
-    const searched = filterListingsBySearch(listings, searchTerm);
-    if (listedFilter === 'listed') return searched.filter((row) => row.listed);
-    if (listedFilter === 'unlisted') return searched.filter((row) => !row.listed);
-    return searched;
-  }, [listings, searchTerm, listedFilter]);
+  const pickerUnits = useMemo(() => listings.map(listingAsPickerUnit), [listings]);
+  const filters = useMemo(() => uniqueListingFilters(listings), [listings]);
+
+  const filtered = useMemo(
+    () =>
+      filterListings(listings, {
+        searchTerm,
+        listed: listedFilter,
+        landlordId: landlordFilter,
+        pmcId: pmcFilter,
+        managerId: managerFilter,
+      }),
+    [listings, searchTerm, listedFilter, landlordFilter, pmcFilter, managerFilter]
+  );
 
   const sortable = useMemo(
     () =>
@@ -107,18 +135,18 @@ export default function ListingsPage() {
   });
 
   const listedCount = listings.filter((row) => row.listed).length;
+  const filtersActive =
+    Boolean(searchTerm) ||
+    listedFilter !== 'all' ||
+    landlordFilter !== '' ||
+    pmcFilter !== '' ||
+    managerFilter !== '';
 
   const getSortIndicator = (name) => {
     if (!sortConfig || sortConfig.key !== name) {
       return <ArrowUpDown size={14} className="ml-2 text-gray-400" />;
     }
     return sortConfig.direction === 'ascending' ? ' 🔼' : ' 🔽';
-  };
-
-  const selectRow = (row) => {
-    setSelectedUnitId(row.unitId);
-    setForm(formFromRow(row));
-    setFormError('');
   };
 
   const saveListing = async (payload) => {
@@ -131,13 +159,6 @@ export default function ListingsPage() {
         return false;
       }
       setListings(data.listings || []);
-      const updated = (data.listings || []).find(
-        (row) => Number(row.unitId) === Number(payload.unitId)
-      );
-      if (updated) {
-        setSelectedUnitId(updated.unitId);
-        setForm(formFromRow(updated));
-      }
       return true;
     } catch {
       setFormError('Could not save listing.');
@@ -150,55 +171,61 @@ export default function ListingsPage() {
   const handleSave = async (event) => {
     event.preventDefault();
     if (!canEdit || !form.unitId) return;
-    await saveListing({
+    const ok = await saveListing({
       unitId: form.unitId,
       listed: form.listed,
       askingRent: form.askingRent,
       availableOn: form.availableOn || null,
       description: form.description,
     });
-  };
-
-  const handleToggleListed = async (row, listed) => {
-    if (!canEdit) return;
-    if (listed && row.askingRent == null && row.lastRent == null) {
-      selectRow(row);
-      setForm((prev) => ({ ...prev, listed: true }));
-      setFormError('Asking rent is required to list a vacancy.');
-      return;
+    if (ok) {
+      setForm(emptyForm());
+      setEditingUnitId(null);
     }
-    await saveListing({
-      unitId: row.unitId,
-      listed,
-      askingRent: row.askingRent ?? row.lastRent,
-      availableOn: row.availableOn || null,
-      description: row.description,
-    });
   };
 
-  const handleExport = async (format) => {
+  const handleEdit = (row) => {
+    setEditingUnitId(row.unitId);
+    setForm(formFromRow(row));
+    setFormError('');
+  };
+
+  const handleDelete = async () => {
+    if (!canEdit || !deleteTarget) return;
+    setSaving(true);
+    setError('');
+    try {
+      const data = await api.delete(`/listings?unitId=${deleteTarget.unitId}`, user);
+      if (!data?.success) {
+        setError(data?.error || 'Could not delete listing.');
+        return;
+      }
+      setListings(data.listings || []);
+      if (Number(form.unitId) === Number(deleteTarget.unitId)) {
+        setForm(emptyForm());
+        setEditingUnitId(null);
+      }
+      setDeleteTarget(null);
+    } catch {
+      setError('Could not delete listing.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleExport = (format) => {
     setExporting(format);
     setError('');
     try {
-      const response = await fetch(`${API_BASE_URL}/listings?format=${format}`, {
-        headers: {
-          'x-user-id': user?.user_id,
-          'x-user-role': user?.role,
-        },
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.error || 'Export failed');
+      if (format === 'csv') {
+        downloadText('listings.csv', listingsToCsv(filtered), 'text/csv;charset=utf-8');
+      } else {
+        downloadText(
+          'listings.xml',
+          listingsToZillowXml(filtered),
+          'application/xml;charset=utf-8'
+        );
       }
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `listings.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(a);
     } catch (err) {
       setError(err.message || 'Export failed');
     } finally {
@@ -207,10 +234,21 @@ export default function ListingsPage() {
   };
 
   const handleClear = () => {
-    setSelectedUnitId(null);
     setForm(emptyForm());
+    setEditingUnitId(null);
     setFormError('');
   };
+
+  const handleUnitSelect = (unitId) => {
+    const row = listings.find((item) => Number(item.unitId) === Number(unitId));
+    if (!row) return;
+    setEditingUnitId(row.hasListing ? row.unitId : null);
+    setForm(formFromRow(row));
+    setFormError('');
+  };
+
+  const selectedPickerUnit = selected ? listingAsPickerUnit(selected) : null;
+  const isEditing = editingUnitId != null;
 
   return (
     <div className="finder-page">
@@ -225,87 +263,100 @@ export default function ListingsPage() {
             <form onSubmit={handleSave} className="flex min-h-0 flex-col h-full">
               <div className="flex items-start justify-between pb-4 mb-4 border-b">
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {selected ? listingLabel(selected) : 'Vacancy'}
+                  {isEditing ? 'Edit Listing' : 'Add Listing'}
                 </h2>
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
-                {!selected ? (
-                  <p className="text-sm text-gray-500">Select a unit from the Vacancy Search list.</p>
-                ) : (
-                  <>
-                    <div>
-                      <div className="text-sm text-gray-800">{selected.propertyName || '—'}</div>
-                      {listingStreet(selected) ? (
-                        <div className="finder-secondary text-gray-500">
-                          {listingStreet(selected)}
-                          {selected.city
-                            ? `, ${selected.city}${selected.state ? ` ${selected.state}` : ''}`
-                            : ''}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Select Unit</label>
+                  <div className="mt-2">
+                    {selected ? (
+                      <div className="border border-gray-300 bg-gray-50 rounded-md p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700">
+                            {formatUnitPickerLabel(selectedPickerUnit)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowUnitModal(true)}
+                            className="text-sm text-indigo-600 hover:text-indigo-800"
+                          >
+                            Change Selection
+                          </button>
                         </div>
-                      ) : null}
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 text-sm">
-                      <div>
-                        <div className="text-gray-500">Beds</div>
-                        <div>{selected.beds ?? '—'}</div>
+                        {listingStreet(selected) ? (
+                          <div className="finder-secondary text-gray-500">
+                            {listingStreet(selected)}
+                            {selected.city
+                              ? `, ${selected.city}${selected.state ? ` ${selected.state}` : ''}`
+                              : ''}
+                          </div>
+                        ) : null}
+                        <div className="grid grid-cols-3 gap-3 text-sm mt-3">
+                          <div>
+                            <div className="text-gray-500">Beds</div>
+                            <div>{selected.beds ?? '—'}</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-500">Baths</div>
+                            <div>{selected.baths ?? '—'}</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-500">Sq ft</div>
+                            <div>{selected.squareFootage ?? '—'}</div>
+                          </div>
+                        </div>
+                        <div className="text-sm mt-3">
+                          <div className="text-gray-500">Last rent</div>
+                          <div>
+                            {selected.lastRent != null
+                              ? formatCurrencyDisplay(selected.lastRent, locale)
+                              : '—'}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-gray-500">Baths</div>
-                        <div>{selected.baths ?? '—'}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500">Sq ft</div>
-                        <div>{selected.squareFootage ?? '—'}</div>
-                      </div>
-                    </div>
-                    <div className="text-sm">
-                      <div className="text-gray-500">Last rent</div>
-                      <div>
-                        {selected.lastRent != null
-                          ? formatCurrencyDisplay(selected.lastRent, locale)
-                          : '—'}
-                      </div>
-                    </div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={form.listed}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, listed: e.target.checked }))
-                        }
-                        disabled={saving}
-                      />
-                      Listed
-                    </label>
-                    <CurrencyInput
-                      label="Asking rent"
-                      required={form.listed}
-                      value={form.askingRent}
-                      onChange={(value) => setForm((prev) => ({ ...prev, askingRent: value }))}
-                    />
-                    <DateInput
-                      label="Available"
-                      value={form.availableOn}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, availableOn: e.target.value }))
-                      }
-                    />
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Description
-                      </label>
-                      <textarea
-                        value={form.description}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, description: e.target.value }))
-                        }
-                        rows={4}
-                        maxLength={2000}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      />
-                    </div>
-                  </>
-                )}
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowUnitModal(true)}
+                        className="w-full border-2 border-dashed border-gray-300 rounded-md p-4 text-center hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
+                      >
+                        <Home className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                        <span className="text-sm text-gray-600">Select Unit</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={form.listed}
+                    onChange={(e) => setForm((prev) => ({ ...prev, listed: e.target.checked }))}
+                    disabled={saving || !form.unitId}
+                  />
+                  Listed
+                </label>
+                <CurrencyInput
+                  label="Asking rent"
+                  required={form.listed}
+                  value={form.askingRent}
+                  onChange={(value) => setForm((prev) => ({ ...prev, askingRent: value }))}
+                />
+                <DateInput
+                  label="Available"
+                  value={form.availableOn}
+                  onChange={(e) => setForm((prev) => ({ ...prev, availableOn: e.target.value }))}
+                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Description</label>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                    rows={4}
+                    maxLength={2000}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
               </div>
               <div className="pt-4 mt-4 border-t flex flex-col gap-3 flex-shrink-0">
                 {formError && (
@@ -324,7 +375,7 @@ export default function ListingsPage() {
                     disabled={saving || !form.unitId}
                     className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 disabled:opacity-50"
                   >
-                    {saving ? 'Saving…' : 'Save'}
+                    {saving ? 'Saving…' : isEditing ? 'Save Listing' : 'Add Listing'}
                   </button>
                 </div>
               </div>
@@ -333,14 +384,14 @@ export default function ListingsPage() {
         )}
 
         <Card
-          title="Vacancy Search"
+          title="Listing Search"
           className="max-h-[calc(100vh-160px)] min-h-0 lg:max-h-none"
           contentClassName="flex min-h-0 flex-col h-full"
         >
           <div className="flex min-h-0 flex-col h-full">
             <div className="mb-4 flex-shrink-0">
               <div className="flex items-center gap-4 mb-2 flex-wrap">
-                <div className="relative flex-1">
+                <div className="relative flex-1 min-w-[12rem]">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Search className="h-5 w-5 text-gray-400" />
                   </div>
@@ -348,7 +399,7 @@ export default function ListingsPage() {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search property, unit, address…"
+                    placeholder="Search property, unit, address, owner…"
                     className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
                   {searchTerm && (
@@ -371,6 +422,42 @@ export default function ListingsPage() {
                   <option value="listed">Listed</option>
                   <option value="unlisted">Unlisted</option>
                 </select>
+                <select
+                  value={landlordFilter}
+                  onChange={(e) => setLandlordFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm"
+                >
+                  <option value="">All owners</option>
+                  {filters.landlords.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={managerFilter}
+                  onChange={(e) => setManagerFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm"
+                >
+                  <option value="">All PMs</option>
+                  {filters.managers.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={pmcFilter}
+                  onChange={(e) => setPmcFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm"
+                >
+                  <option value="">All PMCs</option>
+                  {filters.pmcs.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={() => handleExport('xml')}
@@ -391,7 +478,7 @@ export default function ListingsPage() {
                 </button>
               </div>
               <div className="mt-2 text-sm text-gray-600">
-                {searchTerm || listedFilter !== 'all' ? (
+                {filtersActive ? (
                   visible.length === 0 ? (
                     <span className="text-red-600">No vacancies match these filters.</span>
                   ) : (
@@ -418,13 +505,22 @@ export default function ListingsPage() {
             {loading ? (
               <p className="text-sm text-gray-500">Loading vacancies…</p>
             ) : visible.length === 0 ? (
-              <p className="text-sm text-gray-500">No vacancies match these filters.</p>
+              <p className="text-sm text-gray-500">
+                {listings.length === 0
+                  ? 'No vacant units.'
+                  : 'No vacancies match these filters.'}
+              </p>
             ) : (
               <div className="flex-1 min-h-0 overflow-hidden rounded-lg border border-gray-200">
                 <div className="overflow-auto h-full min-h-0 max-w-full">
-                  <table className="finder-list w-max divide-y divide-gray-200">
+                  <table className="finder-list w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
+                        {canEdit && (
+                          <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                            Actions
+                          </th>
+                        )}
                         <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button
                             type="button"
@@ -464,6 +560,33 @@ export default function ListingsPage() {
                         <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
                           <button
                             type="button"
+                            onClick={() => requestSort('landlordName')}
+                            className="flex items-center"
+                          >
+                            Owner {getSortIndicator('landlordName')}
+                          </button>
+                        </th>
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => requestSort('managerName')}
+                            className="flex items-center"
+                          >
+                            PM {getSortIndicator('managerName')}
+                          </button>
+                        </th>
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => requestSort('pmcName')}
+                            className="flex items-center"
+                          >
+                            PMC {getSortIndicator('pmcName')}
+                          </button>
+                        </th>
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                          <button
+                            type="button"
                             onClick={() => requestSort('askingRent')}
                             className="flex items-center"
                           >
@@ -488,76 +611,80 @@ export default function ListingsPage() {
                             Available {getSortIndicator('availableOn')}
                           </button>
                         </th>
-                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => requestSort('beds')}
-                            className="flex items-center"
-                          >
-                            Beds {getSortIndicator('beds')}
-                          </button>
-                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {visible.map((row) => {
-                        const isSelected = Number(row.unitId) === Number(selectedUnitId);
-                        return (
-                          <tr
-                            key={row.unitId}
-                            className={`align-top cursor-pointer ${isSelected ? 'bg-indigo-50' : ''}`}
-                            onClick={() => canEdit && selectRow(row)}
-                          >
+                      {visible.map((row) => (
+                        <tr key={row.unitId} className="align-top">
+                          {canEdit && (
                             <td className="px-1.5 py-2 text-left whitespace-nowrap">
-                              {canEdit ? (
-                                <input
-                                  type="checkbox"
-                                  checked={Boolean(row.listed)}
+                              <div className="flex items-center space-x-3">
+                                <button
+                                  type="button"
                                   disabled={saving}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onChange={(e) => handleToggleListed(row, e.target.checked)}
-                                />
-                              ) : row.listed ? (
-                                'Yes'
-                              ) : (
-                                'No'
-                              )}
+                                  onClick={() => handleEdit(row)}
+                                  className="text-indigo-600 hover:text-indigo-900"
+                                  title="Edit Listing"
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                                {row.hasListing && (
+                                  <button
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={() => setDeleteTarget(row)}
+                                    className="text-red-600 hover:text-red-800"
+                                    title="Delete Listing"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </div>
                             </td>
-                            <td className="px-1.5 py-2 text-left whitespace-nowrap">
-                              {row.propertyName || '—'}
-                            </td>
-                            <td className="px-1.5 py-2 text-left whitespace-nowrap">
-                              {row.unitNumber || '—'}
-                            </td>
-                            <td className="px-1.5 py-2 text-left whitespace-nowrap">
-                              <div>{row.street || '—'}</div>
-                              {row.city ? (
-                                <div className="finder-secondary text-gray-500">
-                                  {row.city}
-                                  {row.state ? ` ${row.state}` : ''}
-                                  {row.postalCode ? ` ${row.postalCode}` : ''}
-                                </div>
-                              ) : null}
-                            </td>
-                            <td className="px-1.5 py-2 text-left whitespace-nowrap">
-                              {row.askingRent != null
-                                ? formatCurrencyDisplay(row.askingRent, locale)
-                                : '—'}
-                            </td>
-                            <td className="px-1.5 py-2 text-left whitespace-nowrap">
-                              {row.lastRent != null
-                                ? formatCurrencyDisplay(row.lastRent, locale)
-                                : '—'}
-                            </td>
-                            <td className="px-1.5 py-2 text-left whitespace-nowrap">
-                              {formatWorkflowDateMMDDYYYY(row.availableOn) || '—'}
-                            </td>
-                            <td className="px-1.5 py-2 text-left whitespace-nowrap">
-                              {row.beds ?? '—'}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                          )}
+                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                            {row.listed ? 'Yes' : 'No'}
+                          </td>
+                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                            {row.propertyName || '—'}
+                          </td>
+                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                            {row.unitNumber || '—'}
+                          </td>
+                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                            <div>{row.street || '—'}</div>
+                            {row.city ? (
+                              <div className="finder-secondary text-gray-500">
+                                {row.city}
+                                {row.state ? ` ${row.state}` : ''}
+                                {row.postalCode ? ` ${row.postalCode}` : ''}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                            {row.landlordName || '—'}
+                          </td>
+                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                            {row.managerName || '—'}
+                          </td>
+                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                            {row.pmcName || '—'}
+                          </td>
+                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                            {row.askingRent != null
+                              ? formatCurrencyDisplay(row.askingRent, locale)
+                              : '—'}
+                          </td>
+                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                            {row.lastRent != null
+                              ? formatCurrencyDisplay(row.lastRent, locale)
+                              : '—'}
+                          </td>
+                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                            {formatWorkflowDateMMDDYYYY(row.availableOn) || '—'}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -566,6 +693,30 @@ export default function ListingsPage() {
           </div>
         </Card>
       </div>
+
+      <UnitSelectionModal
+        isOpen={showUnitModal}
+        onClose={() => setShowUnitModal(false)}
+        units={pickerUnits}
+        selectedUnitId={form.unitId}
+        onUnitSelect={handleUnitSelect}
+        title="Select Unit"
+        emptyMessage="No vacant units available."
+      />
+      <ConfirmationModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete Listing"
+        message={
+          deleteTarget
+            ? `Remove the listing for ${listingLabel(deleteTarget)}?`
+            : ''
+        }
+        confirmText="Delete"
+        isDestructive
+        isLoading={saving}
+      />
     </div>
   );
 }

@@ -230,6 +230,29 @@ export function listingsToCsv(rows = []) {
   return `${lines.join('\n')}\n`;
 }
 
+export function formatListingLandlordName(contact) {
+  if (!contact) return '';
+  const first = contact.first_name || '';
+  const last = contact.last_name || '';
+  if (!first && !last) return '';
+  const middle = contact.middle_name ? ` ${String(contact.middle_name).charAt(0)}.` : '';
+  return `${last}, ${first}${middle}`.replace(/\s+/g, ' ').trim();
+}
+
+export function formatListingManagerName(contact) {
+  if (!contact) return '';
+  const first = contact.first_name || '';
+  const last = contact.last_name || '';
+  if (!first && !last) return '';
+  let middle = '';
+  if (contact.middle_name) {
+    const middleName = String(contact.middle_name).trim();
+    if (middleName.length === 1) middle = ` ${middleName}.`;
+    else if (middleName.length > 1) middle = ` ${middleName.charAt(0)}.`;
+  }
+  return `${first}${middle} ${last}`.replace(/\s+/g, ' ').trim();
+}
+
 export function publicListing(row) {
   return {
     unitId: row.unitId,
@@ -250,6 +273,13 @@ export function publicListing(row) {
     availableOn: row.availableOn || null,
     description: row.description || '',
     listed: Boolean(row.listed),
+    hasListing: Boolean(row.hasListing ?? row.listingId),
+    landlordId: row.landlordId ?? null,
+    landlordName: row.landlordName || '',
+    pmcId: row.pmcId ?? null,
+    pmcName: row.pmcName || '',
+    managerId: row.managerId ?? null,
+    managerName: row.managerName || '',
   };
 }
 
@@ -265,12 +295,72 @@ export function filterListingsBySearch(rows, searchTerm) {
       row.state,
       row.postalCode,
       row.description,
+      row.landlordName,
+      row.pmcName,
+      row.managerName,
     ]
       .filter(Boolean)
       .join(' ')
       .toLowerCase();
     return hay.includes(q);
   });
+}
+
+export function filterListings(
+  rows,
+  { searchTerm = '', listed = 'all', landlordId = '', pmcId = '', managerId = '' } = {}
+) {
+  let next = filterListingsBySearch(rows, searchTerm);
+  if (listed === 'listed') next = next.filter((row) => row.listed);
+  if (listed === 'unlisted') next = next.filter((row) => !row.listed);
+  if (landlordId !== '' && landlordId != null) {
+    next = next.filter((row) => Number(row.landlordId) === Number(landlordId));
+  }
+  if (pmcId !== '' && pmcId != null) {
+    next = next.filter((row) => Number(row.pmcId) === Number(pmcId));
+  }
+  if (managerId !== '' && managerId != null) {
+    next = next.filter((row) => Number(row.managerId) === Number(managerId));
+  }
+  return next;
+}
+
+export function uniqueListingFilters(rows = []) {
+  const landlords = new Map();
+  const pmcs = new Map();
+  const managers = new Map();
+  for (const row of rows) {
+    if (row.landlordId && row.landlordName) {
+      landlords.set(Number(row.landlordId), row.landlordName);
+    }
+    if (row.pmcId && row.pmcName) {
+      pmcs.set(Number(row.pmcId), row.pmcName);
+    }
+    if (row.managerId && row.managerName) {
+      managers.set(Number(row.managerId), row.managerName);
+    }
+  }
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  return {
+    landlords: [...landlords.entries()].map(([id, name]) => ({ id, name })).sort(byName),
+    pmcs: [...pmcs.entries()].map(([id, name]) => ({ id, name })).sort(byName),
+    managers: [...managers.entries()].map(([id, name]) => ({ id, name })).sort(byName),
+  };
+}
+
+export function listingAsPickerUnit(row) {
+  return {
+    unit_id: row.unitId,
+    unit_number: row.unitNumber,
+    properties: { property_name: row.propertyName },
+    property_address: {
+      address_line_1: row.addressLine1,
+      address_line_2: row.addressLine2,
+      city: row.city,
+      state_province_region: row.state,
+      postal_code: row.postalCode,
+    },
+  };
 }
 
 export function missingListingsTable(error) {

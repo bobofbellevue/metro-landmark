@@ -16,6 +16,8 @@ import {
   canEditListings,
   canViewListings,
   filterListingsBySearch,
+  formatListingLandlordName,
+  formatListingManagerName,
   lastRentByUnit,
   listingsToCsv,
   listingsToZillowXml,
@@ -71,7 +73,7 @@ async function loadVacancies(supabase, user) {
 
   let propertyQuery = supabase
     .from('properties')
-    .select('property_id, property_name, property_type, pmc_id, landlord_id')
+    .select('property_id, property_name, property_type, pmc_id, landlord_id, manager_id')
     .eq('is_archived', false);
   if (user.role === 'landlord') {
     propertyQuery = propertyQuery.eq('landlord_id', landlordId);
@@ -142,6 +144,49 @@ async function loadVacancies(supabase, user) {
     (addresses || []).map((row) => [Number(row.addressable_id), row])
   );
 
+  const landlordIds = [
+    ...new Set(propertyList.map((p) => p.landlord_id).filter(Boolean)),
+  ];
+  const pmcIds = [...new Set(propertyList.map((p) => p.pmc_id).filter(Boolean))];
+  const managerIds = [
+    ...new Set(propertyList.map((p) => p.manager_id).filter(Boolean)),
+  ];
+
+  const landlordNames = new Map();
+  if (landlordIds.length > 0) {
+    const { data: landlordContacts } = await supabase
+      .from('contacts')
+      .select('contactable_id, first_name, middle_name, last_name')
+      .eq('contactable_type', 'landlord')
+      .in('contactable_id', landlordIds);
+    for (const contact of landlordContacts || []) {
+      landlordNames.set(Number(contact.contactable_id), formatListingLandlordName(contact));
+    }
+  }
+
+  const pmcNames = new Map();
+  if (pmcIds.length > 0) {
+    const { data: companies } = await supabase
+      .from('pm_companies')
+      .select('pmc_id, company_name')
+      .in('pmc_id', pmcIds);
+    for (const company of companies || []) {
+      pmcNames.set(Number(company.pmc_id), company.company_name || '');
+    }
+  }
+
+  const managerNames = new Map();
+  if (managerIds.length > 0) {
+    const { data: managerContacts } = await supabase
+      .from('contacts')
+      .select('contactable_id, first_name, middle_name, last_name')
+      .eq('contactable_type', 'user')
+      .in('contactable_id', managerIds);
+    for (const contact of managerContacts || []) {
+      managerNames.set(Number(contact.contactable_id), formatListingManagerName(contact));
+    }
+  }
+
   return vacantUnits.map((unit) => {
     const property = propertyById.get(unit.property_id) || {};
     const address = addressByProperty.get(Number(unit.property_id)) || {};
@@ -166,6 +211,13 @@ async function loadVacancies(supabase, user) {
       availableOn: listing.available_on || null,
       description: listing.description || '',
       listed: Boolean(listing.listed),
+      hasListing: Boolean(listing.listing_id),
+      landlordId: property.landlord_id ?? null,
+      landlordName: landlordNames.get(Number(property.landlord_id)) || '',
+      pmcId: property.pmc_id ?? null,
+      pmcName: pmcNames.get(Number(property.pmc_id)) || '',
+      managerId: property.manager_id ?? null,
+      managerName: managerNames.get(Number(property.manager_id)) || '',
     });
   });
 }
@@ -184,7 +236,7 @@ function sendFeed(res, format, rows) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
     'Content-Type, Authorization, x-user-id, x-user-role'
@@ -196,7 +248,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!['GET', 'PUT'].includes(req.method)) {
+  if (!['GET', 'PUT', 'DELETE'].includes(req.method)) {
     res.status(405).json({ success: false, error: 'Method not allowed' });
     return;
   }
@@ -246,6 +298,33 @@ export default async function handler(req, res) {
 
     if (!canEditListings(user.role)) {
       res.status(403).json({ success: false, error: 'Not allowed.' });
+      return;
+    }
+
+    if (req.method === 'DELETE') {
+      const vacancies = await loadVacancies(supabase, user);
+      const unitId = Number(
+        req.query?.unitId ?? req.query?.unit_id ?? req.body?.unitId ?? req.body?.unit_id
+      );
+      const vacancy = vacancies.find((row) => Number(row.unitId) === unitId);
+      if (!vacancy) {
+        res.status(400).json({ success: false, error: 'That unit is not a vacancy you can list.' });
+        return;
+      }
+      const { error: deleteError } = await supabase.from('listings').delete().eq('unit_id', unitId);
+      if (deleteError && !missingListingsTable(deleteError)) {
+        res.status(500).json({
+          success: false,
+          error: deleteError.message || 'Could not delete listing.',
+        });
+        return;
+      }
+      const updated = await loadVacancies(supabase, user);
+      res.status(200).json({
+        success: true,
+        listings: updated,
+        canEdit: true,
+      });
       return;
     }
 

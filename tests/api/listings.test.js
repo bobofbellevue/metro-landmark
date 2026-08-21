@@ -42,6 +42,8 @@ function primaryKey(table) {
   if (table === 'landlords') return 'landlord_id';
   if (table === 'addresses') return 'address_id';
   if (table === 'client_units') return 'client_unit_id';
+  if (table === 'pm_companies') return 'pmc_id';
+  if (table === 'contacts') return 'contact_id';
   return 'id';
 }
 
@@ -50,6 +52,7 @@ function createQuery(db, table) {
     filters: [],
     insertRow: null,
     patch: null,
+    deleting: false,
   };
 
   const query = {
@@ -64,6 +67,10 @@ function createQuery(db, table) {
     },
     insert: (row) => {
       state.insertRow = row;
+      return query;
+    },
+    delete: () => {
+      state.deleting = true;
       return query;
     },
     update: (patch) => {
@@ -91,6 +98,11 @@ function createQuery(db, table) {
       rows.push(created);
       return { data: created, error: null };
     }
+    if (state.deleting) {
+      const remaining = rows.filter((row) => !state.filters.every((fn) => fn(row)));
+      db[table].splice(0, db[table].length, ...remaining);
+      return { data: remaining, error: db.tableErrors?.[table] || null };
+    }
     const matched = rows.filter((row) => state.filters.every((fn) => fn(row)));
     if (state.patch) {
       matched.forEach((row) => Object.assign(row, state.patch));
@@ -110,6 +122,8 @@ const db = {
   listings: [],
   addresses: [],
   client_units: [],
+  contacts: [],
+  pm_companies: [],
   tableErrors: {},
 };
 
@@ -130,6 +144,8 @@ function seedBase() {
   db.listings.splice(0, db.listings.length);
   db.addresses.splice(0, db.addresses.length);
   db.client_units.splice(0, db.client_units.length);
+  db.contacts.splice(0, db.contacts.length);
+  db.pm_companies.splice(0, db.pm_companies.length);
   db.tableErrors = {};
 
   db.users.push(
@@ -148,6 +164,7 @@ function seedBase() {
       property_type: 'Apartment',
       pmc_id: 9,
       landlord_id: 1,
+      manager_id: 2,
       is_archived: false,
     },
     {
@@ -156,6 +173,7 @@ function seedBase() {
       property_type: 'House',
       pmc_id: 8,
       landlord_id: 2,
+      manager_id: 5,
       is_archived: false,
     }
   );
@@ -251,6 +269,23 @@ function seedBase() {
     state_province_region: 'WA',
     postal_code: '98101',
   });
+  db.contacts.push(
+    {
+      contact_id: 1,
+      contactable_type: 'landlord',
+      contactable_id: 1,
+      first_name: 'Bob',
+      last_name: 'Kelly',
+    },
+    {
+      contact_id: 2,
+      contactable_type: 'user',
+      contactable_id: 2,
+      first_name: 'Pat',
+      last_name: 'Manager',
+    }
+  );
+  db.pm_companies.push({ pmc_id: 9, company_name: 'Metro PMC' }, { pmc_id: 8, company_name: 'Other PMC' });
 }
 
 describe('api/listings', () => {
@@ -290,6 +325,9 @@ describe('api/listings', () => {
       city: 'Seattle',
       lastRent: 1600,
       listed: false,
+      landlordName: 'Kelly, Bob',
+      managerName: 'Pat Manager',
+      pmcName: 'Metro PMC',
     });
   });
 
@@ -419,5 +457,45 @@ describe('api/listings', () => {
     const otherPmc = createRes();
     await handler({ method: 'GET', headers: { 'x-user-id': '5' }, query: {} }, otherPmc);
     expect(otherPmc.jsonData.listings.map((row) => row.unitId)).toEqual([40]);
+  });
+
+  test('DELETE removes a listing row and leaves the vacancy unlisted', async () => {
+    db.listings.push({
+      listing_id: 7,
+      unit_id: 21,
+      listed: true,
+      asking_rent: 1725,
+      available_on: '2026-09-01',
+      description: 'Corner unit',
+    });
+
+    const res = createRes();
+    await handler(
+      { method: 'DELETE', headers: { 'x-user-id': '1' }, query: { unitId: 21 } },
+      res
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.jsonData.success).toBe(true);
+    expect(db.listings).toHaveLength(0);
+    expect(res.jsonData.listings.find((row) => row.unitId === 21)).toMatchObject({
+      listed: false,
+      hasListing: false,
+    });
+  });
+
+  test('staff cannot delete listings', async () => {
+    db.listings.push({
+      listing_id: 7,
+      unit_id: 21,
+      listed: true,
+      asking_rent: 1725,
+    });
+    const res = createRes();
+    await handler(
+      { method: 'DELETE', headers: { 'x-user-id': '4' }, query: { unitId: 21 } },
+      res
+    );
+    expect(res.statusCode).toBe(403);
+    expect(db.listings).toHaveLength(1);
   });
 });
