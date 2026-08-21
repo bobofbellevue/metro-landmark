@@ -17,11 +17,11 @@ export default function TenantLayout({ children }) {
 
   return (
     <SidebarContext.Provider value={{ expanded, mobileOpen, toggleSidebar, activePage, setActivePage }}>
-      <div className="flex h-screen bg-gray-100 overflow-hidden">
+      <div className="flex h-full max-h-full bg-gray-100 overflow-hidden">
         <TenantSidebar />
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
           <TenantHeader />
-          <main className="app-main flex flex-col flex-1 min-w-0 min-h-0 p-2 overflow-y-auto overflow-x-hidden md:p-3 lg:p-4">{children}</main>
+          <main className="app-main flex flex-col flex-1 min-w-0 min-h-0 p-2 md:p-3 lg:p-4">{children}</main>
         </div>
       </div>
     </SidebarContext.Provider>
@@ -97,7 +97,7 @@ function TenantHeader() {
   };
   
   return (
-    <header className="flex items-center justify-between p-4 bg-white border-b md:justify-end">
+    <header className="flex items-center justify-between p-4 bg-white border-b shrink-0 md:justify-end">
       <button onClick={toggleSidebar} className="p-2 text-gray-500 rounded-lg md:hidden hover:bg-gray-100"><Menu /></button>
       <div className="flex items-center">
         <UserCircle className="w-8 h-8 text-gray-600"/>

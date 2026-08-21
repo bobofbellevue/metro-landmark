@@ -41,9 +41,11 @@ html,
 body,
 #root {
   height: 100%;
+  max-height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
+  overflow: hidden;
 }
 
 /*
@@ -66,7 +68,8 @@ body,
     grid-template-rows: minmax(0, 1fr);
   }
 }
-.finder-split > * {
+.finder-split > *,
+.finder-fill > * {
   min-width: 0;
   min-height: 0;
 }
@@ -79,19 +82,22 @@ body,
 }
 
 /*
-  Finder pages fill main so Add/Search cards get a real height. Inner tables
-  scroll inside the card; main does not grow a page scrollbar.
+  Finder pages fill main. Overflow stays inside the cards so the document
+  and the header column do not grow a window scrollbar.
 */
 .app-main {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .finder-page {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
   min-width: 0;
+  min-height: 0;
 }
 .finder-page > :not(.finder-split):not(.finder-fill) {
   flex-shrink: 0;
@@ -99,17 +105,13 @@ body,
 @media (min-width: 1024px) {
   .finder-page {
     flex: 1 1 0%;
-    min-height: 0;
+    overflow: hidden;
   }
   .finder-page > .finder-split,
   .finder-page > .finder-fill {
     flex: 1 1 0%;
     min-height: 0;
-  }
-  .finder-split > *,
-  .finder-fill > * {
-    height: 100%;
-    min-height: 0;
+    overflow: hidden;
   }
 }
 

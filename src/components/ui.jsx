@@ -6,7 +6,7 @@ export const Card = ({ title, children, className, contentClassName, hideTitle =
         {!hideTitle && (
             <h3 className="mb-4 text-xl font-semibold text-gray-800 flex-shrink-0">{title}</h3>
         )}
-        <div className={`flex-1 min-h-0 ${contentClassName || ''}`}>{children}</div>
+        <div className={`flex-1 min-h-0 overflow-hidden ${contentClassName || ''}`}>{children}</div>
     </div>
 );
 
