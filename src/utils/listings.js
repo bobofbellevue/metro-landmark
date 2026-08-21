@@ -149,8 +149,7 @@ export function listingLabel(row) {
 }
 
 export function listingsToZillowXml(rows = []) {
-  const listed = rows.filter((row) => row.listed);
-  const items = listed.map((row) => {
+  const items = rows.map((row) => {
     const price = row.askingRent ?? row.lastRent;
     return [
       '    <Listing>',
@@ -169,6 +168,7 @@ export function listingsToZillowXml(rows = []) {
       row.squareFootage != null ? `      <squareFeet>${xmlEscape(row.squareFootage)}</squareFeet>` : '',
       row.availableOn ? `      <dateAvailable>${xmlEscape(row.availableOn)}</dateAvailable>` : '',
       row.description ? `      <description>${xmlEscape(row.description)}</description>` : '',
+      `      <listed>${row.listed ? 'true' : 'false'}</listed>`,
       '    </Listing>',
     ]
       .filter(Boolean)
@@ -190,7 +190,6 @@ function csvEscape(value) {
 }
 
 export function listingsToCsv(rows = []) {
-  const listed = rows.filter((row) => row.listed);
   const header = [
     'property',
     'unit',
@@ -205,9 +204,10 @@ export function listingsToCsv(rows = []) {
     'last_rent',
     'available_on',
     'description',
+    'listed',
   ];
   const lines = [header.join(',')];
-  for (const row of listed) {
+  for (const row of rows) {
     lines.push(
       [
         csvEscape(row.propertyName),
@@ -223,6 +223,7 @@ export function listingsToCsv(rows = []) {
         csvEscape(row.lastRent),
         csvEscape(row.availableOn),
         csvEscape(row.description),
+        csvEscape(row.listed ? 'true' : 'false'),
       ].join(',')
     );
   }

@@ -366,16 +366,7 @@ describe('api/listings', () => {
     expect(putRes.jsonData.error).toMatch(/not a vacancy/);
   });
 
-  test('XML and CSV export listed vacancies only', async () => {
-    db.listings.push({
-      listing_id: 1,
-      unit_id: 21,
-      listed: true,
-      asking_rent: 1725,
-      available_on: '2026-09-01',
-      description: 'Corner <unit>',
-    });
-
+  test('XML and CSV export vacancies whether or not Listed is checked', async () => {
     const xmlRes = createRes();
     await handler(
       { method: 'GET', headers: { 'x-user-id': '1' }, query: { format: 'xml' } },
@@ -385,8 +376,27 @@ describe('api/listings', () => {
     expect(xmlRes.headers['Content-Type']).toMatch(/xml/);
     expect(xmlRes.body).toContain('<hotPadsItems>');
     expect(xmlRes.body).toContain('<id>unit-21</id>');
-    expect(xmlRes.body).toContain('&lt;unit&gt;');
+    expect(xmlRes.body).toContain('<listed>false</listed>');
     expect(xmlRes.body).not.toContain('unit-20');
+    expect(xmlRes.body).not.toContain('unit-23');
+
+    db.listings.push({
+      listing_id: 1,
+      unit_id: 21,
+      listed: true,
+      asking_rent: 1725,
+      available_on: '2026-09-01',
+      description: 'Corner <unit>',
+    });
+
+    const listedXml = createRes();
+    await handler(
+      { method: 'GET', headers: { 'x-user-id': '1' }, query: { format: 'xml' } },
+      listedXml
+    );
+    expect(listedXml.body).toContain('<id>unit-21</id>');
+    expect(listedXml.body).toContain('&lt;unit&gt;');
+    expect(listedXml.body).toContain('<listed>true</listed>');
 
     const csvRes = createRes();
     await handler(
@@ -397,6 +407,7 @@ describe('api/listings', () => {
     expect(csvRes.headers['Content-Type']).toMatch(/csv/);
     expect(csvRes.body).toContain('Pine Court');
     expect(csvRes.body).toContain('3B');
+    expect(csvRes.body).toContain('true');
     expect(csvRes.body).not.toContain('2A');
   });
 

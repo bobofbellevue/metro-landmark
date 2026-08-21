@@ -230,7 +230,7 @@ export default function ListingsPage() {
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
                 {!selected ? (
-                  <p className="text-sm text-gray-500">Select a vacancy.</p>
+                  <p className="text-sm text-gray-500">Select a unit from the Vacancy Search list.</p>
                 ) : (
                   <>
                     <div>

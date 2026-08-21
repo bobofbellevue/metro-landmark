@@ -3,7 +3,7 @@
  * Vacancy listings / syndication export (roadmap E5).
  *
  * GET  /api/listings           vacancies + listing state
- * GET  /api/listings?format=xml|csv   listed vacancies as a feed
+ * GET  /api/listings?format=xml|csv   vacancies as a feed
  * PUT  /api/listings           opt-in / update a listing
  */
 import { createSupabaseClient } from './utils/supabase-client.js';

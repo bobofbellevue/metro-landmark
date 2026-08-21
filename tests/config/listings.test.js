@@ -78,7 +78,7 @@ describe('listing helpers', () => {
     expect(parseAskingRent(-3)).toBeNull();
   });
 
-  test('zillow xml and csv export listed vacancies only', () => {
+  test('zillow xml and csv export all vacancies', () => {
     const rows = [
       {
         unitId: 9,
@@ -100,6 +100,8 @@ describe('listing helpers', () => {
       },
       {
         unitId: 10,
+        propertyName: 'Oak',
+        unitNumber: '1',
         listed: false,
         askingRent: 900,
       },
@@ -107,9 +109,11 @@ describe('listing helpers', () => {
     const xml = listingsToZillowXml(rows);
     expect(xml).toContain('<hotPadsItems>');
     expect(xml).toContain('<id>unit-9</id>');
+    expect(xml).toContain('<id>unit-10</id>');
+    expect(xml).toContain('<listed>true</listed>');
+    expect(xml).toContain('<listed>false</listed>');
     expect(xml).toContain('&lt;unit&gt;');
     expect(xml).toContain('&amp;');
-    expect(xml).not.toContain('unit-10');
     expect(mapPropertyType('Townhouse')).toBe('TOWNHOUSE');
     expect(listingLabel(rows[0])).toBe('10 Pine St #2B');
 
@@ -117,7 +121,10 @@ describe('listing helpers', () => {
     expect(csv).toMatch(/^property,unit,street/);
     expect(csv).toContain('Cedar');
     expect(csv).toContain('2B');
-    expect(csv).not.toContain('unit-10');
+    expect(csv).toContain('Oak');
+    expect(csv).toMatch(/listed/);
+    expect(csv).toContain('true');
+    expect(csv).toContain('false');
   });
 
   test('xmlEscape and missing table detector', () => {
