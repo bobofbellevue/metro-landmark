@@ -41,6 +41,7 @@ function primaryKey(table) {
   if (table === 'properties') return 'property_id';
   if (table === 'landlords') return 'landlord_id';
   if (table === 'addresses') return 'address_id';
+  if (table === 'client_units') return 'client_unit_id';
   return 'id';
 }
 
@@ -108,6 +109,7 @@ const db = {
   properties: [],
   listings: [],
   addresses: [],
+  client_units: [],
   tableErrors: {},
 };
 
@@ -127,6 +129,7 @@ function seedBase() {
   db.properties.splice(0, db.properties.length);
   db.listings.splice(0, db.listings.length);
   db.addresses.splice(0, db.addresses.length);
+  db.client_units.splice(0, db.client_units.length);
   db.tableErrors = {};
 
   db.users.push(
@@ -185,6 +188,15 @@ function seedBase() {
       is_archived: false,
     },
     {
+      unit_id: 23,
+      unit_number: '4D',
+      property_id: 30,
+      beds: 1,
+      baths: 1,
+      square_footage: 550,
+      is_archived: false,
+    },
+    {
       unit_id: 40,
       unit_number: 'A',
       property_id: 31,
@@ -220,6 +232,15 @@ function seedBase() {
       is_archived: false,
     }
   );
+  db.client_units.push({
+    client_unit_id: 1,
+    client_id: 99,
+    unit_id: 23,
+    lease_id: null,
+    is_archived: false,
+    end_date: null,
+    vacated_at: null,
+  });
   db.addresses.push({
     address_id: 1,
     addressable_type: 'property',
@@ -325,6 +346,24 @@ describe('api/listings', () => {
     );
     expect(res.statusCode).toBe(400);
     expect(res.jsonData.error).toMatch(/not a vacancy/);
+  });
+
+  test('skips units with a tenant assignment and no lease', async () => {
+    const getRes = createRes();
+    await handler({ method: 'GET', headers: { 'x-user-id': '1' }, query: {} }, getRes);
+    expect(getRes.jsonData.listings.map((row) => row.unitId)).not.toContain(23);
+
+    const putRes = createRes();
+    await handler(
+      {
+        method: 'PUT',
+        headers: { 'x-user-id': '1' },
+        body: { unitId: 23, listed: true, askingRent: 1500 },
+      },
+      putRes
+    );
+    expect(putRes.statusCode).toBe(400);
+    expect(putRes.jsonData.error).toMatch(/not a vacancy/);
   });
 
   test('XML and CSV export listed vacancies only', async () => {

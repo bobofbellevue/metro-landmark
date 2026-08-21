@@ -11,6 +11,7 @@ import {
   missingListingsTable,
   occupiedUnitIds,
   parseAskingRent,
+  unitsAssignedWithoutLease,
   validateListingWrite,
   xmlEscape,
 } from '../../src/utils/listings.js';
@@ -34,6 +35,19 @@ describe('listing helpers', () => {
       { unit_id: 3, status: 'future' },
     ]);
     expect([...occupied].sort()).toEqual([1, 3]);
+  });
+
+  test('tenant assignments without a lease occupy the unit', () => {
+    const today = '2026-08-21';
+    expect(
+      [...unitsAssignedWithoutLease([
+        { unit_id: 8, lease_id: null, is_archived: false },
+        { unit_id: 9, lease_id: 10, is_archived: false },
+        { unit_id: 11, lease_id: null, end_date: '2026-08-01', is_archived: false },
+        { unit_id: 12, lease_id: null, vacated_at: '2026-08-01', is_archived: false },
+        { unit_id: 13, lease_id: null, is_archived: true },
+      ], today)].sort()
+    ).toEqual([8]);
   });
 
   test('last rent uses newest start date', () => {

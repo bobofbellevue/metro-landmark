@@ -9,6 +9,7 @@
 import { createSupabaseClient } from './utils/supabase-client.js';
 import {
   isCompleteWorkflowDate,
+  todayWorkflowDate,
   toWorkflowDateString,
 } from '../src/utils/workflow-date.js';
 import {
@@ -18,10 +19,12 @@ import {
   lastRentByUnit,
   listingsToCsv,
   listingsToZillowXml,
+  missingClientUnitsTable,
   missingListingsTable,
   occupiedUnitIds,
   parseAskingRent,
   publicListing,
+  unitsAssignedWithoutLease,
   validateListingWrite,
 } from '../src/utils/listings.js';
 
@@ -100,6 +103,19 @@ async function loadVacancies(supabase, user) {
     .in('unit_id', unitIds);
   if (leaseError) throw leaseError;
   const occupied = occupiedUnitIds(leases || []);
+
+  let assignments = [];
+  const { data: assignmentData, error: assignmentError } = await supabase
+    .from('client_units')
+    .select('unit_id, lease_id, end_date, vacated_at, is_archived')
+    .eq('is_archived', false)
+    .in('unit_id', unitIds);
+  if (assignmentError && !missingClientUnitsTable(assignmentError)) throw assignmentError;
+  if (!assignmentError) assignments = assignmentData || [];
+  for (const id of unitsAssignedWithoutLease(assignments, todayWorkflowDate())) {
+    occupied.add(id);
+  }
+
   const vacantUnits = unitList.filter((u) => !occupied.has(Number(u.unit_id)));
   if (vacantUnits.length === 0) return [];
 

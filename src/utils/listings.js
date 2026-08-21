@@ -1,6 +1,7 @@
 /**
  * Vacancy listings / syndication helpers (roadmap E5).
- * Units are vacant when they have no active or future lease. Listing is opt-in.
+ * Units are vacant when they have no active or future lease and no current
+ * tenant assignment without a lease. Listing is opt-in.
  */
 
 export const OCCUPIED_LEASE_STATUSES = ['active', 'future'];
@@ -28,6 +29,39 @@ export function occupiedUnitIds(leases = []) {
   for (const lease of leases) {
     if (!lease?.unit_id) continue;
     if (isOccupiedLeaseStatus(lease.status)) ids.add(Number(lease.unit_id));
+  }
+  return ids;
+}
+
+function isoDay(value) {
+  if (value == null || value === '') return '';
+  return String(value).slice(0, 10);
+}
+
+function todayIso(today) {
+  if (today) return isoDay(today);
+  const now = new Date();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${m}-${d}`;
+}
+
+export function isOpenTenantAssignment(row, today) {
+  if (!row || row.is_archived) return false;
+  if (row.vacated_at) return false;
+  const end = isoDay(row.end_date);
+  if (end && end < todayIso(today)) return false;
+  return true;
+}
+
+export function unitsAssignedWithoutLease(assignments = [], today) {
+  const ids = new Set();
+  const asOf = todayIso(today);
+  for (const row of assignments) {
+    if (!row?.unit_id) continue;
+    if (row.lease_id) continue;
+    if (!isOpenTenantAssignment(row, asOf)) continue;
+    ids.add(Number(row.unit_id));
   }
   return ids;
 }
@@ -241,4 +275,9 @@ export function filterListingsBySearch(rows, searchTerm) {
 export function missingListingsTable(error) {
   const message = String(error?.message || error?.details || '');
   return /listings/i.test(message) && /does not exist|schema cache|could not find the table/i.test(message);
+}
+
+export function missingClientUnitsTable(error) {
+  const message = String(error?.message || error?.details || '');
+  return /client_units/i.test(message) && /does not exist|schema cache|could not find the table/i.test(message);
 }
