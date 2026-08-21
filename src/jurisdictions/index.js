@@ -11,6 +11,10 @@ import { tacomaPack } from './packs/tacoma.js';
 import { bellinghamPack } from './packs/bellingham.js';
 import { olympiaPack } from './packs/olympia.js';
 import { federalWayPack } from './packs/federal_way.js';
+import { kirklandPack } from './packs/kirkland.js';
+import { kenmorePack } from './packs/kenmore.js';
+import { shorelinePack } from './packs/shoreline.js';
+import { auburnPack } from './packs/auburn.js';
 import {
   mergeStatuteRefIds,
   resolveStatuteRefs,
@@ -23,6 +27,10 @@ const PACKS = Object.freeze({
   [bellinghamPack.id]: bellinghamPack,
   [olympiaPack.id]: olympiaPack,
   [federalWayPack.id]: federalWayPack,
+  [kirklandPack.id]: kirklandPack,
+  [kenmorePack.id]: kenmorePack,
+  [shorelinePack.id]: shorelinePack,
+  [auburnPack.id]: auburnPack,
 });
 
 /** Default pack when nothing matches (reference deployment: WA). */

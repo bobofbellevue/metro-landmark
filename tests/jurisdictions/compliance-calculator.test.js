@@ -174,6 +174,81 @@ describe('evaluateRentIncrease / calculateRentIncreaseNoticePeriod', () => {
       )
     ).toBe(90);
   });
+
+  test('Kirkland and Kenmore use 120 days at exactly 10%; Shoreline uses 180', () => {
+    for (const jurisdiction of ['kirkland', 'kenmore']) {
+      expect(
+        calculateRentIncreaseNoticePeriod({
+          jurisdiction,
+          currentRent: 1000,
+          newRent: 1030,
+        })
+      ).toBe(90);
+      expect(
+        calculateRentIncreaseNoticePeriod({
+          jurisdiction,
+          currentRent: 1000,
+          newRent: 1031,
+        })
+      ).toBe(120);
+      expect(
+        calculateRentIncreaseNoticePeriod({
+          jurisdiction,
+          percentIncrease: 10,
+        })
+      ).toBe(120);
+      expect(
+        calculateRentIncreaseNoticePeriod({
+          jurisdiction,
+          percentIncrease: 10.01,
+        })
+      ).toBe(180);
+    }
+
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'shoreline',
+        currentRent: 1000,
+        newRent: 1030,
+      })
+    ).toBe(90);
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'shoreline',
+        currentRent: 1000,
+        newRent: 1031,
+      })
+    ).toBe(120);
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'shoreline',
+        percentIncrease: 9.99,
+      })
+    ).toBe(120);
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'shoreline',
+        percentIncrease: 10,
+      })
+    ).toBe(180);
+  });
+
+  test('Auburn uses 120 days only when the increase is more than 5%', () => {
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'auburn',
+        currentRent: 1000,
+        newRent: 1050,
+      })
+    ).toBe(90);
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'auburn',
+        currentRent: 1000,
+        newRent: 1051,
+      })
+    ).toBe(120);
+  });
 });
 
 describe('termination, eviction, deposit, and entry', () => {
