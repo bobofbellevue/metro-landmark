@@ -9,6 +9,13 @@ import { useFinderLimit } from '../hooks/useFinderLimit';
 import { useFormPersistence } from '../hooks/useFormPersistence';
 import ArchiveModal from '../components/ArchiveModal';
 import { insertWithAudit, updateWithAudit } from '../lib/auditHelpers.js';
+import {
+    defaultUnlabeledUnit,
+    formatUnitQualifier,
+    normalizeStoredUnitNumber,
+    unitNumberText,
+    validatePropertyUnitNumbers,
+} from '../utils/unit-display.js';
 
 // Utility functions
 const formatLandlordName = (l) => {
@@ -1138,33 +1145,36 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
     
     // Unit management functions
     const addUnit = () => {
-        if (unitNumber.trim()) {
-            // Always default to 'dedicated' parking rule
-            const parkingRule = 'dedicated';
-            
-            const newUnit = {
-                unit_number: unitNumber,
-                beds: beds || null,
-                baths: baths || null,
-                square_footage: sqft || null,
-                parking: {
-                    parking_rule: parkingRule,
-                    dedicated_garage_spaces: dedicatedGarageSpaces,
-                    dedicated_carport_spaces: dedicatedCarportSpaces,
-                    dedicated_paved_driveway_spaces: dedicatedPavedDrivewaySpaces,
-                    dedicated_off_street_spaces: dedicatedOffStreetSpaces,
-                }
-            };
-            setUnits([...units, newUnit]);
-            setUnitNumber('');
-            setBeds('');
-            setBaths('');
-            setSqft('');
-            setDedicatedGarageSpaces('');
-            setDedicatedCarportSpaces('');
-            setDedicatedPavedDrivewaySpaces('');
-            setDedicatedOffStreetSpaces('');
+        const parkingRule = 'dedicated';
+        const newUnit = {
+            unit_number: normalizeStoredUnitNumber(unitNumber),
+            beds: beds || null,
+            baths: baths || null,
+            square_footage: sqft || null,
+            parking: {
+                parking_rule: parkingRule,
+                dedicated_garage_spaces: dedicatedGarageSpaces,
+                dedicated_carport_spaces: dedicatedCarportSpaces,
+                dedicated_paved_driveway_spaces: dedicatedPavedDrivewaySpaces,
+                dedicated_off_street_spaces: dedicatedOffStreetSpaces,
+            }
+        };
+        const next = [...units, newUnit];
+        const check = validatePropertyUnitNumbers(next);
+        if (!check.ok) {
+            setFormError(check.message);
+            return;
         }
+        setFormError('');
+        setUnits(next);
+        setUnitNumber('');
+        setBeds('');
+        setBaths('');
+        setSqft('');
+        setDedicatedGarageSpaces('');
+        setDedicatedCarportSpaces('');
+        setDedicatedPavedDrivewaySpaces('');
+        setDedicatedOffStreetSpaces('');
     };
     
     const removeUnit = (index) => {
@@ -1209,37 +1219,47 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
         setIsSubmitting(true);
         setFormError('');
         try {
-            // Check if unit fields are filled but unit wasn't added - add it automatically
+            const parkingDraft = {
+                parking_rule: 'dedicated',
+                dedicated_garage_spaces: dedicatedGarageSpaces,
+                dedicated_carport_spaces: dedicatedCarportSpaces,
+                dedicated_paved_driveway_spaces: dedicatedPavedDrivewaySpaces,
+                dedicated_off_street_spaces: dedicatedOffStreetSpaces,
+            };
+            const hasParkingDraft = [
+                dedicatedGarageSpaces,
+                dedicatedCarportSpaces,
+                dedicatedPavedDrivewaySpaces,
+                dedicatedOffStreetSpaces,
+            ].some((v) => String(v || '').trim() !== '');
+            const hasDraftUnit =
+                !!unitNumberText(unitNumber) ||
+                !!String(beds || '').trim() ||
+                !!String(baths || '').trim() ||
+                !!String(sqft || '').trim() ||
+                hasParkingDraft;
+
             let finalUnits = [...units];
-            if (unitNumber.trim() && !finalUnits.some(u => u.unit_number === unitNumber.trim())) {
-                // Always default to 'dedicated' parking rule
-                const parkingRule = 'dedicated';
-                
-                const newUnit = {
-                    unit_number: unitNumber,
+            if (hasDraftUnit) {
+                const draft = {
+                    unit_number: normalizeStoredUnitNumber(unitNumber),
                     beds: beds || null,
                     baths: baths || null,
                     square_footage: sqft || null,
-                    parking: {
-                        parking_rule: parkingRule,
-                        dedicated_garage_spaces: dedicatedGarageSpaces,
-                        dedicated_carport_spaces: dedicatedCarportSpaces,
-                        dedicated_paved_driveway_spaces: dedicatedPavedDrivewaySpaces,
-                        dedicated_off_street_spaces: dedicatedOffStreetSpaces,
-                    }
+                    parking: parkingDraft,
                 };
-                finalUnits = [...finalUnits, newUnit];
-                // Update state for UI consistency
-                setUnits(finalUnits);
-                // Clear unit fields after adding
-                setUnitNumber('');
-                setBeds('');
-                setBaths('');
-                setSqft('');
-                setDedicatedGarageSpaces('');
-                setDedicatedCarportSpaces('');
-                setDedicatedPavedDrivewaySpaces('');
-                setDedicatedOffStreetSpaces('');
+                const draftNumber = unitNumberText(draft);
+                const duplicate = draftNumber
+                    && finalUnits.some((u) => unitNumberText(u).toLowerCase() === draftNumber.toLowerCase());
+                if (!duplicate) finalUnits = [...finalUnits, draft];
+            }
+            if (finalUnits.length === 0) {
+                finalUnits = [defaultUnlabeledUnit()];
+            }
+            const unitCheck = validatePropertyUnitNumbers(finalUnits);
+            if (!unitCheck.ok) {
+                setFormError(unitCheck.message);
+                return;
             }
             
             const finalPropertyType = propertyType === 'Other' ? customPropertyType : propertyType;
@@ -1306,64 +1326,60 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
                 }
             }
             
-            // Step 3: Create units if any are provided
-            if (finalUnits.length > 0) {
-                const unitPayloads = finalUnits.map(unit => ({
-                    unit_number: unit.unit_number,
-                    beds: unit.beds,
-                    baths: unit.baths,
-                    square_footage: unit.square_footage,
-                    property_id: propertyData.property_id
-                }));
-                
-                const { data: insertedUnits, error: unitsError } = await supabase
-                    .from('units')
-                    .insert(unitPayloads)
-                    .select('unit_id, unit_number');
-                    
-                if (unitsError) {
-                    console.warn('Units creation failed:', unitsError);
-                    // Don't fail the whole operation for units issues
-                } else {
-                    // Store unit parking info in unit_features (name-encoded)
-                    try {
-                        const desiredFeatureNames = [];
-                        finalUnits.forEach(u => desiredFeatureNames.push(...buildUnitParkingFeatureNames(u.parking)));
-                        const uniqueNames = [...new Set(desiredFeatureNames)].filter(Boolean);
-                        if (uniqueNames.length > 0) {
-                            const { data: existingFeatures } = await supabase
-                                .from('features')
-                                .select('feature_id, feature_name')
-                                .in('feature_name', uniqueNames);
-                            const existingMap = new Map((existingFeatures || []).map(f => [f.feature_name, f.feature_id]));
-                            const missing = uniqueNames.filter(n => !existingMap.has(n));
-                            if (missing.length > 0) {
-                                const { data: createdFeatures } = await supabase
-                                    .from('features')
-                                    .insert(missing.map(feature_name => ({ feature_name })))
-                                    .select('feature_id, feature_name');
-                                (createdFeatures || []).forEach(f => existingMap.set(f.feature_name, f.feature_id));
-                            }
+            // Step 3: Always create at least one unit (unlabeled when the dwelling has no Unit #).
+            const unitPayloads = finalUnits.map((unit) => ({
+                unit_number: normalizeStoredUnitNumber(unit.unit_number),
+                beds: unit.beds,
+                baths: unit.baths,
+                square_footage: unit.square_footage,
+                property_id: propertyData.property_id
+            }));
 
-                            const unitIdByNumber = new Map((insertedUnits || []).map(u => [u.unit_number, u.unit_id]));
-                            const junctionRows = [];
-                            finalUnits.forEach(u => {
-                                const unitId = unitIdByNumber.get(u.unit_number);
-                                if (!unitId) return;
-                                const names = buildUnitParkingFeatureNames(u.parking);
-                                names.forEach(name => {
-                                    const featureId = existingMap.get(name);
-                                    if (featureId) junctionRows.push({ unit_id: unitId, feature_id: featureId });
-                                });
-                            });
-                            if (junctionRows.length > 0) {
-                                await insertWithAudit('unit_features', junctionRows, user?.user_id);
-                            }
-                        }
-                    } catch (err) {
-                        console.warn('Unit features creation failed:', err);
+            const { data: insertedUnits, error: unitsError } = await supabase
+                .from('units')
+                .insert(unitPayloads)
+                .select('unit_id, unit_number');
+
+            if (unitsError) {
+                setFormError(unitsError.message || 'Failed to create the property unit.');
+                return;
+            }
+
+            try {
+                const desiredFeatureNames = [];
+                finalUnits.forEach((u) => desiredFeatureNames.push(...buildUnitParkingFeatureNames(u.parking)));
+                const uniqueNames = [...new Set(desiredFeatureNames)].filter(Boolean);
+                if (uniqueNames.length > 0) {
+                    const { data: existingFeatures } = await supabase
+                        .from('features')
+                        .select('feature_id, feature_name')
+                        .in('feature_name', uniqueNames);
+                    const existingMap = new Map((existingFeatures || []).map(f => [f.feature_name, f.feature_id]));
+                    const missing = uniqueNames.filter(n => !existingMap.has(n));
+                    if (missing.length > 0) {
+                        const { data: createdFeatures } = await supabase
+                            .from('features')
+                            .insert(missing.map(feature_name => ({ feature_name })))
+                            .select('feature_id, feature_name');
+                        (createdFeatures || []).forEach(f => existingMap.set(f.feature_name, f.feature_id));
+                    }
+
+                    const junctionRows = [];
+                    (insertedUnits || []).forEach((inserted, index) => {
+                        const u = finalUnits[index];
+                        if (!u || !inserted?.unit_id) return;
+                        const names = buildUnitParkingFeatureNames(u.parking);
+                        names.forEach((name) => {
+                            const featureId = existingMap.get(name);
+                            if (featureId) junctionRows.push({ unit_id: inserted.unit_id, feature_id: featureId });
+                        });
+                    });
+                    if (junctionRows.length > 0) {
+                        await insertWithAudit('unit_features', junctionRows, user?.user_id);
                     }
                 }
+            } catch (err) {
+                console.warn('Unit features creation failed:', err);
             }
 
             // Step 4: Store property parking info in property_amenities (name-encoded)
@@ -1602,7 +1618,7 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
                     </div>
                 </div>
                 <div className="pt-4 border-t">
-                    <h4 className="text-md font-medium text-gray-800 mb-4">Units (Optional)</h4>
+                    <h4 className="text-md font-medium text-gray-800 mb-4">Units</h4>
                     
                     {/* Add Unit Form */}
                     <div className="p-4 border border-gray-200 rounded-lg bg-gray-50 mb-4">
@@ -1681,7 +1697,7 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
                         <button 
                             type="button" 
                             onClick={addUnit}
-                            disabled={!unitNumber.trim()}
+                            disabled={units.length >= 1 && !unitNumberText(unitNumber)}
                             className="px-4 py-2 text-sm font-medium text-indigo-600 bg-white border border-indigo-300 rounded-md shadow-sm hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Add Unit
@@ -1695,7 +1711,7 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
                             {units.map((unit, index) => (
                                 <div key={index} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
                                     <div className="flex items-center space-x-4">
-                                        <span className="font-medium">{unit.unit_number}</span>
+                                        <span className="font-medium">{formatUnitQualifier(unit)}</span>
                                         {unit.beds && <span className="text-sm text-gray-500">{unit.beds} bed{unit.beds !== '1' ? 's' : ''}</span>}
                                         {unit.baths && <span className="text-sm text-gray-500">{unit.baths} bath{unit.baths !== '1' ? 's' : ''}</span>}
                                         {unit.square_footage && <span className="text-sm text-gray-500">{unit.square_footage} sq ft</span>}
@@ -2456,7 +2472,7 @@ const EditPropertyModal = ({ property, landlords, propertyTypes, onClose, onUpda
                                     <div key={unit.unit_id} className="p-3 bg-gray-50 border border-gray-200 rounded-md">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <span className="font-medium text-gray-800">Unit {unit.unit_number || 'N/A'}</span>
+                                                <span className="font-medium text-gray-800">{formatUnitQualifier(unit)}</span>
                                                 {(unit.beds || unit.baths || unit.square_footage) && (
                                                     <span className="ml-2 text-sm text-gray-600">
                                                         {unit.beds ? `${unit.beds} bed` : ''}
@@ -2655,8 +2671,20 @@ const ManageUnitsModal = ({ property, onClose, onUpdateSuccess }) => {
     const handleAddUnit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        const payload = { unit_number: unitNumber, beds, baths, square_footage: sqft };
-        
+        const payload = {
+            unit_number: normalizeStoredUnitNumber(unitNumber),
+            beds,
+            baths,
+            square_footage: sqft,
+        };
+        const nextUnits = [...units, payload];
+        const check = validatePropertyUnitNumbers(nextUnits);
+        if (!check.ok) {
+            setValidationError(check.message);
+            setIsSubmitting(false);
+            return;
+        }
+
         const { data: insertedUnit, error } = await supabase
             .from('units')
             .insert([{
@@ -2712,7 +2740,7 @@ const ManageUnitsModal = ({ property, onClose, onUpdateSuccess }) => {
 
     const handleEditUnit = (unit) => {
         setEditingUnit(unit);
-        setUnitNumber(unit.unit_number);
+        setUnitNumber(unit.unit_number || '');
         setBeds(unit.beds || '');
         setBaths(unit.baths || '');
         setSqft(unit.square_footage || '');
@@ -2728,11 +2756,20 @@ const ManageUnitsModal = ({ property, onClose, onUpdateSuccess }) => {
         e.preventDefault();
         setIsSubmitting(true);
         const payload = { 
-            unit_number: unitNumber, 
+            unit_number: normalizeStoredUnitNumber(unitNumber), 
             beds, 
             baths, 
             square_footage: sqft
         };
+        const nextUnits = units.map((u) =>
+            u.unit_id === editingUnit.unit_id ? { ...u, unit_number: payload.unit_number } : u
+        );
+        const check = validatePropertyUnitNumbers(nextUnits);
+        if (!check.ok) {
+            setValidationError(check.message);
+            setIsSubmitting(false);
+            return;
+        }
         const { error } = await supabase
             .from('units')
             .update(payload)
@@ -2821,7 +2858,6 @@ const ManageUnitsModal = ({ property, onClose, onUpdateSuccess }) => {
                                 <input 
                                     value={unitNumber} 
                                     onChange={e => setUnitNumber(e.target.value)} 
-                                    required 
                                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                                 />
                             </div>
@@ -2914,7 +2950,7 @@ const ManageUnitsModal = ({ property, onClose, onUpdateSuccess }) => {
                             {units.map(unit => (
                                 <li key={unit.unit_id} className="flex justify-between items-center p-4 hover:bg-gray-50">
                                     <span className="text-sm text-gray-700">
-                                        <span className="font-medium">Unit {unit.unit_number}</span> 
+                                        <span className="font-medium">{formatUnitQualifier(unit)}</span> 
                                         <span className="text-gray-500 ml-2">
                                             ({unit.beds} bed / {unit.baths} bath{unit.square_footage ? `, ${unit.square_footage} sqft` : ''})
                                         </span>
@@ -2934,7 +2970,8 @@ const ManageUnitsModal = ({ property, onClose, onUpdateSuccess }) => {
                                         </button>
                                         <button 
                                             onClick={() => handleDeleteUnit(unit.unit_id)} 
-                                            className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                                            disabled={units.length <= 1}
+                                            className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
                                             title="Delete Unit"
                                         >
                                             <Trash2 size={16} />

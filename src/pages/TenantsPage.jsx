@@ -12,6 +12,7 @@ import DocumentManagement from '../components/DocumentManagement';
 import ArchiveModal from '../components/ArchiveModal';
 import { deleteWithAudit, updateWithAudit, insertWithAudit } from '../lib/auditHelpers.js';
 import ContactMethodTypeInput from '../components/ContactMethodTypeInput';
+import { formatPlaceWithUnit, formatUnitLocationLine } from '../utils/unit-display.js';
 
 // Utility function for formatting tenant names
 const formatTenantName = (t) => {
@@ -108,23 +109,8 @@ const formatDateForInput = (dateString) => {
 
 // Utility function for formatting unit address
 const formatUnitAddress = (unit) => {
-    if (!unit) return 'N/A';
-    
-    // Get address from the property_address field
-    const address = unit.property_address;
-    if (!address) {
-        return `Unit ${unit.unit_number} - No Address`;
-    }
-    
-    const addressParts = [
-        address.address_line_1,
-        address.address_line_2,
-        address.city,
-        address.state_province_region
-    ].filter(Boolean);
-    
-    const addressString = addressParts.join(', ');
-    return `Unit ${unit.unit_number} - ${addressString}`;
+    if (!unit) return '';
+    return formatUnitLocationLine(unit, { missingPlace: 'No Address' });
 };
 
 // This is the main component for the Tenants page
@@ -2504,7 +2490,7 @@ const AssignUnitForm = ({ tenant, units, onAssignmentSuccess, onClose }) => {
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900">
-                                {currentAssignment.unit_address ? `${currentAssignment.unit_address} - ` : ''}Unit {currentAssignment.units?.unit_number || 'N/A'}
+                                {formatPlaceWithUnit(currentAssignment.unit_address, currentAssignment.units)}
                             </p>
                             <p className="text-xs text-gray-600">
                                 {formatDate(currentAssignment.start_date)} {currentAssignment.end_date ? `to ${formatDate(currentAssignment.end_date)}` : '(ongoing)'}
@@ -2526,7 +2512,7 @@ const AssignUnitForm = ({ tenant, units, onAssignmentSuccess, onClose }) => {
                     <div className="max-h-48 overflow-y-auto space-y-2">
                         {allAssignments.map((assignment, index) => {
                             const isActive = assignment.status?.toLowerCase() === 'active';
-                            const unitNumber = assignment.units?.unit_number || assignment.unit_number || 'N/A';
+                            const unitNumber = assignment.units?.unit_number || assignment.unit_number;
                             const displayStatus = assignment.status 
                                 ? assignment.status.charAt(0).toUpperCase() + assignment.status.slice(1).toLowerCase()
                                 : 'Unknown';
@@ -2548,7 +2534,7 @@ const AssignUnitForm = ({ tenant, units, onAssignmentSuccess, onClose }) => {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="finder-primary text-gray-900 truncate">
-                                            {assignment.unit_address ? `${assignment.unit_address} - ` : ''}Unit {unitNumber}
+                                            {formatPlaceWithUnit(assignment.unit_address, unitNumber)}
                                         </p>
                                         <p className="finder-secondary text-gray-500">
                                             {formatDate(assignment.start_date)} {assignment.end_date ? `to ${formatDate(assignment.end_date)}` : '(ongoing)'}
@@ -2909,9 +2895,12 @@ const TenantDocumentsModal = ({ tenant, onClose }) => {
     }, [tenant]);
     
     const formatUnitInfo = (unit) => {
-        if (!unit) return 'N/A';
+        if (!unit) return '';
         const property = unit.properties || unit.property;
-        return `Unit ${unit.unit_number || 'N/A'} - ${property?.property_name || 'N/A'}`;
+        return formatUnitLocationLine({
+            ...unit,
+            properties: property ? { property_name: property.property_name } : unit.properties,
+        });
     };
 
     const formatLeaseOption = (lease) => {

@@ -1,9 +1,15 @@
 import {
   filterUnitsBySearch,
+  formatPlaceWithUnit,
   formatUnitAddressLine,
+  formatUnitAtProperty,
+  formatUnitLocationLine,
   formatUnitPickerLabel,
+  formatUnitQualifier,
+  normalizeStoredUnitNumber,
   sortUnitsForPicker,
   unitSearchHaystack,
+  validatePropertyUnitNumbers,
 } from '../../src/utils/unit-display.js';
 
 describe('unit-display helpers', () => {
@@ -61,5 +67,47 @@ describe('unit-display helpers', () => {
         properties: { property_name: 'Pine Court' },
       })
     ).toBe('Pine Court · 2A');
+    expect(
+      formatUnitPickerLabel({
+        unit_number: '',
+        properties: { property_name: 'Oak House' },
+      })
+    ).toBe('Oak House');
+  });
+
+  test('unit qualifier is omitted when the dwelling has no number', () => {
+    expect(formatUnitQualifier({ unit_number: '2B' })).toBe('Unit 2B');
+    expect(formatUnitQualifier({ unit_number: null })).toBe('');
+    expect(formatUnitQualifier('')).toBe('');
+    expect(normalizeStoredUnitNumber('  3A  ')).toBe('3A');
+    expect(normalizeStoredUnitNumber('')).toBeNull();
+  });
+
+  test('location line skips Unit when unlabeled', () => {
+    expect(
+      formatUnitLocationLine({
+        unit_number: '2B',
+        property_address: { address_line_1: '123 Main St', city: 'Seattle', state_province_region: 'WA' },
+      })
+    ).toBe('Unit 2B - 123 Main St, Seattle, WA');
+    expect(
+      formatUnitLocationLine({
+        unit_number: null,
+        properties: { property_name: 'Oak House' },
+        property_address: { address_line_1: '9 Oak Ave', city: 'Tacoma' },
+      })
+    ).toBe('9 Oak Ave, Tacoma');
+    expect(formatPlaceWithUnit('9 Oak Ave', { unit_number: null })).toBe('9 Oak Ave');
+    expect(formatPlaceWithUnit('9 Oak Ave', { unit_number: 'A' })).toBe('9 Oak Ave - Unit A');
+    expect(formatUnitAtProperty({ unit_number: '2B' }, 'Pine Court')).toBe('Unit 2B at Pine Court');
+    expect(formatUnitAtProperty({ unit_number: null }, 'Oak House')).toBe('Oak House');
+  });
+
+  test('two or more units on a property must have distinct numbers', () => {
+    expect(validatePropertyUnitNumbers([{ unit_number: null }])).toEqual({ ok: true });
+    expect(validatePropertyUnitNumbers([])).toEqual({ ok: true });
+    expect(validatePropertyUnitNumbers([{ unit_number: 'A' }, { unit_number: 'B' }]).ok).toBe(true);
+    expect(validatePropertyUnitNumbers([{ unit_number: null }, { unit_number: '2' }]).ok).toBe(false);
+    expect(validatePropertyUnitNumbers([{ unit_number: '2B' }, { unit_number: '2b' }]).ok).toBe(false);
   });
 });

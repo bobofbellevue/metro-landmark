@@ -118,8 +118,9 @@ export default async function handler(req, res) {
       : 'a standard service visit';
 
     // Build notification message
-    const unitNumber = appointment.maintenance_requests?.units?.unit_number || 'Unknown Unit';
-    const propertyName = appointment.maintenance_requests?.units?.properties?.property_name || 'Unknown Property';
+    const unitNumber = appointment.maintenance_requests?.units?.unit_number || '';
+    const propertyName = appointment.maintenance_requests?.units?.properties?.property_name || '';
+    const location = [unitNumber ? `Unit ${unitNumber}` : '', propertyName].filter(Boolean).join(' at ');
     const vendorName = appointment.vendors?.company_name || 'Vendor';
     const issueDescription = appointment.maintenance_requests?.description || 'Maintenance issue';
     const priority = appointment.maintenance_requests?.priority || 'Not specified';
@@ -132,7 +133,7 @@ export default async function handler(req, res) {
 - Date & Time: ${formattedDate}
 - Duration: ${durationText}
 - Vendor: ${vendorName}
-- Location: Unit ${unitNumber} at ${propertyName}
+- Location: ${location || propertyName}
 
 **Maintenance Issue:**
 - Description: ${issueDescription}

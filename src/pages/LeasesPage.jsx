@@ -25,7 +25,7 @@ import {
   todayWorkflowDate,
   toWorkflowDateString,
 } from '../utils/workflow-date.js';
-import { formatUnitPickerLabel } from '../utils/unit-display.js';
+import { formatUnitLocationLine, formatUnitLocationLines, formatUnitPickerLabel } from '../utils/unit-display.js';
 import {
   convertDateToOrdinalWord,
   describeLeaseTerm,
@@ -72,51 +72,12 @@ const formatCurrencyForInput = (amount) => {
 };
 
 const formatUnitAddress = (unit) => {
-    if (!unit) return 'N/A';
-    
-    const address = unit.property_address;
-    const propertyName = unit.properties?.property_name;
-    
-    if (!address) {
-        if (propertyName) {
-            return `Unit ${unit.unit_number} - ${propertyName}`;
-        }
-        return `Unit ${unit.unit_number} - No Address`;
-    }
-    
-    const addressParts = [
-        address.address_line_1,
-        address.address_line_2,
-        address.city,
-        address.state_province_region
-    ].filter(Boolean);
-    
-    const addressString = addressParts.join(', ');
-    return `Unit ${unit.unit_number} - ${addressString}`;
+    if (!unit) return '';
+    return formatUnitLocationLine(unit, { missingPlace: 'No Address' });
 };
 
 const formatUnitAddressMultiLine = (unit) => {
-    if (!unit) return ['N/A'];
-    
-    const lines = [`Unit ${unit.unit_number}`];
-    
-    const address = unit.property_address;
-    const propertyName = unit.properties?.property_name;
-    
-    if (address) {
-        if (address.address_line_1) lines.push(address.address_line_1);
-        if (address.address_line_2) lines.push(address.address_line_2);
-        if (address.city || address.state_province_region) {
-            const cityState = [address.city, address.state_province_region].filter(Boolean).join(', ');
-            if (cityState) lines.push(cityState);
-        }
-    } else if (propertyName) {
-        lines.push(propertyName);
-    } else {
-        lines.push('No Address');
-    }
-    
-    return lines;
+    return formatUnitLocationLines(unit, { missingPlace: 'No Address' });
 };
 
 const formatTenantNames = (tenants) => {
@@ -953,15 +914,8 @@ const ApplicationSelector = ({ applications, selectedApplicationIds, onSelection
     };
     
     const formatUnitAddress = (unit) => {
-        if (!unit) return 'N/A';
-        const address = unit.property_address;
-        const addressParts = [
-            address?.address_line_1,
-            address?.city,
-            address?.state_province_region
-        ].filter(Boolean);
-        const addressString = addressParts.length > 0 ? addressParts.join(', ') : 'No Address';
-        return `Unit ${unit.unit_number} - ${addressString}`;
+        if (!unit) return '';
+        return formatUnitLocationLine(unit, { missingPlace: 'No Address' });
     };
     
     return (

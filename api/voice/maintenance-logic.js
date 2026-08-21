@@ -227,7 +227,7 @@ export async function getUserUnitInfo(supabase, userId) {
           // Format unit display: "unit_number at property_name"
           // Replace "#" with "number" for proper pronunciation (e.g., "#201" -> "number 201")
           // Expand directional abbreviations for proper speech (e.g., "NE" -> "Northeast")
-          let unitNumber = unit.unit_number || 'Unknown Unit';
+          let unitNumber = unit.unit_number || '';
           const unitNumberBefore = unitNumber;
           unitNumber = unitNumber.replace(/#/g, 'number ');
           let propertyName = unit.properties?.property_name || 'Unknown Property';
@@ -235,7 +235,9 @@ export async function getUserUnitInfo(supabase, userId) {
           // Replace "#" with "number" BEFORE expanding directionals (property_name might contain "#201" from address_line_2)
           propertyName = propertyName.replace(/#/g, 'number ');
           propertyName = expandDirectionalsForSpeech(propertyName);
-          const unitDisplay = `${unitNumber} at ${propertyName}`;
+          const unitDisplay = unitNumber.trim()
+            ? `${unitNumber} at ${propertyName}`
+            : propertyName;
           
           console.log('[getUserUnitInfo] Found unit from client_units assignment:', {
             userId,
@@ -306,7 +308,7 @@ export async function getUserUnitInfo(supabase, userId) {
           // Format unit display: "unit_number at property_name"
           // Replace "#" with "number" for proper pronunciation (e.g., "#201" -> "number 201")
           // Expand directional abbreviations for proper speech (e.g., "NE" -> "Northeast")
-          let unitNumber = unit.unit_number || 'Unknown Unit';
+          let unitNumber = unit.unit_number || '';
           const unitNumberBefore = unitNumber;
           unitNumber = unitNumber.replace(/#/g, 'number ');
           let propertyName = unit.properties?.property_name || 'Unknown Property';
@@ -314,7 +316,9 @@ export async function getUserUnitInfo(supabase, userId) {
           // Replace "#" with "number" BEFORE expanding directionals (property_name might contain "#201" from address_line_2)
           propertyName = propertyName.replace(/#/g, 'number ');
           propertyName = expandDirectionalsForSpeech(propertyName);
-          const unitDisplay = `${unitNumber} at ${propertyName}`;
+          const unitDisplay = unitNumber.trim()
+            ? `${unitNumber} at ${propertyName}`
+            : propertyName;
           
           console.log('[getUserUnitInfo] Found unit from lease:', {
             userId,
