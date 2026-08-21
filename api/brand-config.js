@@ -13,6 +13,7 @@ import {
   firstNonEmpty,
   parseBrandAssetEnv,
 } from '../src/config/brand-derive.js';
+import { applyCors } from './utils/cors.js';
 
 /**
  * @param {NodeJS.ProcessEnv | Record<string, string | undefined>} env
@@ -45,9 +46,7 @@ export function buildPublicBrandConfig(env = process.env) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  applyCors(req, res, 'GET, OPTIONS');
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {

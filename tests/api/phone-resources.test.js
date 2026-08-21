@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import { authHeaders } from './auth-headers.js';
 
 const savedEnv = {
   SUPABASE_URL: process.env.SUPABASE_URL,
@@ -98,7 +99,7 @@ describe('api/phone-resources', () => {
 
   test('GET returns resolved purposes with env/default fallback', async () => {
     const res = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '1' }, query: {} }, res);
+    await handler({ method: 'GET', headers: authHeaders(1), query: {} }, res);
     expect(res.statusCode).toBe(200);
     expect(res.jsonData.success).toBe(true);
     expect(res.jsonData.canEdit).toBe(true);
@@ -109,14 +110,14 @@ describe('api/phone-resources', () => {
 
   test('manager can read but not PUT', async () => {
     const getRes = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '2' }, query: {} }, getRes);
+    await handler({ method: 'GET', headers: authHeaders(2), query: {} }, getRes);
     expect(getRes.jsonData.canEdit).toBe(false);
 
     const putRes = createRes();
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '2' },
+        headers: authHeaders(2),
         query: {},
         body: { purpose: 'marketing', e164: '+12065551212' },
       },
@@ -130,7 +131,7 @@ describe('api/phone-resources', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         query: {},
         body: { purpose: 'fax', e164: '+12065551212' },
       },
@@ -142,7 +143,7 @@ describe('api/phone-resources', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         query: {},
         body: {
           purpose: 'vendor_dispatch',

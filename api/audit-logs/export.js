@@ -1,33 +1,17 @@
 /* eslint-env node */
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '../utils/supabase-client.js';
+import { applyCors } from '../utils/cors.js';
+import { requireCompanyAdminUser, sendAuthError } from '../utils/session.js';
 
 /**
  * Vercel serverless function to export audit logs
- * 
+ *
  * GET /api/audit-logs/export
- * 
- * Query params:
- * - format: String ('csv' or 'json', default: 'csv')
- * - table_name: String (optional filter)
- * - record_id: Integer (optional filter)
- * - user_id: Integer (optional filter)
- * - action: String (optional filter)
- * - start_date: ISO date string (optional)
- * - end_date: ISO date string (optional)
- * 
- * Headers:
- * - x-user-id: Integer (required)
- * - x-user-role: String (required - must be admin)
- * 
- * Response:
- * - CSV: text/csv with audit log data
- * - JSON: application/json with audit log array
+ *
+ * Authorization: Bearer session token. Role is loaded from the users table.
  */
 export default async function handler(req, res) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id, x-user-role');
+  applyCors(req, res, 'GET, OPTIONS');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -41,46 +25,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Check authentication
-    const userId = req.headers['x-user-id'];
-    const userRole = req.headers['x-user-role'];
-
-    if (!userId || !userRole) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required'
-      });
-    }
-
-    // Only global_admin and company_admin can export audit logs
-    if (userRole !== 'global_admin' && userRole !== 'company_admin') {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied. Global Admin or Company Admin privileges required.'
-      });
-    }
-
-    // Initialize Supabase client
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = 
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.SUPABASE_SECRET_KEY ||
-      process.env.SUPABASE_SERVICE_KEY ||
-      process.env.VITE_SUPABASE_SERVICE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
+    let supabase;
+    try {
+      supabase = createSupabaseClient();
+    } catch {
       return res.status(500).json({
         success: false,
         error: 'Supabase configuration missing'
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    });
+    const auth = await requireCompanyAdminUser(req, supabase);
+    if (!auth.user) {
+      sendAuthError(res, auth);
+      return;
+    }
 
     // Get query parameters
     const {

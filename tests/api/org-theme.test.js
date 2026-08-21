@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import { authHeaders } from './auth-headers.js';
 
 const savedEnv = {
   SUPABASE_URL: process.env.SUPABASE_URL,
@@ -91,17 +92,11 @@ await jest.unstable_mockModule('../../api/utils/supabase-client.js', () => ({
   }),
 }));
 
-const { default: handler, parseUserIdHeader, canEditOrgTheme } = await import(
+const { default: handler, canEditOrgTheme } = await import(
   '../../api/org-theme.js'
 );
 
 describe('api/org-theme helpers', () => {
-  test('parseUserIdHeader requires a positive integer', () => {
-    expect(parseUserIdHeader({})).toBeNull();
-    expect(parseUserIdHeader({ 'x-user-id': 'nope' })).toBeNull();
-    expect(parseUserIdHeader({ 'x-user-id': '12' })).toBe(12);
-  });
-
   test('re-exports canEditOrgTheme', () => {
     expect(canEditOrgTheme('company_admin')).toBe(true);
   });
@@ -142,7 +137,7 @@ describe('api/org-theme', () => {
 
   test('GET returns stored theme for a company user', async () => {
     const res = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '1' } }, res);
+    await handler({ method: 'GET', headers: authHeaders(1) }, res);
     expect(res.statusCode).toBe(200);
     expect(res.jsonData).toMatchObject({
       success: true,
@@ -155,7 +150,7 @@ describe('api/org-theme', () => {
 
   test('GET is read-only for managers', async () => {
     const res = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '2' } }, res);
+    await handler({ method: 'GET', headers: authHeaders(2) }, res);
     expect(res.statusCode).toBe(200);
     expect(res.jsonData.canEdit).toBe(false);
     expect(res.jsonData.theme.primary).toBe('#0a7c42');
@@ -163,7 +158,7 @@ describe('api/org-theme', () => {
 
   test('GET without pmc_id returns empty theme', async () => {
     const res = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '3' } }, res);
+    await handler({ method: 'GET', headers: authHeaders(3) }, res);
     expect(res.statusCode).toBe(200);
     expect(res.jsonData).toMatchObject({
       success: true,
@@ -177,7 +172,7 @@ describe('api/org-theme', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '2' },
+        headers: authHeaders(2),
         body: { primary: '#111111' },
       },
       res
@@ -191,7 +186,7 @@ describe('api/org-theme', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         body: { primary: '#0AF', logoUrl: 'https://cdn.example.com/a.png' },
       },
       res
@@ -212,7 +207,7 @@ describe('api/org-theme', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         body: { primary: 'blue' },
       },
       badColor
@@ -223,7 +218,7 @@ describe('api/org-theme', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         body: { primary: '#4f46e5', logoUrl: 'javascript:alert(1)' },
       },
       badLogo
@@ -237,7 +232,7 @@ describe('api/org-theme', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         body: { reset: true },
       },
       res

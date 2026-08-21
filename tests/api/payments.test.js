@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import { authHeaders } from './auth-headers.js';
 
 const savedEnv = {
   SUPABASE_URL: process.env.SUPABASE_URL,
@@ -216,13 +217,13 @@ describe('api/payments', () => {
 
   test('staff cannot view payments', async () => {
     const res = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '4' }, query: {} }, res);
+    await handler({ method: 'GET', headers: authHeaders(4), query: {} }, res);
     expect(res.statusCode).toBe(403);
   });
 
   test('GET returns empty ledger for company admin', async () => {
     const res = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '1' }, query: {} }, res);
+    await handler({ method: 'GET', headers: authHeaders(1), query: {} }, res);
     expect(res.statusCode).toBe(200);
     expect(res.jsonData.success).toBe(true);
     expect(res.jsonData.canEdit).toBe(true);
@@ -237,7 +238,7 @@ describe('api/payments', () => {
     await handler(
       {
         method: 'POST',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         body: {
           leaseId: 10,
           kind: 'rent',
@@ -266,7 +267,7 @@ describe('api/payments', () => {
     await handler(
       {
         method: 'POST',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         body: {
           leaseId: 10,
           kind: 'rent',
@@ -295,7 +296,7 @@ describe('api/payments', () => {
     await handler(
       {
         method: 'POST',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         body: {
           leaseId: 10,
           kind: 'rent',
@@ -331,7 +332,7 @@ describe('api/payments', () => {
       due_date: '2026-09-01',
     });
     const getRes = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '3' }, query: {} }, getRes);
+    await handler({ method: 'GET', headers: authHeaders(3), query: {} }, getRes);
     expect(getRes.jsonData.canEdit).toBe(false);
     expect(getRes.jsonData.payments).toHaveLength(1);
 
@@ -339,7 +340,7 @@ describe('api/payments', () => {
     await handler(
       {
         method: 'POST',
-        headers: { 'x-user-id': '3' },
+        headers: authHeaders(3),
         body: { leaseId: 10, kind: 'rent', amount: 1850 },
       },
       postRes
@@ -361,7 +362,7 @@ describe('api/payments', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '2' },
+        headers: authHeaders(2),
         body: { paymentId: 7, status: 'paid', method: 'check' },
       },
       res
@@ -387,7 +388,7 @@ describe('api/payments', () => {
     await handler(
       {
         method: 'DELETE',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         query: { paymentId: '11' },
         body: {},
       },
@@ -412,7 +413,7 @@ describe('api/payments', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '2' },
+        headers: authHeaders(2),
         body: { paymentId: 12, status: 'due' },
       },
       res
@@ -437,7 +438,7 @@ describe('api/payments', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '2' },
+        headers: authHeaders(2),
         body: {
           paymentId: 13,
           amount: 1900,
@@ -463,7 +464,7 @@ describe('api/payments', () => {
       status: 'due',
     });
     const res = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '5' }, query: {} }, res);
+    await handler({ method: 'GET', headers: authHeaders(5), query: {} }, res);
     expect(res.jsonData.payments).toEqual([]);
   });
 
@@ -472,7 +473,7 @@ describe('api/payments', () => {
     await handler(
       {
         method: 'POST',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         body: {
           leaseId: 10,
           kind: 'rent',

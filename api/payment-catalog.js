@@ -6,6 +6,8 @@
  * POST /api/payment-catalog   { category: 'type'|'method', label, code? }
  */
 import { createSupabaseClient } from './utils/supabase-client.js';
+import { applyCors } from './utils/cors.js';
+import { requireSessionUser, sendAuthError } from './utils/session.js';
 import {
   PAYMENT_METHODS,
   PAYMENT_TYPES,
@@ -15,21 +17,6 @@ import {
   isCatalogCode,
   mergePaymentCatalog,
 } from '../src/utils/payments.js';
-
-function parseUserIdHeader(headers = {}) {
-  const n = parseInt(headers['x-user-id'], 10);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
-
-async function loadUser(supabase, userId) {
-  const { data, error } = await supabase
-    .from('users')
-    .select('user_id, pmc_id, role')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data;
-}
 
 async function loadRows(supabase, pmcId) {
   let query = supabase
@@ -59,12 +46,7 @@ function lists(rows) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, x-user-id, x-user-role'
-  );
+  applyCors(req, res, 'GET, POST, OPTIONS');
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
@@ -89,16 +71,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const userId = parseUserIdHeader(req.headers);
-    if (!userId) {
-      res.status(401).json({ success: false, error: 'Authentication required' });
+    const auth = await requireSessionUser(req, supabase);
+    if (!auth.user) {
+      sendAuthError(res, auth);
       return;
     }
-    const user = await loadUser(supabase, userId);
-    if (!user) {
-      res.status(401).json({ success: false, error: 'Authentication required' });
-      return;
-    }
+    const user = auth.user;
     if (!canViewPayments(user.role)) {
       res.status(403).json({ success: false, error: 'Payments are not available for this role.' });
       return;

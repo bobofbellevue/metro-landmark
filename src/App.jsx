@@ -56,9 +56,18 @@ export default function App() {
 
     const storedUser = readStoredAuthUser();
     if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      determineUserType(parsedUser);
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser?.sessionToken) {
+          setUser(parsedUser);
+          determineUserType(parsedUser);
+        } else {
+          clearStoredAuthUser();
+        }
+      } catch {
+        clearStoredAuthUser();
+      }
+    }
       
       // Check if Supabase Auth session exists and is valid
       supabase.auth.getSession().then(({ data: { session }, error }) => {
@@ -195,6 +204,7 @@ export default function App() {
           const enriched = { 
             ...user, 
             ...userData,
+            sessionToken: user.sessionToken,
             first_name: contact?.first_name || '',
             middle_name: contact?.middle_name || '',
             last_name: contact?.last_name || ''
@@ -373,7 +383,7 @@ const LoginPage = ({ onLoginSuccess }) => {
       });
       const data = await response.json();
       if (data.success) {
-        onLoginSuccess(data.user, data.supabaseSession);
+        onLoginSuccess({ ...data.user, sessionToken: data.sessionToken }, data.supabaseSession);
       } else {
         setError(data.message || 'Login failed.');
       }

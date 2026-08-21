@@ -8,6 +8,8 @@
  * Login / unauthenticated chrome stays deploy env brand (`/api/brand-config`).
  */
 import { createSupabaseClient } from './utils/supabase-client.js';
+import { applyCors } from './utils/cors.js';
+import { requireSessionUser, sendAuthError } from './utils/session.js';
 import {
   DEFAULT_ORG_PRIMARY,
   canEditOrgTheme,
@@ -18,12 +20,6 @@ import {
 
 export { canEditOrgTheme };
 
-export function parseUserIdHeader(headers = {}) {
-  const raw = headers['x-user-id'];
-  const n = parseInt(raw, 10);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
-
 function publicThemePayload(company) {
   const theme = parseStoredTheme(company?.theme);
   return {
@@ -33,16 +29,6 @@ function publicThemePayload(company) {
     theme,
     defaults: { primary: DEFAULT_ORG_PRIMARY },
   };
-}
-
-async function loadUser(supabase, userId) {
-  const { data, error } = await supabase
-    .from('users')
-    .select('user_id, pmc_id, role')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data;
 }
 
 async function loadCompany(supabase, pmcId) {
@@ -61,12 +47,7 @@ function missingThemeColumn(error) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, x-user-id, x-user-role'
-  );
+  applyCors(req, res, 'GET, PUT, OPTIONS');
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
@@ -91,17 +72,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const userId = parseUserIdHeader(req.headers);
-    if (!userId) {
-      res.status(401).json({ success: false, error: 'Authentication required' });
+    const auth = await requireSessionUser(req, supabase);
+    if (!auth.user) {
+      sendAuthError(res, auth);
       return;
     }
-
-    const user = await loadUser(supabase, userId);
-    if (!user) {
-      res.status(401).json({ success: false, error: 'Authentication required' });
-      return;
-    }
+    const user = auth.user;
 
     const canEdit = canEditOrgTheme(user.role);
 

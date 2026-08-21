@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import { authHeaders } from './auth-headers.js';
 
 function createRes() {
   const res = { headers: {}, statusCode: 200, jsonData: null };
@@ -65,7 +66,7 @@ describe('api/notifications/test', () => {
     await handler(
       {
         method: 'POST',
-        headers: { 'x-user-id': '7' },
+        headers: authHeaders(7),
         body: { notification_type: 'email', category: 'maintenance' },
       },
       res
@@ -84,7 +85,7 @@ describe('api/notifications/test', () => {
     await handler(
       {
         method: 'POST',
-        headers: { 'x-user-id': '7' },
+        headers: authHeaders(7),
         body: { notification_type: 'email', category: 'lease' },
       },
       res
@@ -100,7 +101,7 @@ describe('api/notifications/test', () => {
     await handler(
       {
         method: 'POST',
-        headers: { 'x-user-id': '7' },
+        headers: authHeaders(7),
         body: { notification_type: 'sms', category: 'payment' },
       },
       res
@@ -116,7 +117,7 @@ describe('api/notifications/test', () => {
     await handler(
       {
         method: 'POST',
-        headers: { 'x-user-id': '7' },
+        headers: authHeaders(7),
         body: { notification_type: 'sms', category: 'general' },
       },
       res
@@ -132,7 +133,7 @@ describe('api/notifications/test', () => {
     await handler(
       {
         method: 'POST',
-        headers: { 'x-user-id': '7' },
+        headers: authHeaders(7),
         body: {
           notification_type: 'email',
           category: 'maintenance',

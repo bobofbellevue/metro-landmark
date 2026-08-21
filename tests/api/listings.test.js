@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import { authHeaders } from './auth-headers.js';
 
 const savedEnv = {
   SUPABASE_URL: process.env.SUPABASE_URL,
@@ -305,15 +306,34 @@ describe('api/listings', () => {
     expect(res.statusCode).toBe(401);
   });
 
+  test('rejects x-user-id without a session token', async () => {
+    const res = createRes();
+    await handler({ method: 'GET', headers: { 'x-user-id': '1' }, query: {} }, res);
+    expect(res.statusCode).toBe(401);
+  });
+
+  test('uses the token user, not a spoofed x-user-id', async () => {
+    const res = createRes();
+    await handler(
+      {
+        method: 'GET',
+        headers: { ...authHeaders(6), 'x-user-id': '1' },
+        query: {},
+      },
+      res
+    );
+    expect(res.statusCode).toBe(403);
+  });
+
   test('tenant cannot view listings', async () => {
     const res = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '6' }, query: {} }, res);
+    await handler({ method: 'GET', headers: authHeaders(6), query: {} }, res);
     expect(res.statusCode).toBe(403);
   });
 
   test('GET returns vacant units only and hides occupied/future leases', async () => {
     const res = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '1' }, query: {} }, res);
+    await handler({ method: 'GET', headers: authHeaders(1), query: {} }, res);
     expect(res.statusCode).toBe(200);
     expect(res.jsonData.success).toBe(true);
     expect(res.jsonData.canEdit).toBe(true);
@@ -333,7 +353,7 @@ describe('api/listings', () => {
 
   test('staff can view but not edit', async () => {
     const getRes = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '4' }, query: {} }, getRes);
+    await handler({ method: 'GET', headers: authHeaders(4), query: {} }, getRes);
     expect(getRes.statusCode).toBe(200);
     expect(getRes.jsonData.canEdit).toBe(false);
 
@@ -341,7 +361,7 @@ describe('api/listings', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '4' },
+        headers: authHeaders(4),
         body: { unitId: 21, listed: true, askingRent: 1700 },
       },
       putRes
@@ -354,7 +374,7 @@ describe('api/listings', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         body: { unitId: 21, listed: true, availableOn: '09-01-2026', description: 'Bright unit' },
       },
       res
@@ -377,7 +397,7 @@ describe('api/listings', () => {
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         body: { unitId: 20, listed: true, askingRent: 1900 },
       },
       res
@@ -388,14 +408,14 @@ describe('api/listings', () => {
 
   test('skips units with a tenant assignment and no lease', async () => {
     const getRes = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '1' }, query: {} }, getRes);
+    await handler({ method: 'GET', headers: authHeaders(1), query: {} }, getRes);
     expect(getRes.jsonData.listings.map((row) => row.unitId)).not.toContain(23);
 
     const putRes = createRes();
     await handler(
       {
         method: 'PUT',
-        headers: { 'x-user-id': '1' },
+        headers: authHeaders(1),
         body: { unitId: 23, listed: true, askingRent: 1500 },
       },
       putRes
@@ -407,7 +427,7 @@ describe('api/listings', () => {
   test('XML and CSV export vacancies whether or not Listed is checked', async () => {
     const xmlRes = createRes();
     await handler(
-      { method: 'GET', headers: { 'x-user-id': '1' }, query: { format: 'xml' } },
+      { method: 'GET', headers: authHeaders(1), query: { format: 'xml' } },
       xmlRes
     );
     expect(xmlRes.statusCode).toBe(200);
@@ -429,7 +449,7 @@ describe('api/listings', () => {
 
     const listedXml = createRes();
     await handler(
-      { method: 'GET', headers: { 'x-user-id': '1' }, query: { format: 'xml' } },
+      { method: 'GET', headers: authHeaders(1), query: { format: 'xml' } },
       listedXml
     );
     expect(listedXml.body).toContain('<id>unit21</id>');
@@ -438,7 +458,7 @@ describe('api/listings', () => {
 
     const csvRes = createRes();
     await handler(
-      { method: 'GET', headers: { 'x-user-id': '1' }, query: { format: 'csv' } },
+      { method: 'GET', headers: authHeaders(1), query: { format: 'csv' } },
       csvRes
     );
     expect(csvRes.statusCode).toBe(200);
@@ -451,11 +471,11 @@ describe('api/listings', () => {
 
   test('landlord is scoped to owned properties; other PMC is hidden', async () => {
     const landlordRes = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '3' }, query: {} }, landlordRes);
+    await handler({ method: 'GET', headers: authHeaders(3), query: {} }, landlordRes);
     expect(landlordRes.jsonData.listings.map((row) => row.unitId)).toEqual([21]);
 
     const otherPmc = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '5' }, query: {} }, otherPmc);
+    await handler({ method: 'GET', headers: authHeaders(5), query: {} }, otherPmc);
     expect(otherPmc.jsonData.listings.map((row) => row.unitId)).toEqual([40]);
   });
 
@@ -471,7 +491,7 @@ describe('api/listings', () => {
 
     const res = createRes();
     await handler(
-      { method: 'DELETE', headers: { 'x-user-id': '1' }, query: { unitId: 21 } },
+      { method: 'DELETE', headers: authHeaders(1), query: { unitId: 21 } },
       res
     );
     expect(res.statusCode).toBe(200);
@@ -492,7 +512,7 @@ describe('api/listings', () => {
     });
     const res = createRes();
     await handler(
-      { method: 'DELETE', headers: { 'x-user-id': '4' }, query: { unitId: 21 } },
+      { method: 'DELETE', headers: authHeaders(4), query: { unitId: 21 } },
       res
     );
     expect(res.statusCode).toBe(403);

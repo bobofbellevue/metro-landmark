@@ -1,5 +1,7 @@
 /* eslint-env node */
 import { createSupabaseClient } from '../utils/supabase-client.js';
+import { applyCors } from '../utils/cors.js';
+import { requireSessionUserId, sendAuthError } from '../utils/session.js';
 
 /**
  * Vercel serverless function to mark notifications as read/unread
@@ -11,10 +13,7 @@ import { createSupabaseClient } from '../utils/supabase-client.js';
  * }
  */
 export default async function handler(req, res) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'PUT, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id');
+  applyCors(req, res, 'PUT, OPTIONS');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -29,16 +28,12 @@ export default async function handler(req, res) {
 
   try {
     const supabase = createSupabaseClient();
-
-    // Get user ID from headers
-    const userId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id']) : null;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: 'User ID required'
-      });
+    const auth = requireSessionUserId(req);
+    if (auth.userId == null) {
+      sendAuthError(res, auth);
+      return;
     }
+    const userId = auth.userId;
 
     const { notification_id, read } = req.body;
 

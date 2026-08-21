@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useCallback, useMemo } from 're
 import { FileText, Download, Search, Filter, X, Calendar, User, Database, Activity, Trash2, ArrowUpDown } from 'lucide-react';
 import { AuthContext } from '../contexts';
 import { Card } from './ui';
-import { api } from '../api';
+import { api, apiAuthHeaders } from '../api';
 import DateInput from './DateInput';
 import { useSortableData } from '../hooks';
 
@@ -183,10 +183,7 @@ export default function AuditLogs() {
             const url = `${import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://localhost:3000/api')}/audit-logs/export?${params.toString()}`;
             
             const response = await fetch(url, {
-                headers: {
-                    'x-user-id': user?.user_id,
-                    'x-user-role': user?.role
-                }
+                headers: apiAuthHeaders(user),
             });
 
             if (!response.ok) {
@@ -313,10 +310,7 @@ export default function AuditLogs() {
             
             const response = await fetch(url, {
                 method: 'DELETE',
-                headers: {
-                    'x-user-id': user?.user_id,
-                    'x-user-role': user?.role
-                }
+                headers: apiAuthHeaders(user),
             });
 
             const result = await response.json();

@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import { authHeaders } from './auth-headers.js';
 
 const savedEnv = {
   SUPABASE_URL: process.env.SUPABASE_URL,
@@ -76,7 +77,7 @@ await jest.unstable_mockModule('../../api/utils/supabase-client.js', () => ({
   }),
 }));
 
-const { default: handler, defaultNotificationPreferences, parseUserIdHeader } =
+const { default: handler, defaultNotificationPreferences } =
   await import('../../api/notifications/preferences.js');
 
 describe('api/notifications/preferences', () => {
@@ -91,14 +92,9 @@ describe('api/notifications/preferences', () => {
     restoreEnv();
   });
 
-  test('parseUserIdHeader', () => {
-    expect(parseUserIdHeader({})).toBeNull();
-    expect(parseUserIdHeader({ 'x-user-id': '12' })).toBe(12);
-  });
-
   test('GET creates defaults when none exist', async () => {
     const res = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '7' } }, res);
+    await handler({ method: 'GET', headers: authHeaders(7) }, res);
     expect(res.statusCode).toBe(200);
     expect(res.jsonData.success).toBe(true);
     expect(res.jsonData.preferences).toMatchObject(
@@ -110,7 +106,7 @@ describe('api/notifications/preferences', () => {
   test('GET returns stored preferences', async () => {
     prefsRow = { preference_id: 3, user_id: 7, email_enabled: false };
     const res = createRes();
-    await handler({ method: 'GET', headers: { 'x-user-id': '7' } }, res);
+    await handler({ method: 'GET', headers: authHeaders(7) }, res);
     expect(res.jsonData.preferences.email_enabled).toBe(false);
     expect(lastInsert).toBeNull();
   });

@@ -1,12 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
+import { applyCors } from './utils/cors.js';
+import { signSessionToken } from './utils/session.js';
 
 export default async (req, res) => {
-    
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    applyCors(req, res, 'POST, OPTIONS');
 
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
@@ -173,10 +171,22 @@ export default async (req, res) => {
                         }
                     }
                     
+                    let sessionToken;
+                    try {
+                        sessionToken = signSessionToken(user.user_id);
+                    } catch (signError) {
+                        console.error('Could not sign session token:', signError);
+                        return res.status(500).json({
+                            success: false,
+                            message: 'Server configuration error'
+                        });
+                    }
+
                     const { password_hash, ...userToSend } = user;
                     res.json({ 
                         success: true, 
                         user: userToSend,
+                        sessionToken,
                         supabaseSession: supabaseAuthSession // Include session tokens if available
                     });
                 } else {

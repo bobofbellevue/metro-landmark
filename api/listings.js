@@ -7,6 +7,8 @@
  * PUT  /api/listings           opt-in / update a listing
  */
 import { createSupabaseClient } from './utils/supabase-client.js';
+import { applyCors } from './utils/cors.js';
+import { requireSessionUser, sendAuthError } from './utils/session.js';
 import {
   isCompleteWorkflowDate,
   todayWorkflowDate,
@@ -29,21 +31,6 @@ import {
   unitsAssignedWithoutLease,
   validateListingWrite,
 } from '../src/utils/listings.js';
-
-export function parseUserIdHeader(headers = {}) {
-  const n = parseInt(headers['x-user-id'], 10);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
-
-async function loadUser(supabase, userId) {
-  const { data, error } = await supabase
-    .from('users')
-    .select('user_id, pmc_id, role')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data;
-}
 
 async function landlordIdForUser(supabase, userId) {
   const { data } = await supabase
@@ -235,12 +222,7 @@ function sendFeed(res, format, rows) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, x-user-id, x-user-role'
-  );
+  applyCors(req, res, 'GET, PUT, DELETE, OPTIONS');
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
@@ -265,16 +247,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const userId = parseUserIdHeader(req.headers);
-    if (!userId) {
-      res.status(401).json({ success: false, error: 'Authentication required' });
+    const auth = await requireSessionUser(req, supabase);
+    if (!auth.user) {
+      sendAuthError(res, auth);
       return;
     }
-    const user = await loadUser(supabase, userId);
-    if (!user) {
-      res.status(401).json({ success: false, error: 'Authentication required' });
-      return;
-    }
+    const user = auth.user;
     if (!canViewListings(user.role)) {
       res.status(403).json({ success: false, error: 'Not allowed.' });
       return;

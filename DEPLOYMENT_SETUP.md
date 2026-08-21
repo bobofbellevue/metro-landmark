@@ -135,6 +135,14 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 # OR (both work - code checks for both)
 SUPABASE_SECRET_KEY=your_service_role_key_here
 
+# Signed API session tokens (E7). If unset, the service role/secret key is used to HMAC tokens.
+# Set a dedicated value in production so rotating the Supabase key does not invalidate every session.
+SESSION_SECRET=a long random string
+
+# Optional CORS allowlist (comma-separated origins). Localhost and the Vercel deployment URL are included automatically.
+# CORS_ORIGIN=https://your-custom-domain.com
+# CORS_ORIGIN=*  # escape hatch only
+
 # Database Connection String (for direct database access)
 DATABASE_URL=postgresql://postgres:your_password@db.your-project.supabase.co:5432/postgres
 ```

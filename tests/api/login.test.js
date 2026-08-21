@@ -1,4 +1,5 @@
 import { jest } from "@jest/globals";
+import { verifySessionToken } from "../../api/utils/session.js";
 
 let supabaseQueryResult = null;
 let bcryptCompareResult = false;
@@ -57,6 +58,8 @@ describe("api/login", () => {
 	beforeEach(() => {
 		supabaseQueryResult = null;
 		bcryptCompareResult = false;
+		process.env.SESSION_SECRET = "test-session-secret";
+		process.env.SUPABASE_SERVICE_ROLE_KEY = "service-key";
 	});
 
 	test("returns 400 when email or password missing", async () => {
@@ -89,9 +92,15 @@ describe("api/login", () => {
 		await login(req, res);
 
 		expect(res.statusCode).toBe(200);
-		expect(res.jsonData).toEqual({
-			success: true,
-			user: { user_id: "u1", email: "a@b.com", name: "Test" },
+		expect(res.jsonData.success).toBe(true);
+		expect(res.jsonData.user).toEqual({
+			user_id: "u1",
+			email: "a@b.com",
+			name: "Test",
+		});
+		expect(res.jsonData.user.password_hash).toBeUndefined();
+		expect(verifySessionToken(res.jsonData.sessionToken)).toMatchObject({
+			uid: "u1",
 		});
 	});
 

@@ -1,6 +1,8 @@
 /* eslint-env node */
 import { createSupabaseClient } from '../utils/supabase-client.js';
 import { formatNotificationTestMessage } from '../utils/notification-test-message.js';
+import { applyCors } from '../utils/cors.js';
+import { requireSessionUserId, sendAuthError } from '../utils/session.js';
 
 /**
  * POST /api/notifications/test
@@ -37,9 +39,7 @@ function withDeadline(promise, ms, label) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id');
+  applyCors(req, res, 'POST, OPTIONS');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -72,13 +72,12 @@ export default async function handler(req, res) {
   };
 
   try {
-    const userId = req.headers['x-user-id'] ? parseInt(req.headers['x-user-id'], 10) : null;
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: 'User ID required',
-      });
+    const auth = requireSessionUserId(req);
+    if (auth.userId == null) {
+      sendAuthError(res, auth);
+      return;
     }
+    const userId = auth.userId;
 
     if (!notificationType || !category) {
       return res.status(400).json({

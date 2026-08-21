@@ -2370,6 +2370,8 @@ async function ensurePmCompaniesThemeColumn(sql) {
 }
 
 async function ensurePermissiveRls(sql, tableName) {
+  // E7 remaining: these policies let the SPA publishable key CRUD. Do not treat this
+  // as tenant isolation. API routes that use the service role must check a session token.
   if (!/^[a-z_]+$/.test(tableName)) {
     throw new Error(`Refusing RLS setup for unexpected table name: ${tableName}`);
   }
