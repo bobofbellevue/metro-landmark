@@ -950,6 +950,9 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
     // Landlord search functionality
     const [landlordSearchTerm, setLandlordSearchTerm] = useState('');
     const [showLandlordDropdown, setShowLandlordDropdown] = useState(false);
+    // Chrome treats the first text field as an email/username box; keep it locked
+    // until after focus so the saved-email overlay does not cover our list.
+    const [landlordLookupLocked, setLandlordLookupLocked] = useState(true);
     
     // Unit creation functionality
     const [units, setUnits] = useState([]);
@@ -1013,6 +1016,7 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
         const handleClickOutside = (event) => {
             if (showLandlordDropdown && !event.target.closest('.landlord-dropdown')) {
                 setShowLandlordDropdown(false);
+                setLandlordLookupLocked(true);
             }
         };
 
@@ -1170,6 +1174,8 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
     const resetForm = useCallback(() => {
         setLandlordId('');
         setLandlordSearchTerm('');
+        setShowLandlordDropdown(false);
+        setLandlordLookupLocked(true);
         setPropertyName('');
         setPropertyType('');
         setCustomPropertyType('');
@@ -1433,36 +1439,40 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
                 </div>
                 <div ref={formBodyRef} className="flex-1 overflow-y-auto pr-1 space-y-4">
                 <div>
-                    <label htmlFor="property-landlord-lookup" className="block text-sm font-medium text-gray-700">Landlord</label>
+                    <label htmlFor="ml-add-property-landlord" className="block text-sm font-medium text-gray-700">Landlord</label>
                     <div className="relative landlord-dropdown">
                         <input
-                            id="property-landlord-lookup"
-                            name="property-landlord-lookup"
-                            type="text"
+                            id="ml-add-property-landlord"
+                            name="ml-add-property-landlord"
+                            type="search"
                             role="combobox"
                             aria-autocomplete="list"
                             aria-expanded={showLandlordDropdown}
+                            aria-haspopup="listbox"
                             autoComplete="off"
                             autoCorrect="off"
-                            autoCapitalize="off"
+                            autoCapitalize="none"
                             spellCheck={false}
-                            // Chrome ignores autocomplete=off on many fields; readonly-until-focus
-                            // prevents the saved-email overlay from covering our landlord list.
-                            readOnly
-                            onFocus={(e) => {
-                                e.target.removeAttribute('readonly');
+                            inputMode="search"
+                            data-lpignore="true"
+                            data-1p-ignore="true"
+                            data-bwignore="true"
+                            data-form-type="other"
+                            readOnly={landlordLookupLocked}
+                            onFocus={() => {
                                 setShowLandlordDropdown(true);
+                                requestAnimationFrame(() => setLandlordLookupLocked(false));
                             }}
-                            placeholder="Search landlords by name, email, or company..."
+                            placeholder="Search by name or company"
                             value={landlordSearchTerm}
                             onChange={(e) => {
                                 setLandlordSearchTerm(e.target.value);
                                 setShowLandlordDropdown(true);
                             }}
-                            className="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                            className="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md shadow-sm appearance-none focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
                         />
                         {showLandlordDropdown && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto overflow-x-hidden finder-list">
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto overflow-x-hidden finder-list">
                                 {filteredLandlords.length === 0 ? (
                                     <div className="px-3 py-2 text-sm text-gray-500">No landlords found</div>
                                 ) : (
@@ -1470,10 +1480,12 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
                                         <button
                                             key={landlord.landlord_id}
                                             type="button"
-                                            onClick={() => {
+                                            onMouseDown={(event) => {
+                                                event.preventDefault();
                                                 setLandlordId(landlord.landlord_id);
                                                 setLandlordSearchTerm(formatLandlordName(landlord));
                                                 setShowLandlordDropdown(false);
+                                                setLandlordLookupLocked(true);
                                             }}
                                             className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none min-w-0"
                                         >
