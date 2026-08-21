@@ -551,7 +551,7 @@ export default function ListingsPage() {
                             Listed {getSortIndicator('listed')}
                           </button>
                         </th>
-                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase min-w-0">
                           <button
                             type="button"
                             onClick={() => requestSort('propertyName')}
@@ -596,7 +596,7 @@ export default function ListingsPage() {
                             PM {getSortIndicator('managerName')}
                           </button>
                         </th>
-                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase whitespace-nowrap">
+                        <th className="px-1.5 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase min-w-0">
                           <button
                             type="button"
                             onClick={() => requestSort('pmcName')}
@@ -666,7 +666,7 @@ export default function ListingsPage() {
                           <td className="px-1.5 py-2 text-left whitespace-nowrap">
                             {row.listed ? 'Yes' : 'No'}
                           </td>
-                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                          <td className="px-1.5 py-2 text-left whitespace-normal break-words min-w-0">
                             {row.propertyName || '—'}
                           </td>
                           <td className="px-1.5 py-2 text-left whitespace-nowrap">
@@ -688,7 +688,7 @@ export default function ListingsPage() {
                           <td className="px-1.5 py-2 text-left whitespace-nowrap">
                             {row.managerName || '—'}
                           </td>
-                          <td className="px-1.5 py-2 text-left whitespace-nowrap">
+                          <td className="px-1.5 py-2 text-left whitespace-normal break-words min-w-0">
                             {row.pmcName || '—'}
                           </td>
                           <td className="px-1.5 py-2 text-left whitespace-nowrap">
