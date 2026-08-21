@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpDown, Download, Home, Pencil, Search, Trash2, X } from 'lucide-react';
 import { AuthContext } from '../contexts';
 import { api } from '../api';
@@ -54,6 +54,35 @@ function downloadText(filename, text, mime) {
   a.click();
   window.URL.revokeObjectURL(downloadUrl);
   document.body.removeChild(a);
+}
+
+function ClampedCellText({ value }) {
+  const text = value == null || value === '' ? '—' : String(value);
+  const ref = useRef(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      setOverflows(el.scrollHeight > el.clientHeight + 1);
+    };
+    update();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [text]);
+
+  return (
+    <div
+      ref={ref}
+      className="min-w-0 whitespace-normal break-words line-clamp-3"
+      title={overflows && text !== '—' ? text : undefined}
+    >
+      {text}
+    </div>
+  );
 }
 
 export default function ListingsPage() {
@@ -666,8 +695,8 @@ export default function ListingsPage() {
                           <td className="px-1.5 py-2 text-left whitespace-nowrap">
                             {row.listed ? 'Yes' : 'No'}
                           </td>
-                          <td className="px-1.5 py-2 text-left whitespace-normal break-words min-w-0">
-                            {row.propertyName || '—'}
+                          <td className="px-1.5 py-2 text-left min-w-0">
+                            <ClampedCellText value={row.propertyName} />
                           </td>
                           <td className="px-1.5 py-2 text-left whitespace-nowrap">
                             {row.unitNumber || '—'}
@@ -688,8 +717,8 @@ export default function ListingsPage() {
                           <td className="px-1.5 py-2 text-left whitespace-nowrap">
                             {row.managerName || '—'}
                           </td>
-                          <td className="px-1.5 py-2 text-left whitespace-normal break-words min-w-0">
-                            {row.pmcName || '—'}
+                          <td className="px-1.5 py-2 text-left min-w-0">
+                            <ClampedCellText value={row.pmcName} />
                           </td>
                           <td className="px-1.5 py-2 text-left whitespace-nowrap">
                             {row.askingRent != null
