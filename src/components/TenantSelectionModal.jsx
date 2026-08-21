@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Search, UserPlus, Check, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { formatUnitLocationLine } from '../utils/unit-display.js';
 
 const TenantSelectionModal = ({ 
     isOpen, 
@@ -108,18 +109,11 @@ const TenantSelectionModal = ({
                 });
 
                 // Format unit name
-                const formatUnitName = (unit) => {
-                    const address = addressesMap.get(unit.properties?.property_id);
-                    const addressParts = [
-                        address?.address_line_1,
-                        address?.city,
-                        address?.state_province_region
-                    ].filter(Boolean);
-                    const addressString = addressParts.length > 0 
-                        ? addressParts.join(', ')
-                        : (unit.properties?.property_name || 'No Address');
-                    return `Unit ${unit.unit_number} - ${addressString}`;
-                };
+                const formatUnitName = (unit) =>
+                    formatUnitLocationLine(
+                        { ...unit, property_address: addressesMap.get(unit.properties?.property_id) },
+                        { missingPlace: 'No Address' }
+                    );
 
                 clientUnits.forEach(cu => {
                     const unit = unitsMap.get(cu.unit_id);

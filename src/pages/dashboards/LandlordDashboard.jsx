@@ -3,6 +3,7 @@ import { Building2, Home, FileText, Wrench, DollarSign, TrendingUp, Calendar, Al
 import { supabase } from '../../lib/supabase.js';
 import { AuthContext, SidebarContext } from '../../contexts';
 import { Card } from '../../components/ui';
+import { formatUnitQualifier } from '../../utils/unit-display.js';
 
 export default function LandlordDashboard() {
     const { user } = useContext(AuthContext);
@@ -115,7 +116,7 @@ export default function LandlordDashboard() {
                 tasks.push({
                     type: 'maintenance',
                     title: `Urgent Maintenance Required`,
-                    description: `Unit ${unit?.unit_number || 'N/A'} - ${req.description?.substring(0, 50) || 'No description'}`,
+                    description: [formatUnitQualifier(unit), req.description?.substring(0, 50) || 'No description'].filter(Boolean).join(' - '),
                     priority: 'urgent',
                     requestId: req.request_id,
                 });
@@ -130,7 +131,7 @@ export default function LandlordDashboard() {
                 tasks.push({
                     type: 'maintenance',
                     title: `Maintenance Request`,
-                    description: `Unit ${unit?.unit_number || 'N/A'} - ${req.description?.substring(0, 50) || 'No description'}`,
+                    description: [formatUnitQualifier(unit), req.description?.substring(0, 50) || 'No description'].filter(Boolean).join(' - '),
                     priority: req.priority === 'High' ? 'high' : 'medium',
                     requestId: req.request_id,
                 });

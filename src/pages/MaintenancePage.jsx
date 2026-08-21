@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase.js';
 import { AuthContext } from '../contexts';
 import { Card, ConfirmationModal } from '../components/ui';
 import ConversationReview from '../components/ConversationReview';
+import { formatPlaceWithUnit } from '../utils/unit-display.js';
 
 // This is the main component for the Maintenance page
 export default function MaintenancePage() {
@@ -582,7 +583,7 @@ const MaintenanceCard = ({ request, onUpdate, vendors }) => {
     }
 
     return (
-        <Card title={`${formatAddress()}, Unit ${request.unit_number || 'N/A'}`} className="bg-white hover:shadow-lg transition-shadow">
+        <Card title={formatPlaceWithUnit(formatAddress(), request)} className="bg-white hover:shadow-lg transition-shadow">
             <p className="mb-3 text-sm text-gray-500">
                 Tenant: <span className="font-medium text-gray-700">{formatTenantName()}</span>
             </p>
@@ -886,7 +887,7 @@ const CreateRequestModal = ({ onClose, onUpdateSuccess }) => {
                         <label className="block text-sm font-medium text-gray-700">Property / Unit</label>
                         <select value={unitId} onChange={e => setUnitId(e.target.value)} required className="block w-full px-3 py-2 mt-1 bg-white border border-gray-300 rounded-md shadow-sm">
                             <option value="">Select a Unit</option>
-                            {units.map(u => <option key={u.unit_id} value={u.unit_id}>{u.address_line_1} - Unit {u.unit_number}</option>)}
+                            {units.map(u => <option key={u.unit_id} value={u.unit_id}>{formatPlaceWithUnit(u.address_line_1, u)}</option>)}
                         </select>
                     </div>
                      <div>

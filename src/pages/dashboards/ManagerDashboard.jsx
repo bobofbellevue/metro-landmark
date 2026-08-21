@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase.js';
 import { AuthContext, SidebarContext } from '../../contexts';
 import { Card } from '../../components/ui';
 import { isAwaitingNoticeService } from '../../utils/notice-service-workflow.js';
+import { formatUnitQualifier } from '../../utils/unit-display.js';
 
 export default function ManagerDashboard() {
     const { user } = useContext(AuthContext);
@@ -123,7 +124,7 @@ export default function ManagerDashboard() {
                 tasks.push({
                     type: 'inspection',
                     title: `${inspection.inspection_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Inspection`,
-                    description: `Unit ${unit?.unit_number || 'N/A'} - ${new Date(inspection.inspection_date).toLocaleDateString()}`,
+                    description: [formatUnitQualifier(unit), new Date(inspection.inspection_date).toLocaleDateString()].filter(Boolean).join(' - '),
                     priority: 'medium',
                     dueDate: inspection.inspection_date,
                     inspectionId: inspection.inspection_id,
@@ -173,7 +174,7 @@ export default function ManagerDashboard() {
                 tasks.push({
                     type: 'notice_service',
                     title: `Record service: ${label}`,
-                    description: `Unit ${unit?.unit_number || 'N/A'} — notice generated, service not recorded`,
+                    description: [formatUnitQualifier(unit), 'notice generated, service not recorded'].filter(Boolean).join(' — '),
                     priority: 'high',
                     workflowId: workflow.workflow_id,
                 });
@@ -194,7 +195,7 @@ export default function ManagerDashboard() {
                 tasks.push({
                     type: 'document',
                     title: `Lease Renewal Document Needed`,
-                    description: `Unit ${unit?.unit_number || 'N/A'} - Lease expires ${new Date(lease.end_date).toLocaleDateString()}`,
+                    description: [formatUnitQualifier(unit), `Lease expires ${new Date(lease.end_date).toLocaleDateString()}`].filter(Boolean).join(' - '),
                     priority: 'high',
                     dueDate: lease.end_date,
                     leaseId: lease.lease_id,

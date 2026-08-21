@@ -9,6 +9,7 @@ import DocumentManagement from '../../components/DocumentManagement';
 import DateInput from '../../components/DateInput';
 import ContactMethodTypeInput from '../../components/ContactMethodTypeInput';
 import { phones, phoneView } from '../../config/phones.js';
+import { formatPlaceWithUnit, formatUnitQualifier } from '../../utils/unit-display.js';
 
 // CreateRequestModal component (copied from TenantMaintenance.jsx)
 const CreateRequestModal = ({ onClose, onUpdateSuccess, user }) => {
@@ -141,7 +142,7 @@ const CreateRequestModal = ({ onClose, onUpdateSuccess, user }) => {
               <option value="">Select a Unit</option>
               {units.map(u => (
                 <option key={u.unit_id} value={u.unit_id}>
-                  {u.address} - Unit {u.unit_number}
+                  {formatPlaceWithUnit(u.address, u.unit_number)}
                 </option>
               ))}
             </select>
@@ -1006,7 +1007,9 @@ export default function TenantSinglePage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 flex-wrap">
                           <h3 className="text-base font-semibold text-gray-900 truncate">{formatAddress(property)}</h3>
-                          <span className="text-sm text-gray-600">Unit {property.unit_number}</span>
+                          {formatUnitQualifier(property) ? (
+                          <span className="text-sm text-gray-600">{formatUnitQualifier(property)}</span>
+                          ) : null}
                           <span className="text-sm text-gray-600">{property.beds} bed{property.beds !== 1 ? 's' : ''}, {property.baths} bath{property.baths !== 1 ? 's' : ''}</span>
                           {property.monthly_rent && <span className="text-sm font-medium text-gray-900">${property.monthly_rent.toLocaleString()}/month</span>}
                         </div>
@@ -1079,7 +1082,7 @@ export default function TenantSinglePage() {
                     <Card key={request.request_id} className="bg-white hover:shadow-lg transition-shadow">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <p className="text-sm text-gray-600 mb-1">Unit {request.units?.unit_number || 'N/A'}</p>
+                          <p className="text-sm text-gray-600 mb-1">{formatUnitQualifier(request.units)}</p>
                           <p className="text-sm font-medium text-gray-900 mb-2">{request.description}</p>
                           <div className="flex items-center gap-4 text-xs text-gray-500">
                             <span>{formatDate(request.created_at)}</span>
@@ -1254,7 +1257,7 @@ export default function TenantSinglePage() {
                   <Card key={application.application_id} className="bg-white hover:shadow-lg transition-shadow">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-600">Unit {application.units?.unit_number || 'N/A'}</span>
+                        <span className="text-sm text-gray-600">{formatUnitQualifier(application.units)}</span>
                         <span className="text-sm text-gray-500">•</span>
                         <span className="text-sm text-gray-500">{formatDate(application.applied_at)}</span>
                       </div>
@@ -1291,7 +1294,7 @@ export default function TenantSinglePage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 flex-wrap min-w-0">
                         <span className="text-sm font-medium text-gray-900 truncate">{formatAddress(lease)}</span>
-                        <span className="text-sm text-gray-600">Unit {lease.unit_number}</span>
+                        <span className="text-sm text-gray-600">{formatUnitQualifier(lease)}</span>
                         {lease.monthly_rent && (
                           <>
                             <span className="text-sm text-gray-500">•</span>

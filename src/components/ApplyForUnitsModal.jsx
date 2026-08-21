@@ -7,6 +7,7 @@ import { ConfirmationModal } from './ui';
 import { ApplicationFormBuilder } from './ApplicationFormBuilder';
 import { extractFormValues } from '../utils/pdf-to-json-client.js';
 import { mapImportedDataToTemplate, normalizeDates } from '../utils/application-data-mapper.js';
+import { formatUnitQualifier } from '../utils/unit-display.js';
 
 // Helper functions moved to utility file - imported above
 
@@ -1005,8 +1006,8 @@ function ApplyForUnitsModal({
                         >
                           <div>
                             <div className="font-medium">
-                              Unit {unit.unit_number}
-                              {unit.properties?.property_name ? (
+                              {formatUnitQualifier(unit) || unit.properties?.property_name || ''}
+                              {formatUnitQualifier(unit) && unit.properties?.property_name ? (
                                 <span className="ml-2 text-sm font-normal text-gray-600">
                                   {unit.properties.property_name}
                                 </span>

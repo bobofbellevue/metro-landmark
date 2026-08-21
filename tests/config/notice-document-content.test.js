@@ -233,13 +233,13 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(lines.some((l) => l.startsWith('Landlord:'))).toBe(false);
   });
 
-  test('shows N/A only when unit_number is missing', () => {
+  test('omits the Unit line when unit_number is missing', () => {
     const lines = buildSimpleNoticeContentLines({
       notice_type_key: 'rent_increase',
       tenant_names: 'Ada Lovelace',
       property_name: 'Pine Court',
       effective_date: '11/01/2026',
     });
-    expect(lines).toContain('Unit: N/A');
+    expect(lines.some((l) => l.startsWith('Unit:'))).toBe(false);
   });
 });

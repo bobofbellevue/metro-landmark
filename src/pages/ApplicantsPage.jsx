@@ -18,6 +18,7 @@ import { deleteWithAudit } from '../lib/auditHelpers.js';
 import { stemmer } from 'stemmer';
 import ArchiveModal from '../components/ArchiveModal';
 import ContactMethodTypeInput from '../components/ContactMethodTypeInput';
+import { formatPlaceWithUnit, formatUnitLocationLine, formatUnitQualifier } from '../utils/unit-display.js';
 
 // Utility function for sorting contact methods
 const sortContactMethods = (contactMethods, userEmail) => {
@@ -659,11 +660,11 @@ export default function ApplicantsPage() {
                                                     return (
                                                         <div>
                                                             <div className="line-clamp-1">{a.address_line_1}</div>
-                                                            <div className="finder-secondary text-gray-500 line-clamp-1">Unit {a.unit_number}</div>
+                                                            <div className="finder-secondary text-gray-500 line-clamp-1">{formatUnitQualifier(a)}</div>
                                                         </div>
                                                     );
                                                 } else if (a.unit_number) {
-                                                    return <div className="line-clamp-2">Unit {a.unit_number}</div>;
+                                                    return <div className="line-clamp-2">{formatUnitQualifier(a)}</div>;
                                                 } else if (a.address_line_1) {
                                                     // If address contains comma, split it
                                                     const parts = a.address_line_1.split(',').map(p => p.trim()).filter(Boolean);
@@ -2264,12 +2265,12 @@ const CreateApplicantForm = ({ onApplicantCreated }) => {
                                             key={unit.unit_id}
                                             onClick={() => {
                                                 setSelectedUnit(unit);
-                                                setUnitSearchTerm(`${unit.unit_number} - ${unit.address?.address_line_1 || ''}`);
+                                                setUnitSearchTerm(formatPlaceWithUnit(unit.address?.address_line_1 || '', unit));
                                                 setShowUnitDropdown(false);
                                             }}
                                             className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0 min-w-0"
                                         >
-                                            <div className="finder-primary truncate">Unit {unit.unit_number}</div>
+                                            <div className="finder-primary truncate">{formatUnitQualifier(unit) || unit.address?.address_line_1 || ''}</div>
                                             <div className="finder-secondary text-gray-500 truncate">
                                                 {unit.address?.address_line_1 || ''}
                                                 {unit.address?.city ? `, ${unit.address.city}` : ''}
@@ -2296,7 +2297,7 @@ const CreateApplicantForm = ({ onApplicantCreated }) => {
                     </div>
                     {selectedUnit && (
                         <div className="mt-2 p-2 bg-indigo-50 border border-indigo-200 rounded-md">
-                            <div className="text-sm font-medium text-indigo-900">Selected: Unit {selectedUnit.unit_number}</div>
+                            <div className="text-sm font-medium text-indigo-900">Selected: {formatUnitQualifier(selectedUnit) || selectedUnit.address?.address_line_1 || ''}</div>
                             <div className="text-xs text-indigo-700">
                                 {selectedUnit.address?.address_line_1 || ''}
                                 {selectedUnit.address?.city ? `, ${selectedUnit.address.city}` : ''}
@@ -3590,7 +3591,7 @@ const ApplyForUnitsModalInline = ({ applicant, onClose, onApplySuccess }) => {
     const formatUnitInfo = (unit) => {
         const address = unit.address;
         const addressStr = address ? `${address.address_line_1}, ${address.city}, ${address.state_province_region}` : 'Address not available';
-        return `${unit.unit_number} - ${addressStr}`;
+        return formatPlaceWithUnit(addressStr, unit);
     };
 
     return (
@@ -4386,8 +4387,8 @@ const ReviewApplicationModal = ({ applicant, onClose, onReviewSuccess, onViewApp
     }, [applicant]);
 
     const formatUnitInfo = (unit) => {
-        if (!unit) return 'N/A';
-        return `Unit ${unit.unit_number || 'N/A'}`;
+        if (!unit) return '';
+        return formatUnitQualifier(unit);
     };
 
     const formatAddress = (unit) => {

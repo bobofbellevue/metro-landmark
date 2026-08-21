@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, Clock, MapPin, Wrench, CheckCircle, XCircle, AlertCircle, User } from 'lucide-react';
 import { formatDateTime as formatLocaleDateTime, localeContextFromBrowser } from '../config/locale.js';
+import { formatUnitAtProperty } from '../utils/unit-display.js';
 
 export default function AppointmentCard({ appointment, onEdit, onCancel, onComplete, localeContext }) {
   const resolvedLocale = localeContext || localeContextFromBrowser();
@@ -54,8 +55,8 @@ export default function AppointmentCard({ appointment, onEdit, onCancel, onCompl
 
   const vendorName = appointment.vendors?.company_name || 'Unknown Vendor';
   const issueDescription = appointment.maintenance_requests?.description || 'No description';
-  const unitNumber = appointment.maintenance_requests?.units?.unit_number || 'Unknown';
-  const propertyName = appointment.maintenance_requests?.units?.properties?.property_name || 'Unknown Property';
+  const unit = appointment.maintenance_requests?.units;
+  const propertyName = unit?.properties?.property_name || '';
   const priority = appointment.maintenance_requests?.priority || 'Not specified';
 
   return (
@@ -133,7 +134,7 @@ export default function AppointmentCard({ appointment, onEdit, onCancel, onCompl
           <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
           <div>
             <p className="text-sm text-gray-600">Location</p>
-            <p className="font-medium text-gray-900">Unit {unitNumber} at {propertyName}</p>
+            <p className="font-medium text-gray-900">{formatUnitAtProperty(unit, propertyName)}</p>
           </div>
         </div>
 

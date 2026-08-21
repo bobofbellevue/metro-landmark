@@ -3,6 +3,7 @@ import { Wrench, Calendar, DollarSign, Clock, CheckCircle, AlertCircle, FileText
 import { supabase } from '../../lib/supabase.js';
 import { AuthContext, SidebarContext } from '../../contexts';
 import { Card } from '../../components/ui';
+import { formatUnitQualifier } from '../../utils/unit-display.js';
 
 export default function VendorDashboard() {
     const { user } = useContext(AuthContext);
@@ -258,7 +259,7 @@ export default function VendorDashboard() {
                                             <p className="text-sm font-medium text-gray-700">
                                                 {formatAddress(request)}
                                             </p>
-                                            <p className="text-xs text-gray-500">Unit {request.unit_number}</p>
+                                            <p className="text-xs text-gray-500">{formatUnitQualifier(request)}</p>
                                         </div>
                                         <div className="flex gap-2">
                                             <span className={`px-2 py-1 text-xs font-semibold rounded ${getStatusColor(request.status)}`}>
@@ -312,7 +313,7 @@ export default function VendorDashboard() {
                                     <p className="text-sm font-medium text-gray-700 mb-1">
                                         {formatAddress(request)}
                                     </p>
-                                    <p className="text-xs text-gray-600">Unit {request.unit_number}</p>
+                                    <p className="text-xs text-gray-600">{formatUnitQualifier(request)}</p>
                                     <p className="text-sm text-gray-600 mt-2">{request.description?.substring(0, 80) || 'No description'}</p>
                                     <button
                                         onClick={() => setActivePage('Maintenance')}

@@ -3,6 +3,7 @@ import { MessageSquare, Phone, Clock, AlertCircle, CheckCircle, X, Trash2, User,
 import { supabase } from '../lib/supabase.js';
 import { AuthContext } from '../contexts';
 import { Card, ConfirmationModal } from './ui';
+import { formatUnitAtProperty } from '../utils/unit-display.js';
 
 export default function ConversationReview() {
   const { user } = useContext(AuthContext);
@@ -473,8 +474,7 @@ export default function ConversationReview() {
                             <div className="flex items-center gap-1">
                               <Building2 className="h-3 w-3" />
                               <span>
-                                Unit {conv.units.unit_number}
-                                {conv.units.properties?.property_name && ` - ${conv.units.properties.property_name}`}
+                                {formatUnitAtProperty(conv.units, conv.units.properties?.property_name)}
                               </span>
                             </div>
                           )}
