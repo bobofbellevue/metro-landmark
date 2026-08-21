@@ -32,6 +32,7 @@ import notificationPreferencesHandler from './api/notifications/preferences.js';
 import notificationTestHandler from './api/notifications/test.js';
 import paymentsHandler from './api/payments.js';
 import paymentCatalogHandler from './api/payment-catalog.js';
+import listingsHandler from './api/listings.js';
 import convertPDFHandler from './api/documents/convert-pdf-to-json.js';
 import convertDocHandler from './api/documents/convert-doc-to-images.js';
 import measureFieldPositionsHandler from './api/documents/measure-field-positions.js';
@@ -154,6 +155,24 @@ app.delete('/api/payments', async (req, res) => {
     await paymentsHandler(req, res);
   } catch (error) {
     console.error('Payments error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.get('/api/listings', async (req, res) => {
+  try {
+    await listingsHandler(req, res);
+  } catch (error) {
+    console.error('Listings error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+app.put('/api/listings', async (req, res) => {
+  try {
+    await listingsHandler(req, res);
+  } catch (error) {
+    console.error('Listings error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });

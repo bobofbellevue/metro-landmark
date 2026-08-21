@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { Building2, LayoutDashboard, Wrench, Shield, LogOut, Settings as SettingsIcon, Menu, X, UserCircle, UserPlus, Building, Briefcase, FileText, UserCheck, Store, DollarSign } from 'lucide-react';
+import { Building2, LayoutDashboard, Wrench, Shield, LogOut, Settings as SettingsIcon, Menu, X, UserCircle, UserPlus, Building, Briefcase, FileText, UserCheck, Store, DollarSign, Megaphone } from 'lucide-react';
 
 // Import shared modules
 import { AuthContext, SidebarContext } from './contexts';
@@ -29,6 +29,7 @@ import SettingsPage from './pages/SettingsPage';
 import DashboardPage from './pages/DashboardPage';
 import DocumentsPage from './pages/DocumentsPage';
 import PaymentsPage from './pages/PaymentsPage';
+import ListingsPage from './pages/ListingsPage';
 
 // Import tenant layout and pages
 import TenantSinglePage from './pages/tenant/TenantSinglePage';
@@ -462,6 +463,7 @@ function MainAppLayout() {
       case 'Tenants': return <TenantsPage />;
       case 'Leases': return <LeasesPage />;
       case 'Payments': return <PaymentsPage />;
+      case 'Listings': return <ListingsPage />;
       case 'Maintenance': return <MaintenancePage />;
       case 'Compliance': return <CompliancePage />;
       case 'Compliance Policies': return <CompliancePoliciesPage />;
@@ -507,6 +509,7 @@ function Sidebar() {
         { icon: <Building2 />, text: 'Tenants' },
         { icon: <FileText />, text: 'Leases' },
         { icon: <DollarSign />, text: 'Payments' },
+        { icon: <Megaphone />, text: 'Listings' },
         { icon: <Wrench />, text: 'Maintenance' },
         { icon: <Shield />, text: 'Compliance' },
         { icon: <Shield />, text: 'Compliance Policies' },
@@ -524,6 +527,7 @@ function Sidebar() {
         { icon: <Building2 />, text: 'Tenants' },
         { icon: <FileText />, text: 'Leases' },
         { icon: <DollarSign />, text: 'Payments' },
+        { icon: <Megaphone />, text: 'Listings' },
         { icon: <Wrench />, text: 'Maintenance' },
         { icon: <Shield />, text: 'Compliance' },
         { icon: <Shield />, text: 'Compliance Policies' },
@@ -539,6 +543,7 @@ function Sidebar() {
         { icon: <Building2 />, text: 'Properties' },
         { icon: <FileText />, text: 'Leases' },
         { icon: <DollarSign />, text: 'Payments' },
+        { icon: <Megaphone />, text: 'Listings' },
         { icon: <Wrench />, text: 'Maintenance' },
         { icon: <Shield />, text: 'Compliance' },
         { icon: <FileText />, text: 'Documents' },
@@ -550,6 +555,7 @@ function Sidebar() {
       return [
         ...baseItems,
         { icon: <Building2 />, text: 'Properties' },
+        { icon: <Megaphone />, text: 'Listings' },
         { icon: <Wrench />, text: 'Maintenance' },
         { icon: <SettingsIcon />, text: 'Settings' }
       ];
@@ -561,6 +567,7 @@ function Sidebar() {
         { icon: <Building2 />, text: 'Properties' },
         { icon: <FileText />, text: 'Leases' },
         { icon: <DollarSign />, text: 'Payments' },
+        { icon: <Megaphone />, text: 'Listings' },
         { icon: <Wrench />, text: 'Maintenance' },
         { icon: <Shield />, text: 'Compliance' },
         { icon: <FileText />, text: 'Documents' },

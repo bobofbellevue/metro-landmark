@@ -177,6 +177,7 @@ async function resetDatabase(sql, environment = null) {
     'lease_clients',
     'lease_fee_types',
     'leases',
+    'listings',
     'legal_notices',
     'maintenance_requests',
     'notification_history',
@@ -1064,6 +1065,26 @@ async function createTables(sql) {
     `;
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_payment_catalog_pmc_code ON payment_catalog (pmc_id, category, code) WHERE pmc_id IS NOT NULL`;
     await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_payment_catalog_system_code ON payment_catalog (category, code) WHERE pmc_id IS NULL`;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS listings (
+        listing_id SERIAL PRIMARY KEY,
+        unit_id INTEGER NOT NULL REFERENCES units(unit_id) ON DELETE CASCADE,
+        pmc_id INTEGER REFERENCES pm_companies(pmc_id) ON DELETE SET NULL,
+        listed BOOLEAN NOT NULL DEFAULT false,
+        asking_rent DECIMAL(10,2),
+        available_on DATE,
+        description TEXT,
+        updated_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT listings_asking_rent_positive CHECK (
+          asking_rent IS NULL OR asking_rent > 0
+        )
+      )
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_listings_unit ON listings (unit_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_listings_pmc_listed ON listings (pmc_id, listed)`;
 
     // Create client_units table (direct client-unit relationship)
     // This table tracks direct assignments of clients to units, whether from applications, leases, or direct assignment
@@ -2499,6 +2520,36 @@ async function ensurePaymentCatalogTable(sql) {
   }
 }
 
+async function ensureListingsTable(sql) {
+  try {
+    logDetail('Ensuring listings table exists...');
+    await sql`
+      CREATE TABLE IF NOT EXISTS listings (
+        listing_id SERIAL PRIMARY KEY,
+        unit_id INTEGER NOT NULL REFERENCES units(unit_id) ON DELETE CASCADE,
+        pmc_id INTEGER REFERENCES pm_companies(pmc_id) ON DELETE SET NULL,
+        listed BOOLEAN NOT NULL DEFAULT false,
+        asking_rent DECIMAL(10,2),
+        available_on DATE,
+        description TEXT,
+        updated_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT listings_asking_rent_positive CHECK (
+          asking_rent IS NULL OR asking_rent > 0
+        )
+      )
+    `;
+    await sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_listings_unit ON listings (unit_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_listings_pmc_listed ON listings (pmc_id, listed)`;
+    await ensurePermissiveRls(sql, 'listings');
+    logDetail('✅ listings verified/created');
+  } catch (error) {
+    logDetail(`⚠️ Could not ensure listings: ${error.message}`, 'error');
+    throw error;
+  }
+}
+
 async function ensurePhoneResourcesTable(sql) {
   try {
     logDetail('Ensuring phone_resources table exists...');
@@ -2613,6 +2664,7 @@ async function runSchemaMigrations(sql) {
     await ensurePhoneResourcesTable(sql);
     await ensurePaymentsTable(sql);
     await ensurePaymentCatalogTable(sql);
+    await ensureListingsTable(sql);
     
     // Run SQL migration files from migrations folder
     await runSQLMigrations(sql);

@@ -20,6 +20,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 
 | Item | Notes |
 |------|--------|
+| E5 Listing syndication | Operator **Listings** page for vacant units (no active/future lease). Listing is **opt-in** — vacant does not mean advertised. Asking rent, available date, and description; XML (HotPads-like) and CSV export of listed vacancies for channel upload. Live Zillow/Apartments.com APIs are later. Without E11 subsidy flags, reserved units are not auto-excluded, so operators must choose what to list. |
 | Compliance Center | Rent Increase, Lease Renewal, Eviction, Lease Termination, and Tenant Screening are operator-ready. Remaining catalog tiles are leftover stubs (E13–E17). |
 | Documents | Staff registry + type catalog exist; contextual panels incomplete across landlord/maintenance/portals |
 | Voice / chat maintenance | Works with Vapi/OpenAI when configured; numbers can be assigned per purpose (E3), with a shared env DID as fallback |
@@ -29,7 +30,6 @@ This list is intentionally short. Finish or cut items before expanding it.
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| E5 | Listing syndication | Export vacancies to major channels |
 | E6 | Additional city packs | Tacoma, Bellingham, Federal Way, Olympia (and others) as **child packs of WA**, only when official citations exist and an operator needs them. Do not copy RHAWA PDFs. Design: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#rent-increase-completeness--seattle-cities-forms-exemptions-2026-08-16) |
 | E7 | Auth hardening | Verified sessions/tokens; stop trusting client role headers; tighten RLS/CORS |
 | E8 | Contextual documents for landlords & maintenance | Mount `DocumentManagement` on landlord property/lease/maintenance views (bids, work authorizations, etc.) |
