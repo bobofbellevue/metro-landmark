@@ -61,20 +61,17 @@ export default function App() {
         if (parsedUser?.sessionToken) {
           setUser(parsedUser);
           determineUserType(parsedUser);
+          supabase.auth.getSession().then(({ data: { session }, error }) => {
+            if (error || !session) {
+              console.warn('No Supabase Auth session found - storage operations may fail. User may need to log in again.');
+            }
+          });
         } else {
           clearStoredAuthUser();
         }
       } catch {
         clearStoredAuthUser();
       }
-    }
-      
-      // Check if Supabase Auth session exists and is valid
-      supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error || !session) {
-          console.warn('No Supabase Auth session found - storage operations may fail. User may need to log in again.');
-        }
-      });
     }
     setAuthAttempted(true);
   }, []);
