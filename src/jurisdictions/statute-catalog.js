@@ -114,6 +114,26 @@ export const STATUTE_CATALOG = Object.freeze({
     label: 'FWRC 20.05.050 (Federal Way lease renewal offer)',
     href: 'https://www.codepublishing.com/WA/FederalWay/html/FederalWay20/FederalWay2005.html',
   },
+  KMC_7_75_030: {
+    id: 'KMC_7.75.030',
+    label: 'KMC 7.75.030 (Kirkland notice of rent increase)',
+    href: 'https://www.codepublishing.com/WA/Kirkland/html/Kirkland07/Kirkland0775.html',
+  },
+  KMC_8_55_030: {
+    id: 'KMC_8.55.030',
+    label: 'KMC 8.55.030 (Kenmore notice of rent increase)',
+    href: 'https://www.codepublishing.com/WA/Kenmore/html/Kenmore08/Kenmore0855.html',
+  },
+  SMC_9_35_030: {
+    id: 'SMC_9.35.030',
+    label: 'SMC 9.35.030 (Shoreline rent-increase notice)',
+    href: 'https://ecode360.com/49778599',
+  },
+  ACC_5_23_040: {
+    id: 'ACC_5.23.040',
+    label: 'ACC 5.23.040 (Auburn deposit and rent-increase notice)',
+    href: 'https://auburn.municipal.codes/ACC/5.23.040',
+  },
 });
 
 /**

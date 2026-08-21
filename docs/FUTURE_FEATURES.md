@@ -164,9 +164,9 @@ Do not block day-to-day notice workflows on these. Legal service rules still dep
 
 ### City packs beyond Seattle
 
-RHAWA currently publishes separate rent-increase notices for **Bellingham, Federal Way, Olympia, Seattle, Tacoma**, plus a WA State default. Tacoma also requires extra city forms. Kirkland / Kenmore / Shoreline / Auburn (and others) appear in secondary roundups with different notice-day tiers. Add a city pack when we have official citations and an operator who needs it — not from the RHAWA PDF.
+RHAWA currently publishes separate rent-increase notices for **Bellingham, Federal Way, Olympia, Seattle, Tacoma**, plus a WA State default. Tacoma also requires extra city forms. Remaining cities (and others) wait on official citations and an operator who needs them — not from the RHAWA PDF.
 
-**Shipped (E6 first slice):** Tacoma 180-day (TMC 1.95.060), Bellingham 120-day (BMC 6.12.020), Olympia 90/120/180 percent tiers (OMC 5.82.030), Federal Way statewide 90-day rent notice plus FWRC 20.05 renewal offer. Calculator applies `noticeTiers`. City fillable forms are linked, not copied. Not encoded: Olympia trailing 12-month 7% stacking, Tacoma relocation payment amounts, Kirkland/Kenmore/Shoreline/Auburn.
+**Shipped (E6):** Tacoma 180-day (TMC 1.95.060), Bellingham 120-day (BMC 6.12.020), Olympia 90/120/180 percent tiers (OMC 5.82.030), Federal Way statewide 90-day rent notice plus FWRC 20.05 renewal offer, Kirkland (KMC 7.75.030, 90 / >3% 120 / >10% 180), Kenmore (KMC 8.55.030, same tiers), Shoreline (SMC 9.35.030, 90 / >3% 120 / ≥10% 180), Auburn (ACC 5.23.040, 90 / >5% 120). Calculator applies `noticeTiers`. City fillable forms are linked, not copied. Not encoded: Olympia trailing 12-month 7% stacking, Tacoma relocation payment amounts, Kirkland’s stale 60-day table row, Shoreline’s 60-day optional-rent figure.
 
 ### Regulation “scan” button (idea)
 
@@ -180,7 +180,7 @@ Store `sourceUrls` on each pack (now). A later Admin action can fetch those publ
 
 **Later:** remaining cities when official citations exist; housing-cost line items; rental-period snap; MTM vs lease 5% parity; dual-service two-proof UI; Admin-editable method lists; regulation scan from `sourceUrls`; manufactured-home lot form (Commerce has a second notice).
 
-**Status:** partial (Seattle 180-day shipped; Tacoma/Bellingham/Olympia/Federal Way packs shipped; remainder idea / planned with E11)
+**Status:** partial (Seattle 180-day shipped; Tacoma/Bellingham/Olympia/Federal Way/Kirkland/Kenmore/Shoreline/Auburn packs shipped; remainder idea / planned with E11)
 
 ---
 

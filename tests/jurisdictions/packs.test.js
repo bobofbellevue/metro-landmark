@@ -17,10 +17,14 @@ describe('jurisdiction packs', () => {
   test('registers WA state and city packs', () => {
     const ids = listJurisdictionPacks().map((p) => p.id).sort();
     expect(ids).toEqual([
+      'auburn',
       'bellingham',
       'federal_way',
+      'kenmore',
+      'kirkland',
       'olympia',
       'seattle',
+      'shoreline',
       'tacoma',
       'washington_state',
     ]);
@@ -34,6 +38,10 @@ describe('jurisdiction packs', () => {
     expect(detectJurisdictionPackId({ city: 'Bellingham' })).toBe('bellingham');
     expect(detectJurisdictionPackId({ city: 'Olympia' })).toBe('olympia');
     expect(detectJurisdictionPackId({ city_of_jurisdiction: 'Federal Way' })).toBe('federal_way');
+    expect(detectJurisdictionPackId({ city: 'Kirkland' })).toBe('kirkland');
+    expect(detectJurisdictionPackId({ city: 'Kenmore' })).toBe('kenmore');
+    expect(detectJurisdictionPackId({ city_of_jurisdiction: 'Shoreline' })).toBe('shoreline');
+    expect(detectJurisdictionPackId({ address: { city: 'Auburn' } })).toBe('auburn');
     expect(detectJurisdictionPackId({ city: 'Renton' })).toBe('washington_state');
     expect(detectJurisdictionPackId(null)).toBe('washington_state');
   });
@@ -173,5 +181,53 @@ describe('jurisdiction packs', () => {
     expect(federalWay.resolvedRules.termination.requiresJustCauseForFixedTermNonrenewal).toBe(true);
     expect(federalWay.resolvedRules.termination.renewalOfferMinDaysBeforeEnd).toBe(60);
     expect(federalWay.resolvedStatuteRefs.map((r) => r.id)).toContain('FWRC_20.05.050');
+  });
+
+  test('Kirkland and Kenmore keep 90-day default and >3% / >10% notice tiers', () => {
+    for (const id of ['kirkland', 'kenmore']) {
+      const pack = getResolvedJurisdictionPack(id);
+      expect(pack.parentPackId).toBe('washington_state');
+      expect(pack.resolvedRules.rentIncrease.defaultNoticeDays).toBe(90);
+      expect(pack.resolvedRules.rentIncrease.noticeTiers).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ minPercent: 3, minInclusive: false, days: 120 }),
+          expect.objectContaining({ minPercent: 10, minInclusive: false, days: 180 }),
+        ])
+      );
+      expect(pack.preferredLandlordAssociation?.id).toBe('rhawa');
+    }
+    expect(getResolvedJurisdictionPack('kirkland').resolvedStatuteRefs.map((r) => r.id)).toContain(
+      'KMC_7.75.030'
+    );
+    expect(getResolvedJurisdictionPack('kenmore').resolvedStatuteRefs.map((r) => r.id)).toContain(
+      'KMC_8.55.030'
+    );
+  });
+
+  test('Shoreline keeps 90-day default and encodes ≥10% as 180 days', () => {
+    const shoreline = getResolvedJurisdictionPack('shoreline');
+    expect(shoreline.resolvedRules.rentIncrease.defaultNoticeDays).toBe(90);
+    expect(shoreline.resolvedRules.rentIncrease.noticeTiers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ minPercent: 3, minInclusive: false, days: 120 }),
+        expect.objectContaining({ minPercent: 10, minInclusive: true, days: 180 }),
+      ])
+    );
+    expect(shoreline.resolvedStatuteRefs.map((r) => r.id)).toContain('SMC_9.35.030');
+    expect(getRentIncreaseNoticeResources('shoreline').requiredNoticeLanguage[0]).toMatch(
+      /SMC 9\.35/
+    );
+  });
+
+  test('Auburn keeps 90-day default and >5% 120-day overlay', () => {
+    const auburn = getResolvedJurisdictionPack('auburn');
+    expect(auburn.resolvedRules.rentIncrease.defaultNoticeDays).toBe(90);
+    expect(auburn.resolvedRules.rentIncrease.noticeTiers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ minPercent: 5, minInclusive: false, days: 120 }),
+      ])
+    );
+    expect(auburn.resolvedStatuteRefs.map((r) => r.id)).toContain('ACC_5.23.040');
+    expect(auburn.resolvedRules.noticeService.notes).toMatch(/RCW 59\.12\.040/);
   });
 });
