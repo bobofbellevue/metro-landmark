@@ -8,6 +8,7 @@ import {
   isOccupiedLeaseStatus,
   lastRentByUnit,
   listingAsPickerUnit,
+  listingFeedId,
   listingLabel,
   listingsToCsv,
   listingsToZillowXml,
@@ -15,9 +16,12 @@ import {
   missingListingsTable,
   occupiedUnitIds,
   parseAskingRent,
+  readListingsSearchSession,
   uniqueListingFilters,
   unitsAssignedWithoutLease,
   validateListingWrite,
+  writeListingsSearchSession,
+  clearListingsSearchSession,
   xmlEscape,
 } from '../../src/utils/listings.js';
 
@@ -113,8 +117,8 @@ describe('listing helpers', () => {
     ];
     const xml = listingsToZillowXml(rows);
     expect(xml).toContain('<hotPadsItems>');
-    expect(xml).toContain('<id>unit-9</id>');
-    expect(xml).toContain('<id>unit-10</id>');
+    expect(xml).toContain('<id>unit9</id>');
+    expect(xml).toContain('<id>unit10</id>');
     expect(xml).toContain('<listed>true</listed>');
     expect(xml).toContain('<listed>false</listed>');
     expect(xml).toContain('&lt;unit&gt;');
@@ -214,5 +218,35 @@ describe('listing helpers', () => {
       unit_number: '3B',
       properties: { property_name: 'Pine Court' },
     });
+  });
+
+  test('listingFeedId is stable and has no dashes', () => {
+    expect(listingFeedId(3)).toBe('unit3');
+    expect(listingFeedId(21)).toBe('unit21');
+    expect(listingFeedId(0)).toBe('');
+  });
+
+  test('listings search session is per user and clearable', () => {
+    const memory = {
+      data: {},
+      getItem(key) {
+        return Object.prototype.hasOwnProperty.call(this.data, key) ? this.data[key] : null;
+      },
+      setItem(key, value) {
+        this.data[key] = String(value);
+      },
+      removeItem(key) {
+        delete this.data[key];
+      },
+    };
+    writeListingsSearchSession(7, { searchTerm: 'Seattle', listedFilter: 'unlisted', landlordFilter: '1' }, memory);
+    expect(readListingsSearchSession(7, memory)).toMatchObject({
+      searchTerm: 'Seattle',
+      listedFilter: 'unlisted',
+      landlordFilter: '1',
+    });
+    expect(readListingsSearchSession(8, memory)).toMatchObject({ searchTerm: '', listedFilter: 'all' });
+    clearListingsSearchSession(memory);
+    expect(readListingsSearchSession(7, memory).searchTerm).toBe('');
   });
 });

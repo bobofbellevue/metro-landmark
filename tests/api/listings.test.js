@@ -413,10 +413,10 @@ describe('api/listings', () => {
     expect(xmlRes.statusCode).toBe(200);
     expect(xmlRes.headers['Content-Type']).toMatch(/xml/);
     expect(xmlRes.body).toContain('<hotPadsItems>');
-    expect(xmlRes.body).toContain('<id>unit-21</id>');
+    expect(xmlRes.body).toContain('<id>unit21</id>');
     expect(xmlRes.body).toContain('<listed>false</listed>');
-    expect(xmlRes.body).not.toContain('unit-20');
-    expect(xmlRes.body).not.toContain('unit-23');
+    expect(xmlRes.body).not.toContain('<id>unit20</id>');
+    expect(xmlRes.body).not.toContain('<id>unit23</id>');
 
     db.listings.push({
       listing_id: 1,
@@ -432,7 +432,7 @@ describe('api/listings', () => {
       { method: 'GET', headers: { 'x-user-id': '1' }, query: { format: 'xml' } },
       listedXml
     );
-    expect(listedXml.body).toContain('<id>unit-21</id>');
+    expect(listedXml.body).toContain('<id>unit21</id>');
     expect(listedXml.body).toContain('&lt;unit&gt;');
     expect(listedXml.body).toContain('<listed>true</listed>');
 

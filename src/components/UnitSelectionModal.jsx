@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Search, Check } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 import { useFinderLimit } from '../hooks/useFinderLimit.js';
 import {
   filterUnitsBySearch,
@@ -10,6 +10,7 @@ import {
 
 /**
  * Modal unit picker (mirrors TenantSelectionModal UX).
+ * Units are alternatives: one radio selection, then Select.
  *
  * @param {object} props
  * @param {boolean} props.isOpen
@@ -76,7 +77,7 @@ export default function UnitSelectionModal({
     e.stopPropagation();
   };
 
-  const handleDone = () => {
+  const handleSelect = () => {
     if (pendingUnitId == null || pendingUnitId === '') {
       onUnitSelect?.(null, null);
     } else {
@@ -146,46 +147,45 @@ export default function UnitSelectionModal({
               {debouncedSearchTerm ? 'No units found matching your search.' : emptyMessage}
             </div>
           ) : (
-            <div className="finder-list space-y-2">
+            <fieldset className="finder-list space-y-2 m-0 p-0 border-0">
+              <legend className="sr-only">{title}</legend>
               {displayedUnits.map((unit) => {
                 const isSelected = String(unit.unit_id) === String(pendingUnitId);
+                const inputId = `unit-option-${unit.unit_id}`;
                 return (
-                  <button
+                  <label
                     key={unit.unit_id}
-                    type="button"
+                    htmlFor={inputId}
                     title={unit.addressLine || undefined}
-                    onClick={() => setPendingUnitId(unit.unit_id)}
-                    className={`w-full text-left rounded-lg border p-3 transition-colors ${
+                    className={`flex items-start gap-3 w-full text-left rounded-lg border p-3 cursor-pointer transition-colors ${
                       isSelected
                         ? 'bg-indigo-50 border-indigo-200'
                         : 'bg-white border-gray-200 hover:bg-gray-50'
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                          isSelected
-                            ? 'bg-indigo-600 border-indigo-600'
-                            : 'border-gray-300'
-                        }`}
-                      >
-                        {isSelected && <Check size={12} className="text-white" />}
+                    <input
+                      id={inputId}
+                      type="radio"
+                      name="unit-selection"
+                      value={unit.unit_id}
+                      checked={isSelected}
+                      onChange={() => setPendingUnitId(unit.unit_id)}
+                      className="mt-1 h-4 w-4 flex-shrink-0 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-gray-900 whitespace-normal break-words">
+                        {formatUnitPickerLabel(unit)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-gray-900 whitespace-normal break-words">
-                          {formatUnitPickerLabel(unit)}
-                        </div>
-                      </div>
-                      {isSelected && (
-                        <div className="finder-secondary text-indigo-600 ml-2 flex-shrink-0">
-                          Selected
-                        </div>
-                      )}
                     </div>
-                  </button>
+                    {isSelected && (
+                      <div className="finder-secondary text-indigo-600 ml-2 flex-shrink-0">
+                        Selected
+                      </div>
+                    )}
+                  </label>
                 );
               })}
-            </div>
+            </fieldset>
           )}
 
           {hasMore && (
@@ -207,7 +207,7 @@ export default function UnitSelectionModal({
                 : 'No unit selected'}
             </div>
             <div className="flex gap-3">
-              {(pendingUnitId != null && pendingUnitId !== '') && (
+              {pendingUnitId != null && pendingUnitId !== '' && (
                 <button
                   type="button"
                   onClick={handleClear}
@@ -225,10 +225,10 @@ export default function UnitSelectionModal({
               </button>
               <button
                 type="button"
-                onClick={handleDone}
+                onClick={handleSelect}
                 className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700"
               >
-                Done
+                Select
               </button>
             </div>
           </div>

@@ -13,6 +13,7 @@ import {
 } from './config/brand.js';
 import { api } from './api.js';
 import { applyOrgTheme, clearOrgTheme } from './utils/org-theme.js';
+import { clearListingsSearchSession } from './utils/listings.js';
 
 // Import page-level components (Admin)
 import AdminPage from './pages/AdminPage';
@@ -300,6 +301,7 @@ export default function App() {
     clearOrgTheme();
     setResolvedPhones(null);
     clearStoredAuthUser();
+    clearListingsSearchSession();
     // Sign out from Supabase Auth as well
     await supabase.auth.signOut();
   };

@@ -138,3 +138,7 @@ body,
   font-size: 12px;
   font-weight: 75;
 }
+
+.datepicker-popper-portal {
+  z-index: 60;
+}

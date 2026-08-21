@@ -148,12 +148,30 @@ export function listingLabel(row) {
   return `${row.propertyName || 'Property'}${unit}`;
 }
 
+/**
+ * Stable feed listing id for a unit.
+ *
+ * Zillow Rentals / HotPads bulk feeds require a unique id that does not
+ * change across exports (it is how the destination matches updates). Dashes
+ * are discouraged. This is not unique-only-within-the-file.
+ */
+export function listingFeedId(unitId) {
+  const n = Number(unitId);
+  if (!Number.isInteger(n) || n <= 0) return '';
+  return `unit${n}`;
+}
+
+/**
+ * Simplified HotPads-like XML for channel upload. This is not the full
+ * Zillow Rentals bulk feed (Company + Listing attributes). `<id>` is a
+ * stable per-unit key that destinations keep across imports.
+ */
 export function listingsToZillowXml(rows = []) {
   const items = rows.map((row) => {
     const price = row.askingRent ?? row.lastRent;
     return [
       '    <Listing>',
-      `      <id>${xmlEscape(`unit-${row.unitId}`)}</id>`,
+      `      <id>${xmlEscape(listingFeedId(row.unitId))}</id>`,
       `      <status>ACTIVE</status>`,
       `      <type>RENTAL</type>`,
       `      <propertyType>${xmlEscape(mapPropertyType(row.propertyType))}</propertyType>`,
@@ -346,6 +364,76 @@ export function uniqueListingFilters(rows = []) {
     pmcs: [...pmcs.entries()].map(([id, name]) => ({ id, name })).sort(byName),
     managers: [...managers.entries()].map(([id, name]) => ({ id, name })).sort(byName),
   };
+}
+
+export const LISTINGS_SEARCH_SESSION_KEY = 'listings-search';
+
+export function defaultListingsSearch() {
+  return {
+    searchTerm: '',
+    listedFilter: 'all',
+    landlordFilter: '',
+    pmcFilter: '',
+    managerFilter: '',
+  };
+}
+
+function listingsSearchStorage(storage) {
+  if (storage) return storage;
+  if (typeof sessionStorage === 'undefined') return null;
+  return sessionStorage;
+}
+
+export function readListingsSearchSession(userId, storage) {
+  const defaults = defaultListingsSearch();
+  const store = listingsSearchStorage(storage);
+  if (!store || userId == null || userId === '') return defaults;
+  try {
+    const raw = store.getItem(LISTINGS_SEARCH_SESSION_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    if (parsed?.userId != null && Number(parsed.userId) !== Number(userId)) {
+      return defaults;
+    }
+    return {
+      searchTerm: String(parsed.searchTerm || ''),
+      listedFilter: ['all', 'listed', 'unlisted'].includes(parsed.listedFilter)
+        ? parsed.listedFilter
+        : 'all',
+      landlordFilter: parsed.landlordFilter != null ? String(parsed.landlordFilter) : '',
+      pmcFilter: parsed.pmcFilter != null ? String(parsed.pmcFilter) : '',
+      managerFilter: parsed.managerFilter != null ? String(parsed.managerFilter) : '',
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+export function writeListingsSearchSession(userId, filters, storage) {
+  const store = listingsSearchStorage(storage);
+  if (!store || userId == null || userId === '') return;
+  try {
+    store.setItem(
+      LISTINGS_SEARCH_SESSION_KEY,
+      JSON.stringify({
+        userId,
+        ...defaultListingsSearch(),
+        ...filters,
+      })
+    );
+  } catch {
+    /* ignore quota / private-mode failures */
+  }
+}
+
+export function clearListingsSearchSession(storage) {
+  const store = listingsSearchStorage(storage);
+  if (!store) return;
+  try {
+    store.removeItem(LISTINGS_SEARCH_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 export function listingAsPickerUnit(row) {

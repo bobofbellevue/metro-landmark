@@ -17,7 +17,9 @@ import {
   listingStreet,
   listingsToCsv,
   listingsToZillowXml,
+  readListingsSearchSession,
   uniqueListingFilters,
+  writeListingsSearchSession,
 } from '../utils/listings.js';
 import { formatUnitPickerLabel } from '../utils/unit-display.js';
 
@@ -57,17 +59,18 @@ function downloadText(filename, text, mime) {
 export default function ListingsPage() {
   const { user } = useContext(AuthContext);
   const locale = localeContextFromBrowser();
+  const savedSearch = useMemo(() => readListingsSearchSession(user?.user_id), [user?.user_id]);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState('');
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [listedFilter, setListedFilter] = useState('all');
-  const [landlordFilter, setLandlordFilter] = useState('');
-  const [pmcFilter, setPmcFilter] = useState('');
-  const [managerFilter, setManagerFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState(savedSearch.searchTerm);
+  const [listedFilter, setListedFilter] = useState(savedSearch.listedFilter);
+  const [landlordFilter, setLandlordFilter] = useState(savedSearch.landlordFilter);
+  const [pmcFilter, setPmcFilter] = useState(savedSearch.pmcFilter);
+  const [managerFilter, setManagerFilter] = useState(savedSearch.managerFilter);
   const [form, setForm] = useState(emptyForm);
   const [editingUnitId, setEditingUnitId] = useState(null);
   const [showUnitModal, setShowUnitModal] = useState(false);
@@ -99,12 +102,22 @@ export default function ListingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.user_id]);
 
+  useEffect(() => {
+    if (!user?.user_id) return;
+    writeListingsSearchSession(user.user_id, {
+      searchTerm,
+      listedFilter,
+      landlordFilter,
+      pmcFilter,
+      managerFilter,
+    });
+  }, [user?.user_id, searchTerm, listedFilter, landlordFilter, pmcFilter, managerFilter]);
+
   const selected = useMemo(
     () => listings.find((row) => Number(row.unitId) === Number(form.unitId)) || null,
     [listings, form.unitId]
   );
 
-  const pickerUnits = useMemo(() => listings.map(listingAsPickerUnit), [listings]);
   const filters = useMemo(() => uniqueListingFilters(listings), [listings]);
 
   const filtered = useMemo(
@@ -118,6 +131,8 @@ export default function ListingsPage() {
       }),
     [listings, searchTerm, listedFilter, landlordFilter, pmcFilter, managerFilter]
   );
+
+  const pickerUnits = useMemo(() => filtered.map(listingAsPickerUnit), [filtered]);
 
   const sortable = useMemo(
     () =>
@@ -240,6 +255,12 @@ export default function ListingsPage() {
   };
 
   const handleUnitSelect = (unitId) => {
+    if (unitId == null || unitId === '') {
+      setForm(emptyForm());
+      setEditingUnitId(null);
+      setFormError('');
+      return;
+    }
     const row = listings.find((item) => Number(item.unitId) === Number(unitId));
     if (!row) return;
     setEditingUnitId(row.hasListing ? row.unitId : null);
