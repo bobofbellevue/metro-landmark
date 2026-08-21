@@ -9,6 +9,7 @@ import {
   calculateTerminationNoticePeriod,
   evaluateLeaseTermination,
   evaluateRentIncrease,
+  noticeDaysForRentIncrease,
   noticePeriodDaysFromPack,
   resolvePercentIncrease,
   validateNoticePeriod,
@@ -106,6 +107,72 @@ describe('evaluateRentIncrease / calculateRentIncreaseNoticePeriod', () => {
       excludeDayOfService: true,
     });
     expect(latestServe).toBe('2025-12-02');
+  });
+
+  test('Tacoma and Bellingham overlay longer default notice; Federal Way stays at 90', () => {
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'tacoma',
+        currentRent: 1000,
+        newRent: 1030,
+      })
+    ).toBe(180);
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'bellingham',
+        currentRent: 1000,
+        newRent: 1030,
+      })
+    ).toBe(120);
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'federal_way',
+        currentRent: 1000,
+        newRent: 1030,
+      })
+    ).toBe(90);
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'tacoma',
+        subsidized: true,
+        percentIncrease: 8,
+      })
+    ).toBe(30);
+  });
+
+  test('Olympia notice days follow OMC 5.82.030 percent tiers', () => {
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'olympia',
+        currentRent: 1000,
+        newRent: 1050,
+      })
+    ).toBe(90);
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'olympia',
+        currentRent: 1000,
+        newRent: 1051,
+      })
+    ).toBe(120);
+    expect(
+      calculateRentIncreaseNoticePeriod({
+        jurisdiction: 'olympia',
+        percentIncrease: 10,
+      })
+    ).toBe(180);
+    expect(
+      noticeDaysForRentIncrease(
+        {
+          defaultNoticeDays: 90,
+          noticeTiers: [
+            { minPercent: 5, minInclusive: false, days: 120 },
+            { minPercent: 10, minInclusive: true, days: 180 },
+          ],
+        },
+        { percentIncrease: 5 }
+      )
+    ).toBe(90);
   });
 });
 

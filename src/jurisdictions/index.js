@@ -3,10 +3,14 @@
  *
  * Packs encapsulate display names, city matchers, statute metadata, and
  * compliance rule numbers. Detection and calculators should go through here
- * instead of hard-coding "seattle" / "washington_state" branches.
+ * instead of hard-coding city / "washington_state" branches.
  */
 import { washingtonStatePack } from './packs/washington_state.js';
 import { seattlePack } from './packs/seattle.js';
+import { tacomaPack } from './packs/tacoma.js';
+import { bellinghamPack } from './packs/bellingham.js';
+import { olympiaPack } from './packs/olympia.js';
+import { federalWayPack } from './packs/federal_way.js';
 import {
   mergeStatuteRefIds,
   resolveStatuteRefs,
@@ -15,6 +19,10 @@ import {
 const PACKS = Object.freeze({
   [washingtonStatePack.id]: washingtonStatePack,
   [seattlePack.id]: seattlePack,
+  [tacomaPack.id]: tacomaPack,
+  [bellinghamPack.id]: bellinghamPack,
+  [olympiaPack.id]: olympiaPack,
+  [federalWayPack.id]: federalWayPack,
 });
 
 /** Default pack when nothing matches (reference deployment: WA). */

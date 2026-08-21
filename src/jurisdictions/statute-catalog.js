@@ -79,6 +79,41 @@ export const STATUTE_CATALOG = Object.freeze({
     label: 'SMC 7.24.030 (Seattle housing cost increase notice)',
     href: 'https://library.municode.com/wa/seattle/codes/municipal_code?nodeId=TIT7COPR_CH7.24REAGRE',
   },
+  TMC_1_95_060: {
+    id: 'TMC_1.95.060',
+    label: 'TMC 1.95.060 (Tacoma notice to increase rent)',
+    href: 'https://cms.tacoma.gov/OEHR/RentalHousing/Rental%20Housing%20Code%20TMC%201.95%20rev%2012.2025.pdf',
+  },
+  TMC_1_100_050: {
+    id: 'TMC_1.100.050',
+    label: 'TMC 1.100.050 (Tacoma relocation assistance for significant rent increases)',
+    href: 'https://www.tacoma.gov/government/departments/community-and-economic-development/housing-division/renting-in-tacoma/',
+  },
+  BMC_6_12_020: {
+    id: 'BMC_6.12.020',
+    label: 'BMC 6.12.020 (Bellingham 120-day housing-cost notice)',
+    href: 'https://bellingham.municipal.codes/BMC/6.12.020',
+  },
+  OMC_5_82_030: {
+    id: 'OMC_5.82.030',
+    label: 'OMC 5.82.030 (Olympia rent-increase notification)',
+    href: 'https://www.codepublishing.com/WA/Olympia/html/Olympia05/Olympia0582.html',
+  },
+  OMC_5_82_040: {
+    id: 'OMC_5.82.040',
+    label: 'OMC 5.82.040 (Olympia economic displacement relocation assistance)',
+    href: 'https://www.codepublishing.com/WA/Olympia/html/Olympia05/Olympia0582.html',
+  },
+  FWRC_20_05: {
+    id: 'FWRC_20.05',
+    label: 'FWRC 20.05 (Federal Way good-cause eviction)',
+    href: 'https://www.codepublishing.com/WA/FederalWay/html/FederalWay20/FederalWay2005.html',
+  },
+  FWRC_20_05_050: {
+    id: 'FWRC_20.05.050',
+    label: 'FWRC 20.05.050 (Federal Way lease renewal offer)',
+    href: 'https://www.codepublishing.com/WA/FederalWay/html/FederalWay20/FederalWay2005.html',
+  },
 });
 
 /**

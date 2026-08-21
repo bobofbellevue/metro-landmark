@@ -21,6 +21,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 | Item | Notes |
 |------|--------|
 | E5 Listing syndication | Operator **Listings** page matches the other finder pages: **Add Listing** (Select Unit) on the left, **Listing Search** with Actions on the right. Vacant units only (no active/future lease, and no current tenant assignment without a lease). Asking rent, available date, description, and a **Listed** flag. Search filters include listed/unlisted, owner, PM, and PMC and are remembered for the browser tab until logout. XML and CSV export the current search results; Listed is a flag in the file, not the export filter. XML `<id>` is a stable per-unit key (`unit{id}`) for the destination system, not a file-local index. Live Zillow/Apartments.com APIs are later. Without E11 subsidy flags, reserved units are not auto-excluded. |
+| E6 Additional city packs | Child packs of WA for **Tacoma** (TMC 1.95.060, 180-day notice), **Bellingham** (BMC 6.12.020, 120-day), **Olympia** (OMC 5.82.030 percent tiers 90/120/180), and **Federal Way** (statewide 90-day rent notice; FWRC 20.05 renewal offer). Detected from property city. Official citations and city URLs only — no RHAWA PDFs. Trailing 12-month stacking (Olympia 7%) and Tacoma relocation payment math are not computed. |
 | Compliance Center | Rent Increase, Lease Renewal, Eviction, Lease Termination, and Tenant Screening are operator-ready. Remaining catalog tiles are leftover stubs (E13–E17). |
 | Documents | Staff registry + type catalog exist; contextual panels incomplete across landlord/maintenance/portals |
 | Voice / chat maintenance | Works with Vapi/OpenAI when configured; numbers can be assigned per purpose (E3), with a shared env DID as fallback |
@@ -30,7 +31,6 @@ This list is intentionally short. Finish or cut items before expanding it.
 
 | Priority | Item | Notes |
 |----------|------|--------|
-| E6 | Additional city packs | Tacoma, Bellingham, Federal Way, Olympia (and others) as **child packs of WA**, only when official citations exist and an operator needs them. Do not copy RHAWA PDFs. Design: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#rent-increase-completeness--seattle-cities-forms-exemptions-2026-08-16) |
 | E7 | Auth hardening | Verified sessions/tokens; stop trusting client role headers; tighten RLS/CORS |
 | E8 | Contextual documents for landlords & maintenance | Mount `DocumentManagement` on landlord property/lease/maintenance views (bids, work authorizations, etc.) |
 | E9 | Audience-aware document lists in portals | Tenant / landlord / vendor portals show only related docs (catalog audiences + FK scoping) |

@@ -49,6 +49,39 @@ export function resolvePercentIncrease(percentIncrease, currentRent, newRent) {
   return null;
 }
 
+/**
+ * Pack-driven rent-increase notice days, including city percent tiers.
+ * Subsidized income-based tenancies keep the pack's subsidized path.
+ * Unknown percent uses defaultNoticeDays (does not assume a high-increase tier).
+ * @param {object} rules resolved rentIncrease section
+ * @param {{ subsidized?: boolean, percentIncrease?: number|null }} [options]
+ * @returns {number}
+ */
+export function noticeDaysForRentIncrease(rules = {}, { subsidized = false, percentIncrease = null } = {}) {
+  if (subsidized) return rules.subsidizedNoticeDays ?? 30;
+  let days = rules.defaultNoticeDays ?? rules.monthToMonthNoticeDays ?? 90;
+  const pct =
+    percentIncrease == null || percentIncrease === '' ? null : Number(percentIncrease);
+  if (!Number.isFinite(pct)) return days;
+
+  if (rules.highIncreasePercentThreshold != null && rules.monthToMonthHighIncreaseNoticeDays != null) {
+    const threshold = Number(rules.highIncreasePercentThreshold);
+    const highDays = Number(rules.monthToMonthHighIncreaseNoticeDays);
+    if (Number.isFinite(threshold) && Number.isFinite(highDays) && pct > threshold) {
+      days = Math.max(days, highDays);
+    }
+  }
+
+  for (const tier of rules.noticeTiers || []) {
+    const min = Number(tier.minPercent);
+    const tierDays = Number(tier.days);
+    if (!Number.isFinite(min) || !Number.isFinite(tierDays)) continue;
+    const hit = tier.minInclusive ? pct >= min : pct > min;
+    if (hit) days = Math.max(days, tierDays);
+  }
+  return days;
+}
+
 function monthsBetween(start, end) {
   const a = parseWorkflowDateParts(toWorkflowDateString(start));
   const b = parseWorkflowDateParts(toWorkflowDateString(end));
@@ -80,9 +113,10 @@ export function evaluateRentIncrease({
   const packId = resolvedPackId(jurisdiction);
   const rules = resolvedRules(packId).rentIncrease;
   const increase = resolvePercentIncrease(percentIncrease, currentRent, newRent);
-  const noticePeriodDays = subsidized
-    ? (rules.subsidizedNoticeDays ?? 30)
-    : (rules.defaultNoticeDays ?? rules.monthToMonthNoticeDays ?? 90);
+  const noticePeriodDays = noticeDaysForRentIncrease(rules, {
+    subsidized,
+    percentIncrease: increase,
+  });
 
   const year = asOfYear ?? (effectiveDate ? calendarYear(effectiveDate) : new Date().getFullYear());
   const maxIncreasePercent = getMaxRentIncreasePercent(packId, year);

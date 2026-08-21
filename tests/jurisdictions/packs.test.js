@@ -14,15 +14,26 @@ import {
 } from '../../src/jurisdictions/index.js';
 
 describe('jurisdiction packs', () => {
-  test('registers WA and Seattle packs', () => {
+  test('registers WA state and city packs', () => {
     const ids = listJurisdictionPacks().map((p) => p.id).sort();
-    expect(ids).toEqual(['seattle', 'washington_state']);
+    expect(ids).toEqual([
+      'bellingham',
+      'federal_way',
+      'olympia',
+      'seattle',
+      'tacoma',
+      'washington_state',
+    ]);
     expect(DEFAULT_JURISDICTION_PACK_ID).toBe('washington_state');
   });
 
-  test('detects Seattle from city_of_jurisdiction', () => {
+  test('detects city packs from city_of_jurisdiction', () => {
     expect(detectJurisdictionPackId({ city_of_jurisdiction: 'Seattle' })).toBe('seattle');
     expect(detectJurisdictionPackId({ address: { city: 'seattle' } })).toBe('seattle');
+    expect(detectJurisdictionPackId({ city: 'Tacoma' })).toBe('tacoma');
+    expect(detectJurisdictionPackId({ city: 'Bellingham' })).toBe('bellingham');
+    expect(detectJurisdictionPackId({ city: 'Olympia' })).toBe('olympia');
+    expect(detectJurisdictionPackId({ city_of_jurisdiction: 'Federal Way' })).toBe('federal_way');
     expect(detectJurisdictionPackId({ city: 'Renton' })).toBe('washington_state');
     expect(detectJurisdictionPackId(null)).toBe('washington_state');
   });
@@ -115,5 +126,52 @@ describe('jurisdiction packs', () => {
     expect(getResolvedJurisdictionPack('seattle').preferredLandlordAssociation?.id).toBe(
       'rhawa'
     );
+  });
+
+  test('Tacoma overlays 180-day notice and city form URLs', () => {
+    const tacoma = getResolvedJurisdictionPack('tacoma');
+    expect(tacoma.parentPackId).toBe('washington_state');
+    expect(tacoma.resolvedRules.rentIncrease.defaultNoticeDays).toBe(180);
+    expect(tacoma.resolvedRules.rentIncrease.subsidizedNoticeDays).toBe(30);
+    expect(tacoma.resolvedRules.depositReturnDays).toBe(30);
+    expect(tacoma.resolvedStatuteRefs.map((r) => r.id)).toEqual(
+      expect.arrayContaining(['RCW_59.18.140', 'TMC_1.95.060', 'TMC_1.100.050'])
+    );
+    const resources = getRentIncreaseNoticeResources('tacoma');
+    expect(resources.officialFormUrls.some((u) => u.href.includes('tacoma.gov') || u.href.includes('cms.tacoma.gov'))).toBe(
+      true
+    );
+    expect(resources.requiredNoticeLanguage[0]).toMatch(/TMC 1\.95/);
+    expect(resources.preferredLandlordAssociation?.id).toBe('rhawa');
+  });
+
+  test('Bellingham overlays 120-day notice', () => {
+    const bellingham = getResolvedJurisdictionPack('bellingham');
+    expect(bellingham.resolvedRules.rentIncrease.defaultNoticeDays).toBe(120);
+    expect(bellingham.resolvedRules.rentIncrease.subsidizedNoticeDays).toBe(30);
+    expect(bellingham.resolvedStatuteRefs.map((r) => r.id)).toContain('BMC_6.12.020');
+  });
+
+  test('Olympia keeps 90-day default and percent notice tiers', () => {
+    const olympia = getResolvedJurisdictionPack('olympia');
+    expect(olympia.resolvedRules.rentIncrease.defaultNoticeDays).toBe(90);
+    expect(olympia.resolvedRules.rentIncrease.noticeTiers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ minPercent: 5, days: 120 }),
+        expect.objectContaining({ minPercent: 10, days: 180 }),
+      ])
+    );
+    expect(olympia.resolvedStatuteRefs.map((r) => r.id)).toEqual(
+      expect.arrayContaining(['OMC_5.82.030', 'RCW_59.18.140'])
+    );
+  });
+
+  test('Federal Way inherits 90-day rent notice and encodes renewal offer', () => {
+    const federalWay = getResolvedJurisdictionPack('federal_way');
+    expect(federalWay.resolvedRules.rentIncrease.defaultNoticeDays).toBe(90);
+    expect(requiresRenewalOffer('federal_way')).toBe(true);
+    expect(federalWay.resolvedRules.termination.requiresJustCauseForFixedTermNonrenewal).toBe(true);
+    expect(federalWay.resolvedRules.termination.renewalOfferMinDaysBeforeEnd).toBe(60);
+    expect(federalWay.resolvedStatuteRefs.map((r) => r.id)).toContain('FWRC_20.05.050');
   });
 });
