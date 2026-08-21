@@ -7,6 +7,7 @@ import postgres from 'postgres';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
+import { postgresClientDefaults } from './postgres-notices.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -397,10 +398,8 @@ function getConnection(config, attemptPooler = false) {
     },
     transform: {
       undefined: null
-    }
-    // Note: The postgres library handles timeouts automatically
-    // No need to configure connection timeout - it uses default socket timeout
-    // Note: client_min_messages will be set after connection in getConnectionWithFallback
+    },
+    ...postgresClientDefaults(),
   });
   
   return sql;
@@ -411,21 +410,11 @@ async function getConnectionWithFallback(config) {
   // If pooler is preferred, try it first
   const preferPooler = config.useConnectionPooler === true || config.preferPooler === true;
   
-  // Helper to suppress NOTICE messages on a connection
-  async function suppressNotices(sql) {
-    try {
-      await sql`SET client_min_messages TO WARNING`;
-    } catch (error) {
-      // Ignore if this fails - connection might not be ready
-    }
-  }
-  
   if (preferPooler) {
     try {
       // Try pooler first
       const sql = getConnection(config, true);
       await sql`SELECT 1 as test`; // Quick test
-      await suppressNotices(sql);
       return sql;
     } catch (error) {
       // If pooler fails with network error, try direct
@@ -433,7 +422,6 @@ async function getConnectionWithFallback(config) {
         console.log('⚠️ Pooler connection failed, trying direct connection...');
         const sql = getConnection(config, false);
         await sql`SELECT 1 as test`;
-        await suppressNotices(sql);
         return sql;
       } else {
         throw error;
@@ -444,7 +432,6 @@ async function getConnectionWithFallback(config) {
       // Try direct connection first
       const sql = getConnection(config, false);
       await sql`SELECT 1 as test`; // Quick test
-      await suppressNotices(sql);
       return sql;
     } catch (error) {
       // If direct connection fails with network error, try pooler
@@ -452,7 +439,6 @@ async function getConnectionWithFallback(config) {
         console.log('⚠️ Direct connection failed, trying pooler connection...');
         const sql = getConnection(config, true);
         await sql`SELECT 1 as test`;
-        await suppressNotices(sql);
         return sql;
       } else {
         throw error;
@@ -614,7 +600,8 @@ async function createDatabaseIfNotExists(config) {
         database: 'postgres', // Connect to default postgres database
         username: config.username,
         password: config.password,
-        ssl: config.ssl
+        ssl: config.ssl,
+        ...postgresClientDefaults(),
       });
       
       // Create database if it doesn't exist
