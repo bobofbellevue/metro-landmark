@@ -28,13 +28,23 @@ You should receive an acknowledgment when the report is seen. Coordinated disclo
 
 ## Important: authentication threat model
 
-Metro Landmark’s current API identity model is **not safe for an untrusted public internet deployment**.
+Metro Landmark is **partially** hardened (roadmap **E7**). It is still **not** safe to treat a naive Vercel + Supabase deploy as a production multi-tenant PMS on the open internet.
 
-- Many routes trust client-supplied `x-user-role` / `x-user-id` headers (or have little identity checking at all) while using a privileged database key server-side.
-- The browser Supabase client uses a publishable key; row-level security in typical setups is not a full substitute for verified API auth.
+**Shipped (E7 first slice)**
 
-**Do not** expose a naive Vercel + Supabase deploy of this project to the open internet and treat it as a production multi-tenant PMS. Use it on trusted networks, for demos under your control, or after implementing auth hardening (see [ROADMAP.md](./ROADMAP.md) item E7).
+- Login issues an HMAC session token. The SPA sends `Authorization: Bearer`, not `x-user-id` / `x-user-role`.
+- Listings, payments, payment catalog, phone numbers, org theme, notifications, and audit logs verify that token and load **role from the `users` table**. Spoofed identity headers are ignored.
+- CORS on those routes (plus login and brand-config) is origin-allowlisted: localhost, the Vercel deployment URL, and optional `CORS_ORIGIN`.
 
-Never commit live credentials. Use `.db-environments.example.json` and the variables documented in [DEPLOYMENT_SETUP.md](./DEPLOYMENT_SETUP.md).
+**Session signing (`SESSION_SECRET`)**
+
+Documented with the other env vars in [DEPLOYMENT_SETUP.md](./DEPLOYMENT_SETUP.md). If unset, tokens are signed with `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_SECRET_KEY` — a deploy that already has the service role key does **not** need a new variable. Optional later: set `SESSION_SECRET` to a dedicated random string (`openssl rand -hex 32`) so rotating the database key does not invalidate sessions, and so a leaked session secret is not a database admin key.
+
+**Still open**
+
+- Documents, compliance, cron, and other API routes may still trust client headers or have little identity checking, while using a privileged database key server-side.
+- The browser Supabase client uses a publishable key. Typical RLS here is permissive (`USING (true)` for anon and authenticated) and is **not** a substitute for verified API auth.
+
+Use the app on trusted networks or for demos under your control until remaining E7 work lands. Never commit live credentials. Use `.db-environments.example.json` and the variables in [DEPLOYMENT_SETUP.md](./DEPLOYMENT_SETUP.md).
 
 Compliance features are jurisdiction-pack dependent and may be experimental — they are not a security boundary.

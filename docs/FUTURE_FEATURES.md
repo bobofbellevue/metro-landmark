@@ -10,6 +10,8 @@ This document holds **ideas and design notes** that are not yet committed roadma
 
 **Context:** Template import + field-position measurement are useful but fragile today. Re-running import often yields a slightly different field set (mostly right; some missing or mistyped). Positions are often right but rarely all correct. Editing fields requires learning JSON. We are pausing further template/doc-creation hardening to focus on the Metro Landmark migration; revisit after cutover (or as a Phase E build).
 
+**Maintainer hold (2026-08-21):** Do **not** import or test RHAWA city-specific lease agreements until this reliability work is un-parked and placement is trustworthy. Joining RHAWA remains the intended association path; using those leases as templates is blocked on import/placement (ideas **b** then **a** below), not on more city packs. Do not copy RHAWA PDFs into the repo.
+
 ### Observed fragilities
 
 1. **Non-deterministic schema extraction** — Vision/LLM import does not guarantee a stable field inventory or consistent names/types across runs.
@@ -142,7 +144,7 @@ Do not block day-to-day notice workflows on these. Legal service rules still dep
 - Template-less PDF labeled **RENT INCREASE NOTICE WORKSHEET**, with tenant-facing figures and required local language on page 1 and the full disclaimer / official URLs on page 2.
 - Commerce **2027** statewide cap of 10% stored on the WA pack.
 
-**Do not copy RHAWA PDFs.** Those forms are copyrighted and paywalled. The WA pack **favors RHAWA** as the recommended association: tell operators to join and **import** current city-specific templates themselves. There is no in-app picker for a competing association; a different favorite means a source-code fork or custom pack. Use RHAWA’s *city list* as a catalog of jurisdictions to research from **official** sources (RCW, Commerce, city pages, municipal code). The regulation scanner must not fetch member-only forms.
+**Do not copy RHAWA PDFs.** Those forms are copyrighted and paywalled. The WA pack **favors RHAWA** as the recommended association: operators join and **import** current city-specific templates themselves — **after** template import reliability is un-parked ([Documents & templates](#documents--templates-parked-2026-08-14)); do not test RHAWA lease import against the current fragile pipeline. There is no in-app picker for a competing association; a different favorite means a source-code fork or custom pack. Use RHAWA’s *city list* as a catalog of jurisdictions to research from **official** sources (RCW, Commerce, city pages, municipal code). The regulation scanner must not fetch member-only forms.
 
 ### Gaps vs Seattle.gov (not encoded)
 

@@ -135,9 +135,11 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 # OR (both work - code checks for both)
 SUPABASE_SECRET_KEY=your_service_role_key_here
 
-# Signed API session tokens (E7). If unset, the service role/secret key is used to HMAC tokens.
-# Set a dedicated value in production so rotating the Supabase key does not invalidate every session.
-SESSION_SECRET=a long random string
+# Optional. HMAC secret for API session tokens (E7). Leave unset if SUPABASE_SERVICE_ROLE_KEY
+# is already set — login will sign tokens with that key. A dedicated value (openssl rand -hex 32)
+# is only needed if you want session signing isolated from the database admin key.
+# See SECURITY.md.
+# SESSION_SECRET=
 
 # Optional CORS allowlist (comma-separated origins). Localhost and the Vercel deployment URL are included automatically.
 # CORS_ORIGIN=https://your-custom-domain.com
