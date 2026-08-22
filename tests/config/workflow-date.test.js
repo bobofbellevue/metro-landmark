@@ -8,6 +8,7 @@ import {
   parseWorkflowDateParts,
   sanitizeWorkflowDateInput,
   toWorkflowDateString,
+  typedWorkflowDateDraft,
   WORKFLOW_DATE_MAX_YEAR,
   WORKFLOW_DATE_MIN_YEAR,
 } from '../../src/utils/workflow-date.js';
@@ -21,6 +22,15 @@ describe('workflow-date helpers', () => {
     expect(isCompleteWorkflowDate('1899-11-01')).toBe(false);
     expect(isCompleteWorkflowDate('2201-11-01')).toBe(false);
     expect(isCompleteWorkflowDate('2026-02-30')).toBe(false);
+  });
+
+  test('typedWorkflowDateDraft keeps incomplete edits and commits complete dates', () => {
+    expect(typedWorkflowDateDraft('')).toBe('');
+    expect(typedWorkflowDateDraft('   ')).toBe('');
+    expect(typedWorkflowDateDraft('09-01-202')).toBe(null);
+    expect(typedWorkflowDateDraft('09-01-2025')).toBe('09-01-2025');
+    expect(typedWorkflowDateDraft('09/01/2025')).toBe('09-01-2025');
+    expect(typedWorkflowDateDraft('9-1-2025')).toBe('09-01-2025');
   });
 
   test('sanitizeWorkflowDateInput ignores invalid years', () => {
