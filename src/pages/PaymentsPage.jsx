@@ -32,6 +32,7 @@ import {
   leaseAlignedPeriods as leasePeriods,
   resolvedPeriodRange,
 } from '../utils/payment-periods.js';
+import { PAGE_SEARCH_KEYS, readPageSearchSession, writePageSearchSession } from '../utils/page-search-session.js';
 
 function statusClass(status) {
   if (status === 'paid') return 'bg-green-100 text-green-800';
@@ -73,6 +74,15 @@ function PaymentPeriodCell({ start, end, label }) {
 export default function PaymentsPage() {
   const { user } = useContext(AuthContext);
   const locale = localeContextFromBrowser();
+  const savedSearch = useMemo(
+    () =>
+      readPageSearchSession(PAGE_SEARCH_KEYS.payments, user?.user_id, {
+        searchTerm: '',
+        statusFilter: 'all',
+        kindFilter: 'all',
+      }),
+    [user?.user_id]
+  );
   const [payments, setPayments] = useState([]);
   const [summary, setSummary] = useState(summarizePayments([]));
   const [types, setTypes] = useState(DEFAULT_TYPES);
@@ -82,9 +92,13 @@ export default function PaymentsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [kindFilter, setKindFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState(
+    PAYMENT_STATUSES.some((item) => item.id === savedSearch.statusFilter)
+      ? savedSearch.statusFilter
+      : 'all'
+  );
+  const [kindFilter, setKindFilter] = useState(savedSearch.kindFilter || 'all');
+  const [searchTerm, setSearchTerm] = useState(savedSearch.searchTerm);
   const [form, setForm] = useState(emptyPaymentForm);
   const [checkoutUrl, setCheckoutUrl] = useState('');
   const [addingCategory, setAddingCategory] = useState('');
@@ -133,6 +147,15 @@ export default function PaymentsPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.user_id, statusFilter, kindFilter]);
+
+  useEffect(() => {
+    if (!user?.user_id) return;
+    writePageSearchSession(PAGE_SEARCH_KEYS.payments, user.user_id, {
+      searchTerm,
+      statusFilter,
+      kindFilter,
+    });
+  }, [user?.user_id, searchTerm, statusFilter, kindFilter]);
 
   const filtered = useMemo(
     () => filterPaymentsBySearch(payments, searchTerm),

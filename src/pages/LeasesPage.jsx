@@ -30,6 +30,7 @@ import {
   convertDateToOrdinalWord,
   describeLeaseTerm,
 } from '../utils/date-ordinal.js';
+import { PAGE_SEARCH_KEYS, readPageSearchSession, writePageSearchSession } from '../utils/page-search-session.js';
 
 // Utility functions
 const formatDate = (dateString) => {
@@ -116,6 +117,13 @@ const isLeaseNearExpiry = (endDate) => {
 
 export default function LeasesPage() {
     const { user } = useContext(AuthContext);
+    const savedSearch = useMemo(
+        () => readPageSearchSession(PAGE_SEARCH_KEYS.leases, user?.user_id, {
+            searchTerm: '',
+            showArchived: false,
+        }),
+        [user?.user_id]
+    );
     const [leases, setLeases] = useState([]);
     const [units, setUnits] = useState([]);
     const [tenants, setTenants] = useState([]);
@@ -123,9 +131,9 @@ export default function LeasesPage() {
     const [renewingLease, setRenewingLease] = useState(null);
     const [deletingLease, setDeletingLease] = useState(null);
     const [fillingLeaseFor, setFillingLeaseFor] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-    const [showArchived, setShowArchived] = useState(false);
+    const [searchTerm, setSearchTerm] = useState(savedSearch.searchTerm);
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(savedSearch.searchTerm);
+    const [showArchived, setShowArchived] = useState(savedSearch.showArchived);
     const [generatingDocument, setGeneratingDocument] = useState(null);
     const [generatingTemplateId, setGeneratingTemplateId] = useState(null);
     const [availableTemplates, setAvailableTemplates] = useState([]);
@@ -140,6 +148,14 @@ export default function LeasesPage() {
         
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    useEffect(() => {
+        if (!user?.user_id) return;
+        writePageSearchSession(PAGE_SEARCH_KEYS.leases, user.user_id, {
+            searchTerm,
+            showArchived,
+        });
+    }, [user?.user_id, searchTerm, showArchived]);
     
     const filteredLeases = useMemo(() => {
         if (!leases || !Array.isArray(leases)) {

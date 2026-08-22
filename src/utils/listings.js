@@ -4,6 +4,13 @@
  * tenant assignment without a lease. Listing is opt-in.
  */
 
+import {
+  PAGE_SEARCH_KEYS,
+  readPageSearchSession,
+  writePageSearchSession,
+  clearPageSearchSession,
+} from './page-search-session.js';
+
 export const OCCUPIED_LEASE_STATUSES = ['active', 'future'];
 
 export function canViewListings(role) {
@@ -366,7 +373,7 @@ export function uniqueListingFilters(rows = []) {
   };
 }
 
-export const LISTINGS_SEARCH_SESSION_KEY = 'listings-search';
+export const LISTINGS_SEARCH_SESSION_KEY = PAGE_SEARCH_KEYS.listings;
 
 export function defaultListingsSearch() {
   return {
@@ -378,62 +385,34 @@ export function defaultListingsSearch() {
   };
 }
 
-function listingsSearchStorage(storage) {
-  if (storage) return storage;
-  if (typeof sessionStorage === 'undefined') return null;
-  return sessionStorage;
-}
-
 export function readListingsSearchSession(userId, storage) {
   const defaults = defaultListingsSearch();
-  const store = listingsSearchStorage(storage);
-  if (!store || userId == null || userId === '') return defaults;
-  try {
-    const raw = store.getItem(LISTINGS_SEARCH_SESSION_KEY);
-    if (!raw) return defaults;
-    const parsed = JSON.parse(raw);
-    if (parsed?.userId != null && Number(parsed.userId) !== Number(userId)) {
-      return defaults;
-    }
-    return {
-      searchTerm: String(parsed.searchTerm || ''),
-      listedFilter: ['all', 'listed', 'unlisted'].includes(parsed.listedFilter)
-        ? parsed.listedFilter
-        : 'all',
-      landlordFilter: parsed.landlordFilter != null ? String(parsed.landlordFilter) : '',
-      pmcFilter: parsed.pmcFilter != null ? String(parsed.pmcFilter) : '',
-      managerFilter: parsed.managerFilter != null ? String(parsed.managerFilter) : '',
-    };
-  } catch {
-    return defaults;
-  }
+  const parsed = readPageSearchSession(LISTINGS_SEARCH_SESSION_KEY, userId, defaults, storage);
+  return {
+    searchTerm: String(parsed.searchTerm || ''),
+    listedFilter: ['all', 'listed', 'unlisted'].includes(parsed.listedFilter)
+      ? parsed.listedFilter
+      : 'all',
+    landlordFilter: parsed.landlordFilter != null ? String(parsed.landlordFilter) : '',
+    pmcFilter: parsed.pmcFilter != null ? String(parsed.pmcFilter) : '',
+    managerFilter: parsed.managerFilter != null ? String(parsed.managerFilter) : '',
+  };
 }
 
 export function writeListingsSearchSession(userId, filters, storage) {
-  const store = listingsSearchStorage(storage);
-  if (!store || userId == null || userId === '') return;
-  try {
-    store.setItem(
-      LISTINGS_SEARCH_SESSION_KEY,
-      JSON.stringify({
-        userId,
-        ...defaultListingsSearch(),
-        ...filters,
-      })
-    );
-  } catch {
-    /* ignore quota / private-mode failures */
-  }
+  writePageSearchSession(
+    LISTINGS_SEARCH_SESSION_KEY,
+    userId,
+    {
+      ...defaultListingsSearch(),
+      ...filters,
+    },
+    storage
+  );
 }
 
 export function clearListingsSearchSession(storage) {
-  const store = listingsSearchStorage(storage);
-  if (!store) return;
-  try {
-    store.removeItem(LISTINGS_SEARCH_SESSION_KEY);
-  } catch {
-    /* ignore */
-  }
+  clearPageSearchSession(LISTINGS_SEARCH_SESSION_KEY, storage);
 }
 
 export function listingAsPickerUnit(row) {
