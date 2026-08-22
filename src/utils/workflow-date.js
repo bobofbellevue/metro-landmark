@@ -241,6 +241,20 @@ export function formatWorkflowDateMMDDYYYY(value) {
 }
 
 /**
+ * Result of typing in an MM-DD-YYYY date field.
+ * '' when cleared, normalized MM-DD-YYYY when complete, null while still editing.
+ * @param {string} text
+ * @returns {string|null}
+ */
+export function typedWorkflowDateDraft(text) {
+  if (text == null) return null;
+  const trimmed = String(text).trim();
+  if (!trimmed) return '';
+  if (!isCompleteWorkflowDate(trimmed)) return null;
+  return formatWorkflowDateMMDDYYYY(trimmed);
+}
+
+/**
  * Lease term length in months, counting from start through the day after end.
  * Example: 2025-09-01 → 2026-08-31 is 12 months (not 11).
  * @param {string} startDate

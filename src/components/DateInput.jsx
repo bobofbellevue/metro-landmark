@@ -1,9 +1,10 @@
-import React, { forwardRef, useMemo, useRef } from 'react';
+import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import { Calendar } from 'lucide-react';
 import {
   formatWorkflowDateMMDDYYYY,
   todayWorkflowDate,
+  typedWorkflowDateDraft,
   workflowDateToLocalDate,
 } from '../utils/workflow-date.js';
 
@@ -18,7 +19,7 @@ const DatePickerFieldInput = forwardRef(function DatePickerFieldInput(
       type="text"
       disabled={disabled}
       className={`block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${
-        disabled ? 'bg-gray-100 cursor-not-allowed' : 'cursor-pointer'
+        disabled ? 'bg-gray-100 cursor-not-allowed' : 'cursor-text'
       } ${className}`}
     />
   );
@@ -30,6 +31,7 @@ const DatePickerFieldInput = forwardRef(function DatePickerFieldInput(
  * (which otherwise writes January 1 of the current year).
  * Year dropdown spans 120 years so Date of Birth is not limited to a ~15-year child window
  * when maxDate is today (react-datepicker trims future years from the generated list).
+ * The text field is editable; a complete typed date updates the calendar.
  */
 export default function DateInput({
   value,
@@ -44,15 +46,48 @@ export default function DateInput({
   ...props
 }) {
   const dateValue = useMemo(() => workflowDateToLocalDate(value), [value]);
+  const formattedValue = value ? formatWorkflowDateMMDDYYYY(value) : '';
+  const [draft, setDraft] = useState(formattedValue);
   const openedRef = useRef(false);
+  const typingRef = useRef(false);
 
-  const handleChange = (date) => {
-    if (!onChange || !openedRef.current) return;
+  useEffect(() => {
+    if (typingRef.current) return;
+    setDraft(formattedValue);
+  }, [formattedValue]);
+
+  const commit = (date) => {
+    if (!onChange) return;
     if (date) {
-      onChange({ target: { value: formatWorkflowDateMMDDYYYY(todayWorkflowDate(date)) } });
+      const next = formatWorkflowDateMMDDYYYY(todayWorkflowDate(date));
+      setDraft(next);
+      onChange({ target: { value: next } });
     } else {
+      setDraft('');
       onChange({ target: { value: '' } });
     }
+  };
+
+  const handlePickerChange = (date) => {
+    if (!onChange || !openedRef.current) return;
+    typingRef.current = false;
+    commit(date);
+  };
+
+  const handleChangeRaw = (event) => {
+    if (!(event?.target instanceof HTMLInputElement) || event.type !== 'change') {
+      return;
+    }
+    event.preventDefault();
+    if (readOnly) return;
+    typingRef.current = true;
+    const next = event.target.value;
+    setDraft(next);
+    if (!onChange) return;
+    const committed = typedWorkflowDateDraft(next);
+    if (committed == null) return;
+    typingRef.current = false;
+    onChange({ target: { value: committed } });
   };
 
   return (
@@ -67,9 +102,15 @@ export default function DateInput({
         <DatePicker
           {...props}
           selected={dateValue}
-          onChange={handleChange}
+          value={draft}
+          onChange={handlePickerChange}
+          onChangeRaw={handleChangeRaw}
           onCalendarOpen={() => {
             openedRef.current = true;
+          }}
+          onCalendarClose={() => {
+            typingRef.current = false;
+            setDraft(formattedValue);
           }}
           dateFormat="MM-dd-yyyy"
           maxDate={maxDate}
@@ -88,9 +129,7 @@ export default function DateInput({
           required={required}
           readOnly={readOnly}
           disabled={readOnly}
-          onChangeRaw={(e) => {
-            e.preventDefault();
-          }}
+          strictParsing
         />
         <Calendar
           size={16}
