@@ -34,6 +34,18 @@ export function formatUnitQualifier(unitOrNumber) {
 }
 
 /**
+ * Bath counts are quarter-steps (1.75), not tenths (1.8).
+ * @param {number|string|null|undefined} value
+ * @returns {string}
+ */
+export function formatBathCount(value) {
+  if (value == null || value === '') return '';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value).trim();
+  return n.toFixed(2);
+}
+
+/**
  * "Unit 2B - 123 Main St, Seattle, WA" or just the place when unlabeled.
  * @param {object|null|undefined} unit
  * @param {{ missingPlace?: string }} [options]
