@@ -11,10 +11,7 @@ import { supabase } from '../lib/supabase';
 import { readResponseJson } from '../utils/read-response-json.js';
 import { isAwaitingNoticeService, GENERATE_THEN_SERVE_WORKFLOW_TYPES } from '../utils/notice-service-workflow.js';
 import { hydrateWorkflowData } from '../utils/compliance-workflow-persistence.js';
-import {
-  ACTIVE_WORKFLOW_LIST_SELECT,
-  activeWorkflowLocationLabel,
-} from '../utils/workflow-lease-context.js';
+import { COMPLIANCE_WORKFLOW_TITLES, complianceWorkflowTitle } from '../config/compliance-workflows.js';
 
 // Import workflow components
 import RentIncreaseWorkflow from '../components/compliance/RentIncreaseWorkflow';
@@ -34,7 +31,7 @@ import TenantScreeningWorkflow from '../components/compliance/TenantScreeningWor
 const COMPLIANCE_PROCESSES = [
   {
     id: 'rent_increase',
-    title: 'Rent Increase Notice',
+    title: COMPLIANCE_WORKFLOW_TITLES.rent_increase,
     description: 'Calculate the notice period, generate the PDF, then print or email it and record service (or save for later).',
     icon: <TrendingUp className="w-8 h-8 text-blue-500" />,
     priority: 'high',
@@ -42,7 +39,7 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'lease_renewal',
-    title: 'Lease Renewal',
+    title: COMPLIANCE_WORKFLOW_TITLES.lease_renewal,
     description: 'Generate renewal offer with proper notice period and track acceptance.',
     icon: <Calendar className="w-8 h-8 text-green-500" />,
     priority: 'high',
@@ -50,7 +47,7 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'move_in',
-    title: 'Move-In Process',
+    title: COMPLIANCE_WORKFLOW_TITLES.move_in,
     description: 'Property condition report, inspection checklist, and required disclosures.',
     icon: <Key className="w-8 h-8 text-purple-500" />,
     priority: 'high',
@@ -58,7 +55,7 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'move_out',
-    title: 'Move-Out Process',
+    title: COMPLIANCE_WORKFLOW_TITLES.move_out,
     description: 'Move-out inspection, condition comparison, and damage assessment.',
     icon: <DoorOpen className="w-8 h-8 text-orange-500" />,
     priority: 'high',
@@ -66,7 +63,7 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'security_deposit',
-    title: 'Security Deposit Return',
+    title: COMPLIANCE_WORKFLOW_TITLES.security_deposit,
     description: 'Calculate deductions and generate a deposit return statement within the pack timeline (30 days under WA/Seattle).',
     icon: <Banknote className="w-8 h-8 text-green-500" />,
     priority: 'high',
@@ -74,7 +71,7 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'collections',
-    title: 'Collections Process',
+    title: COMPLIANCE_WORKFLOW_TITLES.collections,
     description: 'Late rent notices, payment plans, and debt collection compliance.',
     icon: <DollarSign className="w-8 h-8 text-red-500" />,
     priority: 'high',
@@ -82,7 +79,7 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'eviction',
-    title: 'Eviction Process',
+    title: COMPLIANCE_WORKFLOW_TITLES.eviction,
     description: 'Generate the eviction notice, then print or email it and record service (or save for later).',
     icon: <Gavel className="w-8 h-8 text-red-500" />,
     priority: 'medium',
@@ -90,7 +87,7 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'lease_violation',
-    title: 'Lease Violation Notices',
+    title: COMPLIANCE_WORKFLOW_TITLES.lease_violation,
     description: 'Generate violation notices with required cure periods.',
     icon: <AlertTriangle className="w-8 h-8 text-yellow-500" />,
     priority: 'medium',
@@ -98,7 +95,7 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'lease_termination',
-    title: 'Lease Termination Notices',
+    title: COMPLIANCE_WORKFLOW_TITLES.lease_termination,
     description: 'End a tenancy with pack notice days, just-cause / renewal-offer checks, then generate a worksheet and record service.',
     icon: <FileText className="w-8 h-8 text-gray-500" />,
     priority: 'medium',
@@ -106,7 +103,7 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'habitability',
-    title: 'Habitability Issues',
+    title: COMPLIANCE_WORKFLOW_TITLES.habitability,
     description: 'Repair and deduct process, required timelines, and tenant rights.',
     icon: <Wrench className="w-8 h-8 text-blue-500" />,
     priority: 'low',
@@ -114,7 +111,7 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'entry_notice',
-    title: 'Entry Notices',
+    title: COMPLIANCE_WORKFLOW_TITLES.entry_notice,
     description: 'Track two-day entry notice (one day for showings) and document exceptions.',
     icon: <Lock className="w-8 h-8 text-indigo-500" />,
     priority: 'low',
@@ -122,7 +119,7 @@ const COMPLIANCE_PROCESSES = [
   },
   {
     id: 'tenant_screening',
-    title: 'Tenant Screening Compliance',
+    title: COMPLIANCE_WORKFLOW_TITLES.tenant_screening,
     description: 'Screen the applicant queue in received order. Seattle first-qualified: decide earlier pending applications first.',
     icon: <UserCheck className="w-8 h-8 text-teal-500" />,
     priority: 'low',
@@ -315,7 +312,7 @@ export default function CompliancePage() {
       return 'Rent Control (removed)';
     }
     return (
-      COMPLIANCE_PROCESSES.find((p) => p.id === workflow.workflow_type)?.title ||
+      complianceWorkflowTitle(workflow.workflow_type) ||
       workflow.workflow_type
     );
   };

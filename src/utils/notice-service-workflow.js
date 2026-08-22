@@ -271,6 +271,51 @@ export function openWorkflowsByLeaseId(workflows) {
 export const NOTICE_PICKER_GROUP_RECORD_SERVICE = 'record_service';
 export const NOTICE_PICKER_GROUP_GENERATE = 'generate';
 
+function leasesForPickerGroup(leaseList, groupId, leaseAnnotations) {
+  return (leaseList || []).filter((lease) => {
+    const annotation = leaseAnnotations?.[String(lease.lease_id)];
+    const assigned = annotation?.group || NOTICE_PICKER_GROUP_GENERATE;
+    return assigned === groupId;
+  });
+}
+
+/**
+ * Split lease-picker groups so some (Record service) can render above the search.
+ *
+ * @param {object} args
+ * @param {{ id: string, beforeSearch?: boolean }[]|null|undefined} args.groups
+ * @param {object[]} args.searchFilteredLeases
+ * @param {object[]} args.allSortedLeases
+ * @param {Record<string, { group?: string }>} args.leaseAnnotations
+ * @returns {{ beforeSearch: { group: object|null, leases: object[] }[], afterSearch: { group: object|null, leases: object[] }[] }}
+ */
+export function partitionLeasePickerSections({
+  groups,
+  searchFilteredLeases,
+  allSortedLeases,
+  leaseAnnotations = {},
+}) {
+  if (!Array.isArray(groups) || groups.length === 0) {
+    return {
+      beforeSearch: [],
+      afterSearch: [{ group: null, leases: searchFilteredLeases || [] }],
+    };
+  }
+
+  const beforeSearch = [];
+  const afterSearch = [];
+  for (const group of groups) {
+    const source = group.beforeSearch ? allSortedLeases : searchFilteredLeases;
+    const section = {
+      group,
+      leases: leasesForPickerGroup(source, group.id, leaseAnnotations),
+    };
+    if (group.beforeSearch) beforeSearch.push(section);
+    else afterSearch.push(section);
+  }
+  return { beforeSearch, afterSearch };
+}
+
 /**
  * Badge/group for Select Lease: record service vs generate/continue a notice.
  * @param {object|null|undefined} workflow
