@@ -7,7 +7,7 @@ import { ConfirmationModal } from './ui';
 import { ApplicationFormBuilder } from './ApplicationFormBuilder';
 import { extractFormValues } from '../utils/pdf-to-json-client.js';
 import { mapImportedDataToTemplate, normalizeDates } from '../utils/application-data-mapper.js';
-import { formatUnitQualifier } from '../utils/unit-display.js';
+import { formatBathCount, formatUnitQualifier } from '../utils/unit-display.js';
 
 // Helper functions moved to utility file - imported above
 
@@ -47,7 +47,7 @@ function ApplyForUnitsModal({
     const bedVal = beds === null || beds === undefined || beds === '' ? null : beds;
     const bathVal = baths === null || baths === undefined || baths === '' ? null : baths;
     const bedStr = bedVal !== null ? `${bedVal}BR` : null;
-    const bathStr = bathVal !== null ? `${bathVal}BA` : null;
+    const bathStr = bathVal !== null ? `${formatBathCount(bathVal)}BA` : null;
     return [bedStr, bathStr].filter(Boolean).join(' ');
   };
 

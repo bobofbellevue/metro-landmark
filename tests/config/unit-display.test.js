@@ -1,5 +1,6 @@
 import {
   filterUnitsBySearch,
+  formatBathCount,
   formatPlaceWithUnit,
   formatUnitAddressLine,
   formatUnitAtProperty,
@@ -101,6 +102,13 @@ describe('unit-display helpers', () => {
     expect(formatPlaceWithUnit('9 Oak Ave', { unit_number: 'A' })).toBe('9 Oak Ave - Unit A');
     expect(formatUnitAtProperty({ unit_number: '2B' }, 'Pine Court')).toBe('Unit 2B at Pine Court');
     expect(formatUnitAtProperty({ unit_number: null }, 'Oak House')).toBe('Oak House');
+  });
+
+  test('formats bath counts in quarter steps, not tenths', () => {
+    expect(formatBathCount(1.75)).toBe('1.75');
+    expect(formatBathCount('1.25')).toBe('1.25');
+    expect(formatBathCount(2)).toBe('2.00');
+    expect(formatBathCount(null)).toBe('');
   });
 
   test('two or more units on a property must have distinct numbers', () => {

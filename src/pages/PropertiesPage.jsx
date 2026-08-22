@@ -11,6 +11,7 @@ import ArchiveModal from '../components/ArchiveModal';
 import { insertWithAudit, updateWithAudit } from '../lib/auditHelpers.js';
 import {
     defaultUnlabeledUnit,
+    formatBathCount,
     formatUnitQualifier,
     normalizeStoredUnitNumber,
     unitNumberText,
@@ -1652,7 +1653,7 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Baths</label>
                                     <input 
                                         type="number" 
-                                        step="0.5"
+                                        step="0.25"
                                         value={baths} 
                                         onChange={e => setBaths(e.target.value)} 
                                         placeholder="0"
@@ -1713,7 +1714,7 @@ const CreatePropertyForm = ({ landlords, propertyTypes, onPropertyCreated }) => 
                                     <div className="flex items-center space-x-4">
                                         <span className="font-medium">{formatUnitQualifier(unit)}</span>
                                         {unit.beds && <span className="text-sm text-gray-500">{unit.beds} bed{unit.beds !== '1' ? 's' : ''}</span>}
-                                        {unit.baths && <span className="text-sm text-gray-500">{unit.baths} bath{unit.baths !== '1' ? 's' : ''}</span>}
+                                        {unit.baths && <span className="text-sm text-gray-500">{formatBathCount(unit.baths)} bath{Number(unit.baths) === 1 ? '' : 's'}</span>}
                                         {unit.square_footage && <span className="text-sm text-gray-500">{unit.square_footage} sq ft</span>}
                                         {(() => {
                                             const parking = unit.parking || {};
@@ -2477,7 +2478,7 @@ const EditPropertyModal = ({ property, landlords, propertyTypes, onClose, onUpda
                                                     <span className="ml-2 text-sm text-gray-600">
                                                         {unit.beds ? `${unit.beds} bed` : ''}
                                                         {unit.beds && unit.baths ? ', ' : ''}
-                                                        {unit.baths ? `${unit.baths} bath` : ''}
+                                                        {unit.baths ? `${formatBathCount(unit.baths)} bath` : ''}
                                                         {unit.square_footage ? `, ${unit.square_footage} sq ft` : ''}
                                                     </span>
                                                 )}
@@ -2742,7 +2743,7 @@ const ManageUnitsModal = ({ property, onClose, onUpdateSuccess }) => {
         setEditingUnit(unit);
         setUnitNumber(unit.unit_number || '');
         setBeds(unit.beds || '');
-        setBaths(unit.baths || '');
+        setBaths(unit.baths == null || unit.baths === '' ? '' : formatBathCount(unit.baths));
         setSqft(unit.square_footage || '');
 
         const parsed = parseUnitParkingFromFeatures(unit);
@@ -2874,7 +2875,7 @@ const ManageUnitsModal = ({ property, onClose, onUpdateSuccess }) => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Baths</label>
                                 <input 
                                     type="number" 
-                                    step="0.5" 
+                                    step="0.25" 
                                     value={baths} 
                                     onChange={e => setBaths(e.target.value)} 
                                     className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
@@ -2948,11 +2949,19 @@ const ManageUnitsModal = ({ property, onClose, onUpdateSuccess }) => {
                     ) : (
                         <ul className="divide-y divide-gray-200 border border-gray-200 rounded-lg bg-white">
                             {units.map(unit => (
-                                <li key={unit.unit_id} className="flex justify-between items-center p-4 hover:bg-gray-50">
+                                <li
+                                    key={unit.unit_id}
+                                    className={`flex justify-between items-center p-4 cursor-pointer ${
+                                        editingUnit?.unit_id === unit.unit_id
+                                            ? 'bg-indigo-50'
+                                            : 'hover:bg-gray-50'
+                                    }`}
+                                    onClick={() => handleEditUnit(unit)}
+                                >
                                     <span className="text-sm text-gray-700">
                                         <span className="font-medium">{formatUnitQualifier(unit)}</span> 
                                         <span className="text-gray-500 ml-2">
-                                            ({unit.beds} bed / {unit.baths} bath{unit.square_footage ? `, ${unit.square_footage} sqft` : ''})
+                                            ({unit.beds} bed / {formatBathCount(unit.baths) || '—'} bath{unit.square_footage ? `, ${unit.square_footage} sqft` : ''})
                                         </span>
                                         {parseUnitParkingFromFeatures(unit).summary ? (
                                             <span className="text-gray-500 ml-2">
@@ -2962,14 +2971,22 @@ const ManageUnitsModal = ({ property, onClose, onUpdateSuccess }) => {
                                     </span>
                                     <div className="flex gap-2">
                                         <button 
-                                            onClick={() => handleEditUnit(unit)} 
+                                            type="button"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                handleEditUnit(unit);
+                                            }} 
                                             className="text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50"
                                             title="Edit Unit"
                                         >
                                             <Pencil size={16} />
                                         </button>
                                         <button 
-                                            onClick={() => handleDeleteUnit(unit.unit_id)} 
+                                            type="button"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                handleDeleteUnit(unit.unit_id);
+                                            }} 
                                             disabled={units.length <= 1}
                                             className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed"
                                             title="Delete Unit"

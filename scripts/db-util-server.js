@@ -849,7 +849,7 @@ async function createTables(sql) {
         property_id INTEGER REFERENCES properties(property_id) ON DELETE CASCADE,
         unit_number VARCHAR(50),
         beds INTEGER,
-        baths DECIMAL(3,1),
+        baths DECIMAL(4,2),
         square_footage INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -860,6 +860,7 @@ async function createTables(sql) {
       )
     `;
     await sql`CREATE INDEX IF NOT EXISTS idx_units_archived ON units(is_archived, archived_at)`;
+    await sql`ALTER TABLE units ALTER COLUMN baths TYPE DECIMAL(4,2)`;
 
     // Create client applications table (replaces application_units)
     // Note: pmc_id, landlord_id, and property_id are NOT stored here - they are derived
