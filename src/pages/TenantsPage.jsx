@@ -13,6 +13,7 @@ import ArchiveModal from '../components/ArchiveModal';
 import { deleteWithAudit, updateWithAudit, insertWithAudit } from '../lib/auditHelpers.js';
 import ContactMethodTypeInput from '../components/ContactMethodTypeInput';
 import { formatPlaceWithUnit, formatUnitLocationLine } from '../utils/unit-display.js';
+import { PAGE_SEARCH_KEYS, readPageSearchSession, writePageSearchSession } from '../utils/page-search-session.js';
 
 // Utility function for formatting tenant names
 const formatTenantName = (t) => {
@@ -116,15 +117,22 @@ const formatUnitAddress = (unit) => {
 // This is the main component for the Tenants page
 export default function TenantsPage() {
     const { user } = useContext(AuthContext);
+    const savedSearch = useMemo(
+        () => readPageSearchSession(PAGE_SEARCH_KEYS.tenants, user?.user_id, {
+            searchTerm: '',
+            showArchived: false,
+        }),
+        [user?.user_id]
+    );
     const [tenants, setTenants] = useState([]);
     const [units, setUnits] = useState([]);
     const [editingTenant, setEditingTenant] = useState(null);
     const [deletingTenant, setDeletingTenant] = useState(null);
     const [managingUnitsFor, setManagingUnitsFor] = useState(null);
     const [reviewingDocumentsFor, setReviewingDocumentsFor] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-    const [showArchived, setShowArchived] = useState(false);
+    const [searchTerm, setSearchTerm] = useState(savedSearch.searchTerm);
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(savedSearch.searchTerm);
+    const [showArchived, setShowArchived] = useState(savedSearch.showArchived);
     
     // Debounce search term to avoid excessive filtering
     useEffect(() => {
@@ -134,6 +142,14 @@ export default function TenantsPage() {
         
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    useEffect(() => {
+        if (!user?.user_id) return;
+        writePageSearchSession(PAGE_SEARCH_KEYS.tenants, user.user_id, {
+            searchTerm,
+            showArchived,
+        });
+    }, [user?.user_id, searchTerm, showArchived]);
     
     // Filter tenants based on search term
     const filteredTenants = useMemo(() => {

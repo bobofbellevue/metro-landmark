@@ -28,6 +28,8 @@ const DatePickerFieldInput = forwardRef(function DatePickerFieldInput(
  * Date picker that stores MM-DD-YYYY and parses ISO or US dates without UTC shift.
  * Ignores the spurious onChange react-datepicker can fire when year/month dropdowns mount
  * (which otherwise writes January 1 of the current year).
+ * Year dropdown spans 120 years so Date of Birth is not limited to a ~15-year child window
+ * when maxDate is today (react-datepicker trims future years from the generated list).
  */
 export default function DateInput({
   value,
@@ -38,6 +40,7 @@ export default function DateInput({
   readOnly = false,
   maxDate = null,
   minDate = null,
+  yearDropdownItemNumber = 120,
   ...props
 }) {
   const dateValue = useMemo(() => workflowDateToLocalDate(value), [value]);
@@ -81,7 +84,7 @@ export default function DateInput({
           showYearDropdown
           showMonthDropdown
           scrollableYearDropdown
-          yearDropdownItemNumber={15}
+          yearDropdownItemNumber={yearDropdownItemNumber}
           required={required}
           readOnly={readOnly}
           disabled={readOnly}

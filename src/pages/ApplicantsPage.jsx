@@ -19,6 +19,8 @@ import { stemmer } from 'stemmer';
 import ArchiveModal from '../components/ArchiveModal';
 import ContactMethodTypeInput from '../components/ContactMethodTypeInput';
 import { formatPlaceWithUnit, formatUnitLocationLine, formatUnitQualifier } from '../utils/unit-display.js';
+import AnchoredDropdown from '../components/AnchoredDropdown.jsx';
+import { PAGE_SEARCH_KEYS, readPageSearchSession, writePageSearchSession } from '../utils/page-search-session.js';
 
 // Utility function for sorting contact methods
 const sortContactMethods = (contactMethods, userEmail) => {
@@ -134,6 +136,13 @@ const formatDateForInput = (dateString) => {
 // This is the main component for the Applicants page
 export default function ApplicantsPage() {
     const { user } = useContext(AuthContext);
+    const savedSearch = useMemo(
+        () => readPageSearchSession(PAGE_SEARCH_KEYS.applicants, user?.user_id, {
+            searchTerm: '',
+            showArchived: false,
+        }),
+        [user?.user_id]
+    );
     const [applicants, setApplicants] = useState([]);
     const [units, setUnits] = useState([]);
     const [editingApplicant, setEditingApplicant] = useState(null);
@@ -142,9 +151,9 @@ export default function ApplicantsPage() {
     const [applyingForUnitsWithApplication, setApplyingForUnitsWithApplication] = useState(null);
     const [reviewingApplicant, setReviewingApplicant] = useState(null);
     const [viewingApplicationDetail, setViewingApplicationDetail] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-    const [showArchived, setShowArchived] = useState(false);
+    const [searchTerm, setSearchTerm] = useState(savedSearch.searchTerm);
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(savedSearch.searchTerm);
+    const [showArchived, setShowArchived] = useState(savedSearch.showArchived);
     
     // Debounce search term to avoid excessive filtering
     useEffect(() => {
@@ -154,6 +163,14 @@ export default function ApplicantsPage() {
         
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    useEffect(() => {
+        if (!user?.user_id) return;
+        writePageSearchSession(PAGE_SEARCH_KEYS.applicants, user.user_id, {
+            searchTerm,
+            showArchived,
+        });
+    }, [user?.user_id, searchTerm, showArchived]);
     
     // Filter applicants based on search term
     const filteredApplicants = useMemo(() => {
@@ -837,6 +854,19 @@ const unitNumbersMatch = (unit1, unit2) => {
     return normalized1 === normalized2;
 };
 
+const unitMatchesApplicantSearch = (unit, unitSearchTerm) => {
+    const searchCoreId = extractCoreIdentifier(unitSearchTerm);
+    const unitCoreId = extractCoreIdentifier(unit.unit_number);
+    const unitNumMatch = searchCoreId && unitCoreId &&
+                         (unitCoreId.includes(searchCoreId) ||
+                          searchCoreId.includes(unitCoreId) ||
+                          unitNumbersMatch(unitSearchTerm, unit.unit_number));
+    const address = unit.address?.address_line_1?.toLowerCase() || '';
+    const city = unit.address?.city?.toLowerCase() || '';
+    const searchLower = unitSearchTerm.toLowerCase();
+    return unitNumMatch || address.includes(searchLower) || city.includes(searchLower);
+};
+
 // Create Applicant Form Component
 const CreateApplicantForm = ({ onApplicantCreated }) => {
     const { user } = useContext(AuthContext);
@@ -866,6 +896,8 @@ const CreateApplicantForm = ({ onApplicantCreated }) => {
     const [unitSearchTerm, setUnitSearchTerm] = useState('');
     const [availableUnits, setAvailableUnits] = useState([]);
     const [showUnitDropdown, setShowUnitDropdown] = useState(false);
+    const [unitLookupLocked, setUnitLookupLocked] = useState(true);
+    const unitAnchorRef = useRef(null);
     const fileInputRef = useRef(null);
 
     // Fetch available units for selection
@@ -1021,6 +1053,11 @@ const CreateApplicantForm = ({ onApplicantCreated }) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showUnitDropdown]);
+
+    const matchingUnits = useMemo(() => {
+        if (!unitSearchTerm.trim()) return [];
+        return availableUnits.filter((unit) => unitMatchesApplicantSearch(unit, unitSearchTerm));
+    }, [availableUnits, unitSearchTerm]);
 
     // Log initial mount state
     useEffect(() => {
@@ -2185,10 +2222,26 @@ const CreateApplicantForm = ({ onApplicantCreated }) => {
                         Unit Selection <span className="text-gray-500 font-normal">(Optional)</span>
                     </label>
                     <div className="relative unit-dropdown">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <div className="relative" ref={unitAnchorRef}>
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                             <input
-                                type="text"
+                                id="ml-add-applicant-unit"
+                                name="ml-add-applicant-unit"
+                                type="search"
+                                role="combobox"
+                                aria-autocomplete="list"
+                                aria-expanded={showUnitDropdown}
+                                aria-haspopup="listbox"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="none"
+                                spellCheck={false}
+                                inputMode="search"
+                                data-lpignore="true"
+                                data-1p-ignore="true"
+                                data-bwignore="true"
+                                data-form-type="other"
+                                readOnly={unitLookupLocked}
                                 placeholder="Search for unit by number or address..."
                                 value={unitSearchTerm}
                                 onChange={(e) => {
@@ -2223,8 +2276,11 @@ const CreateApplicantForm = ({ onApplicantCreated }) => {
                                     // Delay closing dropdown to allow click events
                                     setTimeout(() => setShowUnitDropdown(false), 200);
                                 }}
-                                onFocus={() => setShowUnitDropdown(true)}
-                                className="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                onFocus={() => {
+                                    setShowUnitDropdown(true);
+                                    requestAnimationFrame(() => setUnitLookupLocked(false));
+                                }}
+                                className="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 appearance-none [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
                             />
                             {selectedUnit && (
                                 <button
@@ -2239,61 +2295,37 @@ const CreateApplicantForm = ({ onApplicantCreated }) => {
                                 </button>
                             )}
                         </div>
-                        {showUnitDropdown && unitSearchTerm && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto overflow-x-hidden">
-                                {availableUnits
-                                    .filter(unit => {
-                                        // Check for core identifier match
-                                        const searchCoreId = extractCoreIdentifier(unitSearchTerm);
-                                        const unitCoreId = extractCoreIdentifier(unit.unit_number);
-                                        const unitNumMatch = searchCoreId && unitCoreId && 
-                                                             (unitCoreId.includes(searchCoreId) || 
-                                                              searchCoreId.includes(unitCoreId) ||
-                                                              unitNumbersMatch(unitSearchTerm, unit.unit_number));
-                                        
-                                        // Also check address and city
-                                        const address = unit.address?.address_line_1?.toLowerCase() || '';
-                                        const city = unit.address?.city?.toLowerCase() || '';
-                                        const searchLower = unitSearchTerm.toLowerCase();
-                                        return unitNumMatch || 
-                                               address.includes(searchLower) || 
-                                               city.includes(searchLower);
-                                    })
-                                    .slice(0, 10)
-                                    .map(unit => (
-                                        <div
-                                            key={unit.unit_id}
-                                            onClick={() => {
-                                                setSelectedUnit(unit);
-                                                setUnitSearchTerm(formatPlaceWithUnit(unit.address?.address_line_1 || '', unit));
-                                                setShowUnitDropdown(false);
-                                            }}
-                                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0 min-w-0"
-                                        >
-                                            <div className="finder-primary truncate">{formatUnitQualifier(unit) || unit.address?.address_line_1 || ''}</div>
-                                            <div className="finder-secondary text-gray-500 truncate">
-                                                {unit.address?.address_line_1 || ''}
-                                                {unit.address?.city ? `, ${unit.address.city}` : ''}
-                                                {unit.address?.state_province_region ? ` ${unit.address.state_province_region}` : ''}
-                                            </div>
-                                        </div>
-                                    ))}
-                                {availableUnits.filter(unit => {
-                                    const searchCoreId = extractCoreIdentifier(unitSearchTerm);
-                                    const unitCoreId = extractCoreIdentifier(unit.unit_number);
-                                    const unitNumMatch = searchCoreId && unitCoreId && 
-                                                         (unitCoreId.includes(searchCoreId) || 
-                                                          searchCoreId.includes(unitCoreId) ||
-                                                          unitNumbersMatch(unitSearchTerm, unit.unit_number));
-                                    const address = unit.address?.address_line_1?.toLowerCase() || '';
-                                    const city = unit.address?.city?.toLowerCase() || '';
-                                    const searchLower = unitSearchTerm.toLowerCase();
-                                    return unitNumMatch || address.includes(searchLower) || city.includes(searchLower);
-                                }).length === 0 && (
-                                    <div className="px-4 py-2 text-sm text-gray-500">No units found</div>
-                                )}
-                            </div>
-                        )}
+                        <AnchoredDropdown
+                            open={showUnitDropdown && Boolean(unitSearchTerm)}
+                            anchorRef={unitAnchorRef}
+                            updateKey={`${unitSearchTerm}:${matchingUnits.length}`}
+                            className="unit-dropdown bg-white border border-gray-300 rounded-md shadow-lg overflow-y-auto overflow-x-hidden"
+                        >
+                            {matchingUnits.slice(0, 10).map(unit => (
+                                <button
+                                    key={unit.unit_id}
+                                    type="button"
+                                    onMouseDown={(event) => {
+                                        event.preventDefault();
+                                        setSelectedUnit(unit);
+                                        setUnitSearchTerm(formatPlaceWithUnit(unit.address?.address_line_1 || '', unit));
+                                        setShowUnitDropdown(false);
+                                        setUnitLookupLocked(true);
+                                    }}
+                                    className="w-full px-4 py-2 text-left hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0 min-w-0"
+                                >
+                                    <div className="finder-primary truncate">{formatUnitQualifier(unit) || unit.address?.address_line_1 || ''}</div>
+                                    <div className="finder-secondary text-gray-500 truncate">
+                                        {unit.address?.address_line_1 || ''}
+                                        {unit.address?.city ? `, ${unit.address.city}` : ''}
+                                        {unit.address?.state_province_region ? ` ${unit.address.state_province_region}` : ''}
+                                    </div>
+                                </button>
+                            ))}
+                            {matchingUnits.length === 0 && (
+                                <div className="px-4 py-2 text-sm text-gray-500">No units found</div>
+                            )}
+                        </AnchoredDropdown>
                     </div>
                     {selectedUnit && (
                         <div className="mt-2 p-2 bg-indigo-50 border border-indigo-200 rounded-md">

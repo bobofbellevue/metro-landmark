@@ -8,6 +8,7 @@ import { useFinderLimit } from '../hooks/useFinderLimit';
 import { useFormPersistence } from '../hooks/useFormPersistence';
 import ArchiveModal from '../components/ArchiveModal';
 import ContactMethodTypeInput from '../components/ContactMethodTypeInput';
+import { PAGE_SEARCH_KEYS, readPageSearchSession, writePageSearchSession } from '../utils/page-search-session.js';
 
 const SERVICE_SUFFIX_REGEX = /\s+(service|services)\s*$/i;
 
@@ -219,13 +220,20 @@ const getPhoneNumber = (v) => {
 
 export default function VendorsPage() {
     const { user } = useContext(AuthContext);
+    const savedSearch = useMemo(
+        () => readPageSearchSession(PAGE_SEARCH_KEYS.vendors, user?.user_id, {
+            searchTerm: '',
+            showArchived: false,
+        }),
+        [user?.user_id]
+    );
     const [vendors, setVendors] = useState([]);
     const [editingVendor, setEditingVendor] = useState(null);
     const [approvingVendor, setApprovingVendor] = useState(null);
     const [deletingVendor, setDeletingVendor] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-    const [showArchived, setShowArchived] = useState(false);
+    const [searchTerm, setSearchTerm] = useState(savedSearch.searchTerm);
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(savedSearch.searchTerm);
+    const [showArchived, setShowArchived] = useState(savedSearch.showArchived);
     
     // Debounce search term
     useEffect(() => {
@@ -234,6 +242,14 @@ export default function VendorsPage() {
         }, 300);
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    useEffect(() => {
+        if (!user?.user_id) return;
+        writePageSearchSession(PAGE_SEARCH_KEYS.vendors, user.user_id, {
+            searchTerm,
+            showArchived,
+        });
+    }, [user?.user_id, searchTerm, showArchived]);
     
     // Filter vendors based on search term
     const filteredVendors = useMemo(() => {

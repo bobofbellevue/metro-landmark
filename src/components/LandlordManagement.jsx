@@ -9,16 +9,24 @@ import { useFormPersistence } from '../hooks/useFormPersistence';
 import { useFinderLimit } from '../hooks/useFinderLimit';
 import { insertWithAudit, updateWithAudit, deleteWithAudit } from '../lib/auditHelpers.js';
 import ContactMethodTypeInput from './ContactMethodTypeInput';
+import { PAGE_SEARCH_KEYS, readPageSearchSession, writePageSearchSession } from '../utils/page-search-session.js';
 
 export default function LandlordManagement() {
     const { user } = useContext(AuthContext);
+    const savedSearch = useMemo(
+        () => readPageSearchSession(PAGE_SEARCH_KEYS.landlords, user?.user_id, {
+            searchTerm: '',
+            showArchived: false,
+        }),
+        [user?.user_id]
+    );
     const [landlords, setLandlords] = useState([]);
     const [companies, setCompanies] = useState([]);
     const [editingLandlord, setEditingLandlord] = useState(null);
     const [deletingLandlord, setDeletingLandlord] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-    const [showArchived, setShowArchived] = useState(false);
+    const [searchTerm, setSearchTerm] = useState(savedSearch.searchTerm);
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(savedSearch.searchTerm);
+    const [showArchived, setShowArchived] = useState(savedSearch.showArchived);
     
     // Debounce search term to avoid excessive filtering
     useEffect(() => {
@@ -28,6 +36,14 @@ export default function LandlordManagement() {
         
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    useEffect(() => {
+        if (!user?.user_id) return;
+        writePageSearchSession(PAGE_SEARCH_KEYS.landlords, user.user_id, {
+            searchTerm,
+            showArchived,
+        });
+    }, [user?.user_id, searchTerm, showArchived]);
     
     // Filter landlords based on search term
     const filteredLandlords = useMemo(() => {

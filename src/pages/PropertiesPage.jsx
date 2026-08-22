@@ -17,6 +17,7 @@ import {
     unitNumberText,
     validatePropertyUnitNumbers,
 } from '../utils/unit-display.js';
+import { PAGE_SEARCH_KEYS, readPageSearchSession, writePageSearchSession } from '../utils/page-search-session.js';
 
 // Utility functions
 const formatLandlordName = (l) => {
@@ -170,6 +171,13 @@ const buildUnitParkingFeatureNames = (parking) => {
 
 export default function PropertiesPage() {
     const { user } = useContext(AuthContext);
+    const savedSearch = useMemo(
+        () => readPageSearchSession(PAGE_SEARCH_KEYS.properties, user?.user_id, {
+            searchTerm: '',
+            showArchived: false,
+        }),
+        [user?.user_id]
+    );
     const [properties, setProperties] = useState([]);
     const [landlords, setLandlords] = useState([]);
     const [propertyTypes, setPropertyTypes] = useState([]);
@@ -178,9 +186,9 @@ export default function PropertiesPage() {
     const [managingUnitsFor, setManagingUnitsFor] = useState(null);
     const [choosingManagerFor, setChoosingManagerFor] = useState(null);
     const [companies, setCompanies] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-    const [showArchived, setShowArchived] = useState(false);
+    const [searchTerm, setSearchTerm] = useState(savedSearch.searchTerm);
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(savedSearch.searchTerm);
+    const [showArchived, setShowArchived] = useState(savedSearch.showArchived);
     
     // Debounce search term to avoid excessive filtering
     useEffect(() => {
@@ -190,6 +198,14 @@ export default function PropertiesPage() {
         
         return () => clearTimeout(timer);
     }, [searchTerm]);
+
+    useEffect(() => {
+        if (!user?.user_id) return;
+        writePageSearchSession(PAGE_SEARCH_KEYS.properties, user.user_id, {
+            searchTerm,
+            showArchived,
+        });
+    }, [user?.user_id, searchTerm, showArchived]);
     
     // Filter properties based on search term
     const filteredProperties = useMemo(() => {
