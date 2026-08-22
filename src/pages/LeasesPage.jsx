@@ -77,6 +77,37 @@ const formatUnitAddress = (unit) => {
     return formatUnitLocationLine(unit, { missingPlace: 'No Address' });
 };
 
+function LeaseCurrencyField({
+    label,
+    value,
+    onChange,
+    required = false,
+    fromTemplate = false,
+}) {
+    return (
+        <div>
+            <div className="flex items-center gap-2">
+                <label className="block text-sm font-medium text-gray-700">
+                    {label}
+                    {required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                {fromTemplate && (
+                    <span className="text-xs text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded" title="From template">
+                        Template
+                    </span>
+                )}
+            </div>
+            <CurrencyInput
+                label=""
+                className="mt-1"
+                value={value}
+                onChange={onChange}
+                required={required}
+            />
+        </div>
+    );
+}
+
 const formatUnitAddressMultiLine = (unit) => {
     return formatUnitLocationLines(unit, { missingPlace: 'No Address' });
 };
@@ -2174,21 +2205,13 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
                     />
                 </div>
 
-                <div>
-                    <div className="flex items-center gap-2">
-                        <label className="block text-sm font-medium text-gray-700">Monthly Rent Amount</label>
-                        {templateFields.has('monthly_rent_amount') && (
-                            <span className="text-xs text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded" title="From template">
-                                Template
-                            </span>
-                        )}
-                    </div>
-                    <CurrencyInput
-                        value={formData.monthly_rent_amount}
-                        onChange={(value) => handleInputChange('monthly_rent_amount', value)}
-                        required
-                    />
-                </div>
+                <LeaseCurrencyField
+                    label="Rent"
+                    value={formData.monthly_rent_amount}
+                    onChange={(value) => handleInputChange('monthly_rent_amount', value)}
+                    required
+                    fromTemplate={templateFields.has('monthly_rent_amount')}
+                />
 
                 <DateInput
                     label="Date of Agreement"
@@ -2197,40 +2220,18 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
                 />
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <label className="block text-sm font-medium text-gray-700">Security Deposit</label>
-                            {templateFields.has('security_deposit_amount') && (
-                                <span className="text-xs text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded" title="From template">
-                                    Template
-                                </span>
-                            )}
-                        </div>
-                        <input 
-                            type="number" 
-                            step="1" 
-                            value={formData.security_deposit_amount} 
-                            onChange={e => handleInputChange('security_deposit_amount', e.target.value)} 
-                            className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
-                        />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <label className="block text-sm font-medium text-gray-700">Pet Deposit</label>
-                            {templateFields.has('pet_deposit_amount') && (
-                                <span className="text-xs text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded" title="From template">
-                                    Template
-                                </span>
-                            )}
-                        </div>
-                        <input 
-                            type="number" 
-                            step="1" 
-                            value={formData.pet_deposit_amount} 
-                            onChange={e => handleInputChange('pet_deposit_amount', e.target.value)} 
-                            className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
-                        />
-                    </div>
+                    <LeaseCurrencyField
+                        label="Security Deposit"
+                        value={formData.security_deposit_amount}
+                        onChange={(value) => handleInputChange('security_deposit_amount', value)}
+                        fromTemplate={templateFields.has('security_deposit_amount')}
+                    />
+                    <LeaseCurrencyField
+                        label="Pet Deposit"
+                        value={formData.pet_deposit_amount}
+                        onChange={(value) => handleInputChange('pet_deposit_amount', value)}
+                        fromTemplate={templateFields.has('pet_deposit_amount')}
+                    />
                 </div>
 
                 <div>
@@ -2269,23 +2270,12 @@ const CreateLeaseForm = ({ units, tenants, onLeaseCreated }) => {
                     />
                 </div>
 
-                <div>
-                    <div className="flex items-center gap-2">
-                        <label className="block text-sm font-medium text-gray-700">Other Fee Amount</label>
-                        {templateFields.has('other_fee_amount') && (
-                            <span className="text-xs text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded" title="From template">
-                                Template
-                            </span>
-                        )}
-                    </div>
-                    <input 
-                        type="number" 
-                        step="1" 
-                        value={formData.other_fee_amount} 
-                        onChange={e => handleInputChange('other_fee_amount', e.target.value)} 
-                        className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
-                    />
-                </div>
+                <LeaseCurrencyField
+                    label="Other Fee Amount"
+                    value={formData.other_fee_amount}
+                    onChange={(value) => handleInputChange('other_fee_amount', value)}
+                    fromTemplate={templateFields.has('other_fee_amount')}
+                />
 
                 <div>
                     <div className="flex items-center gap-2">
@@ -2727,17 +2717,12 @@ const EditLeaseModal = ({ lease, units, tenants, onClose, onUpdateSuccess }) => 
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Monthly Rent Amount</label>
-                            <input 
-                                type="number" 
-                                step="1" 
-                                value={formData.monthly_rent_amount} 
-                                onChange={e => handleInputChange('monthly_rent_amount', e.target.value)} 
-                                required 
-                                className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
-                            />
-                        </div>
+                        <LeaseCurrencyField
+                            label="Rent"
+                            value={formData.monthly_rent_amount}
+                            onChange={(value) => handleInputChange('monthly_rent_amount', value)}
+                            required
+                        />
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Status</label>
                             <select 
@@ -2759,26 +2744,16 @@ const EditLeaseModal = ({ lease, units, tenants, onClose, onUpdateSuccess }) => 
                     />
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Security Deposit</label>
-                            <input 
-                                type="number" 
-                                step="1" 
-                                value={formData.security_deposit_amount} 
-                                onChange={e => handleInputChange('security_deposit_amount', e.target.value)} 
-                                className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Pet Deposit</label>
-                            <input 
-                                type="number" 
-                                step="1" 
-                                value={formData.pet_deposit_amount} 
-                                onChange={e => handleInputChange('pet_deposit_amount', e.target.value)} 
-                                className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
-                            />
-                        </div>
+                        <LeaseCurrencyField
+                            label="Security Deposit"
+                            value={formData.security_deposit_amount}
+                            onChange={(value) => handleInputChange('security_deposit_amount', value)}
+                        />
+                        <LeaseCurrencyField
+                            label="Pet Deposit"
+                            value={formData.pet_deposit_amount}
+                            onChange={(value) => handleInputChange('pet_deposit_amount', value)}
+                        />
                     </div>
 
                     <div>
@@ -2801,16 +2776,11 @@ const EditLeaseModal = ({ lease, units, tenants, onClose, onUpdateSuccess }) => 
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Other Fee Amount</label>
-                        <input 
-                            type="number" 
-                            step="1" 
-                            value={formData.other_fee_amount} 
-                            onChange={e => handleInputChange('other_fee_amount', e.target.value)} 
-                            className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
-                        />
-                    </div>
+                    <LeaseCurrencyField
+                        label="Other Fee Amount"
+                        value={formData.other_fee_amount}
+                        onChange={(value) => handleInputChange('other_fee_amount', value)}
+                    />
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Comment</label>
@@ -3221,17 +3191,12 @@ const RenewLeaseModal = ({ lease, units, tenants, onClose, onRenewSuccess }) => 
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Monthly Rent Amount</label>
-                        <input 
-                            type="number" 
-                            step="1" 
-                            value={formData.monthly_rent_amount} 
-                            onChange={e => handleInputChange('monthly_rent_amount', e.target.value)} 
-                            required 
-                            className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
-                        />
-                    </div>
+                    <LeaseCurrencyField
+                        label="Rent"
+                        value={formData.monthly_rent_amount}
+                        onChange={(value) => handleInputChange('monthly_rent_amount', value)}
+                        required
+                    />
 
                     <DateInput
                         label="Date of Agreement"
@@ -3240,26 +3205,16 @@ const RenewLeaseModal = ({ lease, units, tenants, onClose, onRenewSuccess }) => 
                     />
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Security Deposit</label>
-                            <input 
-                                type="number" 
-                                step="1" 
-                                value={formData.security_deposit_amount} 
-                                onChange={e => handleInputChange('security_deposit_amount', e.target.value)} 
-                                className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Pet Deposit</label>
-                            <input 
-                                type="number" 
-                                step="1" 
-                                value={formData.pet_deposit_amount} 
-                                onChange={e => handleInputChange('pet_deposit_amount', e.target.value)} 
-                                className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
-                            />
-                        </div>
+                        <LeaseCurrencyField
+                            label="Security Deposit"
+                            value={formData.security_deposit_amount}
+                            onChange={(value) => handleInputChange('security_deposit_amount', value)}
+                        />
+                        <LeaseCurrencyField
+                            label="Pet Deposit"
+                            value={formData.pet_deposit_amount}
+                            onChange={(value) => handleInputChange('pet_deposit_amount', value)}
+                        />
                     </div>
 
                     <div>
@@ -3282,16 +3237,11 @@ const RenewLeaseModal = ({ lease, units, tenants, onClose, onRenewSuccess }) => 
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Other Fee Amount</label>
-                        <input 
-                            type="number" 
-                            step="1" 
-                            value={formData.other_fee_amount} 
-                            onChange={e => handleInputChange('other_fee_amount', e.target.value)} 
-                            className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm"
-                        />
-                    </div>
+                    <LeaseCurrencyField
+                        label="Other Fee Amount"
+                        value={formData.other_fee_amount}
+                        onChange={(value) => handleInputChange('other_fee_amount', value)}
+                    />
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Comment</label>
