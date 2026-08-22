@@ -16,6 +16,7 @@ import {
   shouldIgnoreWorkflowNext,
 } from '../utils/workflow-action-guard.js';
 import { readResponseJson } from '../utils/read-response-json.js';
+import { complianceWorkflowTitle } from '../config/compliance-workflows.js';
 import {
   GENERATE_THEN_SERVE_WORKFLOW_TYPES,
   hasWorkflowResumeSeed,
@@ -547,6 +548,7 @@ export default function ComplianceWorkflow({
   const overlayLabel = isAdvancing
     ? (currentStepData?.advanceBusyLabel || 'Generating document…')
     : (currentStepData?.completeBusyLabel || 'Generating document…');
+  const workflowTitle = complianceWorkflowTitle(workflowType);
 
   return (
     <form
@@ -557,6 +559,9 @@ export default function ComplianceWorkflow({
         handleNext();
       }}
     >
+      {workflowTitle ? (
+        <h2 className="text-2xl font-bold text-gray-800">{workflowTitle}</h2>
+      ) : null}
       {(isCompleting || isAdvancing) && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 cursor-wait"

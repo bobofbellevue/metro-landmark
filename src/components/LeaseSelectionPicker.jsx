@@ -3,8 +3,23 @@ import { Search, Check, X } from 'lucide-react';
 import { useFinderLimit } from '../hooks/useFinderLimit.js';
 import { filterLeasesBySearch, leasePickerHoverText, leasePickerPrimaryLabel } from '../utils/lease-display.js';
 import { fetchEnrichedLeases } from '../utils/fetch-enriched-leases.js';
+import { partitionLeasePickerSections } from '../utils/notice-service-workflow.js';
 
 const DEFAULT_STATUSES = ['active', 'pending', 'future'];
+
+function sortLeasesByProperty(leaseList) {
+  return [...leaseList].sort((a, b) => {
+    const aName = (a.units?.properties?.property_name || '').toLowerCase();
+    const bName = (b.units?.properties?.property_name || '').toLowerCase();
+    const byProperty = aName.localeCompare(bName);
+    if (byProperty !== 0) return byProperty;
+    return String(a.units?.unit_number || '').localeCompare(
+      String(b.units?.unit_number || ''),
+      undefined,
+      { numeric: true }
+    );
+  });
+}
 
 /**
  * Searchable lease picker (Select Tenants–style list with multi-line rows).
@@ -17,7 +32,7 @@ const DEFAULT_STATUSES = ['active', 'pending', 'future'];
  * @param {string} [props.emptyMessage]
  * @param {boolean} [props.showRent]
  * @param {boolean} [props.showDeposit]
- * @param {{ id: string, title: string, description?: string, emptyLabel?: string }[]} [props.groups]
+ * @param {{ id: string, title: string, description?: string, emptyLabel?: string, beforeSearch?: boolean }[]} [props.groups]
  * @param {Record<string, { group?: string, badge?: string, badgeClass?: string }>} [props.leaseAnnotations]
  */
 export default function LeaseSelectionPicker({
@@ -75,38 +90,32 @@ export default function LeaseSelectionPicker({
     [leases, debouncedSearchTerm]
   );
 
-  const sortedLeases = useMemo(() => {
-    return [...filteredLeases].sort((a, b) => {
-      const aName = (a.units?.properties?.property_name || '').toLowerCase();
-      const bName = (b.units?.properties?.property_name || '').toLowerCase();
-      const byProperty = aName.localeCompare(bName);
-      if (byProperty !== 0) return byProperty;
-      return String(a.units?.unit_number || '').localeCompare(
-        String(b.units?.unit_number || ''),
-        undefined,
-        { numeric: true }
-      );
-    });
-  }, [filteredLeases]);
+  const sortedLeases = useMemo(
+    () => sortLeasesByProperty(filteredLeases),
+    [filteredLeases]
+  );
 
-  const groupedSections = useMemo(() => {
-    if (!Array.isArray(groups) || groups.length === 0) {
-      return [{ group: null, leases: sortedLeases }];
-    }
-    const searching = Boolean(debouncedSearchTerm);
-    return groups
-      .map((group) => ({
-        group,
-        leases: sortedLeases.filter((lease) => {
-          const annotation = leaseAnnotations[String(lease.lease_id)];
-          const groupId = annotation?.group || 'generate';
-          return groupId === group.id;
-        }),
-      }))
-      .filter((section) => searching ? section.leases.length > 0 : true);
-  }, [groups, sortedLeases, leaseAnnotations, debouncedSearchTerm]);
+  const allSortedLeases = useMemo(() => sortLeasesByProperty(leases), [leases]);
 
-  const listLength = groupedSections.reduce(
+  const { beforeSearch: beforeSearchSections, afterSearch: afterSearchSections } = useMemo(
+    () =>
+      partitionLeasePickerSections({
+        groups,
+        searchFilteredLeases: sortedLeases,
+        allSortedLeases,
+        leaseAnnotations,
+      }),
+    [groups, sortedLeases, allSortedLeases, leaseAnnotations]
+  );
+
+  const afterSearchVisible = useMemo(() => {
+    if (!debouncedSearchTerm) return afterSearchSections;
+    return afterSearchSections.filter(
+      (section) => !section.group || section.leases.length > 0
+    );
+  }, [afterSearchSections, debouncedSearchTerm]);
+
+  const listLength = afterSearchVisible.reduce(
     (sum, section) => sum + section.leases.length,
     0
   );
@@ -129,6 +138,24 @@ export default function LeaseSelectionPicker({
 
   return (
     <div className="space-y-3">
+      {!selectedLease && beforeSearchSections.length > 0 && !isLoading && !loadError && (
+        <div className="space-y-4">
+          {beforeSearchSections.map((section) => (
+            <LeaseGroup
+              key={section.group?.id || 'before-search'}
+              group={section.group}
+              leases={section.leases}
+              emptyLabel={section.group?.emptyLabel}
+              value={value}
+              onSelect={handleSelect}
+              showRent={showRent}
+              showDeposit={showDeposit}
+              leaseAnnotations={leaseAnnotations}
+            />
+          ))}
+        </div>
+      )}
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Lease <span className="text-red-500">*</span>
@@ -183,35 +210,35 @@ export default function LeaseSelectionPicker({
             ) : loadError ? (
               <span className="text-red-600">{loadError}</span>
             ) : debouncedSearchTerm ? (
-              sortedLeases.length === 0 ? (
+              listLength === 0 ? (
                 <span className="text-red-600">
                   No leases found matching &quot;{debouncedSearchTerm}&quot;
                 </span>
               ) : (
                 <span>
-                  Showing {Math.min(visibleCount, sortedLeases.length)} of {sortedLeases.length} matching leases
-                  {leases.length !== sortedLeases.length
+                  Showing {Math.min(visibleCount, listLength)} of {listLength} matching leases
+                  {beforeSearchSections.length === 0 && leases.length !== listLength
                     ? ` (${leases.length} total)`
                     : ''}
                 </span>
               )
             ) : (
               <span>
-                Showing {Math.min(visibleCount, leases.length)} of {leases.length} leases
+                Showing {Math.min(visibleCount, listLength)} of {listLength} leases
               </span>
             )}
           </div>
 
           {!isLoading && !loadError && (
             <div className="space-y-4">
-              {listLength === 0 && groupedSections.length <= 1 ? (
+              {listLength === 0 && !afterSearchVisible[0]?.group ? (
                 <div className="max-h-80 overflow-y-auto border border-gray-200 rounded-md">
                   <div className="p-4 text-center text-sm text-gray-500">{emptyMessage}</div>
                 </div>
               ) : (
                 (() => {
                   let remaining = visibleCount || listLength;
-                  return groupedSections.map((section) => {
+                  return afterSearchVisible.map((section) => {
                     const take = Math.min(section.leases.length, remaining);
                     remaining -= take;
                     const visibleLeases = section.leases.slice(0, take);

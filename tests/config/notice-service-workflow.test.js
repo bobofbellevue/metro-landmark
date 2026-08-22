@@ -9,6 +9,7 @@ import {
   NOTICE_PICKER_GROUP_RECORD_SERVICE,
   noticePickerAnnotation,
   openWorkflowsByLeaseId,
+  partitionLeasePickerSections,
   rentIncreaseNoticeFingerprint,
   resumeStepIndex,
   hasWorkflowResumeSeed,
@@ -302,5 +303,46 @@ describe('leaseTerminationNoticeFingerprint', () => {
     expect(leaseTerminationNoticeFingerprint(base)).not.toBe(
       leaseTerminationNoticeFingerprint({ ...base, termination_reason: 'Cause B' })
     );
+  });
+});
+
+describe('partitionLeasePickerSections', () => {
+  const groups = [
+    { id: NOTICE_PICKER_GROUP_RECORD_SERVICE, title: 'Record service', beforeSearch: true },
+    { id: NOTICE_PICKER_GROUP_GENERATE, title: 'Generate a notice' },
+  ];
+  const allSortedLeases = [{ lease_id: 1 }, { lease_id: 2 }, { lease_id: 3 }];
+  const searchFilteredLeases = [{ lease_id: 2 }];
+  const leaseAnnotations = {
+    1: { group: NOTICE_PICKER_GROUP_RECORD_SERVICE },
+    2: { group: NOTICE_PICKER_GROUP_GENERATE },
+    3: { group: NOTICE_PICKER_GROUP_GENERATE },
+  };
+
+  test('puts beforeSearch groups above the picker using unfiltered leases', () => {
+    const { beforeSearch, afterSearch } = partitionLeasePickerSections({
+      groups,
+      searchFilteredLeases,
+      allSortedLeases,
+      leaseAnnotations,
+    });
+    expect(beforeSearch.map((section) => section.group.id)).toEqual([
+      NOTICE_PICKER_GROUP_RECORD_SERVICE,
+    ]);
+    expect(beforeSearch[0].leases.map((lease) => lease.lease_id)).toEqual([1]);
+    expect(afterSearch.map((section) => section.group.id)).toEqual([
+      NOTICE_PICKER_GROUP_GENERATE,
+    ]);
+    expect(afterSearch[0].leases.map((lease) => lease.lease_id)).toEqual([2]);
+  });
+
+  test('keeps a single list after the search when there are no groups', () => {
+    const { beforeSearch, afterSearch } = partitionLeasePickerSections({
+      groups: null,
+      searchFilteredLeases,
+      allSortedLeases,
+    });
+    expect(beforeSearch).toEqual([]);
+    expect(afterSearch[0].leases.map((lease) => lease.lease_id)).toEqual([2]);
   });
 });

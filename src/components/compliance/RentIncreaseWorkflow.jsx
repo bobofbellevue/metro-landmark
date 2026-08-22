@@ -206,6 +206,7 @@ export default function RentIncreaseWorkflow({
                 description:
                   'These leases already have a rent-increase notice. Open one to print, email, or record how it was served.',
                 emptyLabel: 'No notices are waiting for service.',
+                beforeSearch: true,
               },
               {
                 id: NOTICE_PICKER_GROUP_GENERATE,
