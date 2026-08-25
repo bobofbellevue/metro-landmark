@@ -146,4 +146,9 @@ describe('CompliancePage active workflow list', () => {
       /import\s*\{[\s\S]*activeWorkflowLocationLabel[\s\S]*\}\s*from\s*['"]\.\.\/utils\/workflow-lease-context\.js['"]/
     );
   });
+
+  test('caps Active Workflows at about three rows with a scrollbar', () => {
+    const source = readFileSync(join(root, 'src/pages/CompliancePage.jsx'), 'utf8');
+    expect(source).toMatch(/title="Active Workflows"[\s\S]*max-h-\[13\.5rem\][\s\S]*overflow-y-auto/);
+  });
 });

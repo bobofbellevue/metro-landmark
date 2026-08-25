@@ -92,6 +92,27 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(lines).toContain('Effective Date: 11/01/2026');
   });
 
+  test('includes planned entry and emergency exception on entry worksheets', () => {
+    const lines = buildSimpleNoticeContentLines({
+      notice_type_key: 'entry_notice',
+      tenant_names: 'Ada Lovelace',
+      property_name: 'Pine Court',
+      unit_number: 'B',
+      effective_date: '10/10/2026',
+      entry_time: '10:00 AM',
+      entry_reason: 'emergency',
+      entry_reason_label: 'Emergency',
+      is_emergency: true,
+    });
+
+    expect(lines).toContain('Planned Entry Date: 10/10/2026');
+    expect(lines).toContain('Planned Entry Time: 10:00 AM');
+    expect(lines).toContain('Reason: Emergency');
+    expect(lines.some((l) => l.includes('Emergency exception'))).toBe(true);
+    expect(lines.some((l) => l.startsWith('Effective Date:'))).toBe(false);
+    expect(lines.some((l) => l.startsWith('Current Monthly Rent:'))).toBe(false);
+  });
+
   test('includes initiator and cause on lease termination worksheets', () => {
     const lines = buildSimpleNoticeContentLines({
       notice_type_key: 'lease_termination',

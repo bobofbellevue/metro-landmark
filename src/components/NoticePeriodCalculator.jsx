@@ -50,6 +50,9 @@ export default function NoticePeriodCalculator({
     effectiveDateKey,
     context.currentRent,
     context.newRent,
+    context.entryPurpose,
+    context.purpose,
+    context.isEmergency,
   ]);
 
   useEffect(() => {
@@ -125,6 +128,7 @@ export default function NoticePeriodCalculator({
 
   const {
     noticePeriodDays,
+    noticePeriodHours,
     requiredNoticeDate,
     effectiveDate,
     jurisdiction: calcJurisdiction,
@@ -144,6 +148,10 @@ export default function NoticePeriodCalculator({
   const daysUntilNotice = requiredNoticeIso ? calendarDaysUntil(requiredNoticeIso) : null;
   const isNoticeDatePast = daysUntilNotice != null && daysUntilNotice < 0;
   const unitLabel = workflowType === 'entry' || workflowType === 'entry_notice' ? 'hours' : 'days';
+  const periodValue =
+    unitLabel === 'hours' && noticePeriodHours != null
+      ? noticePeriodHours
+      : noticePeriodDays;
 
   return (
     <div className="space-y-4">
@@ -155,7 +163,7 @@ export default function NoticePeriodCalculator({
             <div className="space-y-2 text-sm">
               <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                 <span className="text-blue-700">Required Notice Period:</span>
-                <span className="font-semibold text-blue-900">{noticePeriodDays} {unitLabel}</span>
+                <span className="font-semibold text-blue-900">{periodValue} {unitLabel}</span>
               </div>
               {calcJurisdiction && (
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5">

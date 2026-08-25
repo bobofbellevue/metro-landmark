@@ -11,6 +11,7 @@ export const GENERATE_THEN_SERVE_WORKFLOW_TYPES = new Set([
   'rent_increase',
   'eviction',
   'lease_termination',
+  'entry_notice',
 ]);
 
 /**
@@ -162,6 +163,20 @@ export function leaseTerminationNoticeFingerprint(data = {}) {
     data.has_cause,
     data.effective_date,
     data.termination_reason,
+  ].join('|');
+}
+
+/**
+ * @param {Record<string, unknown>} data
+ * @returns {string}
+ */
+export function entryNoticeFingerprint(data = {}) {
+  return [
+    data.lease_id,
+    data.entry_reason,
+    data.entry_date,
+    data.entry_time || '',
+    data.notice_given_date || '',
   ].join('|');
 }
 

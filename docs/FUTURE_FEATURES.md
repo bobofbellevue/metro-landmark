@@ -186,7 +186,7 @@ Store `sourceUrls` on each pack (now). A later Admin action can fetch those publ
 
 ## Remaining Compliance Center stubs (2026-08-17)
 
-**Status:** planned (roadmap **E13–E17**).
+**Status:** planned (roadmap **E13–E16**). E17 Entry Notices shipped a generate-then-serve worksheet with pack hours and an emergency exception.
 
 An older pass left catalog tiles with `getWorkflowSteps` shells and a last step that says “generate …” without generating anything. That was not a deliberate hold (unlike E11 subsidy). The bar for finishing them is the same as Rent Increase / Lease Termination / Tenant Screening: real pickers (no typed internal IDs), pack math, a document or recorded outcome. Do **not** copy RHAWA forms. Pack numbers are reference math, not legal advice.
 
@@ -198,9 +198,9 @@ An older pass left catalog tiles with `getWorkflowSteps` shells and a last step 
 | Collections Process | E14 | Amount owed + notice type; 3-day pay-or-vacate can hand off to Eviction generate-then-serve. |
 | Lease Violation Notices | E15 | Violation type, pack cure/notice days, generate-then-serve worksheet. |
 | Habitability Issues | E16 | Issue record + timeline; optional link to an existing maintenance request. |
-| Entry Notices | E17 | Two-day written notice, one-day showing, emergency exception (RCW 59.18.150 already in the pack). |
+| Entry Notices | E17 | **Shipped.** Two-day written notice, one-day showing, emergency exception (RCW 59.18.150 already in the pack). |
 
-Suggested order when executing: **E17** (smallest pack hook), then **E13** (deposit is what operators will miss), then E15 / E14, then E16.
+Suggested order when executing remaining stubs: **E13** (deposit is what operators will miss), then E15 / E14, then E16.
 
 ---
 

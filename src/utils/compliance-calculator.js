@@ -326,6 +326,32 @@ export function calculateEntryNoticePeriod(
 }
 
 /**
+ * Pack entry-notice hours as whole calendar days for date math (48 → 2, 24 → 1).
+ * @param {number|string|null|undefined} hours
+ * @returns {number}
+ */
+export function entryNoticeCalendarDays(hours) {
+  const value = Number(hours);
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.ceil(value / 24);
+}
+
+/**
+ * Map the operator entry-reason field onto pack purpose + emergency.
+ * @param {string|null|undefined} reason
+ * @returns {{ purpose: 'showing'|'general', isEmergency: boolean }}
+ */
+export function entryNoticeOptionsFromReason(reason) {
+  if (reason === 'emergency') {
+    return { purpose: 'general', isEmergency: true };
+  }
+  if (reason === 'showing') {
+    return { purpose: 'showing', isEmergency: false };
+  }
+  return { purpose: 'general', isEmergency: false };
+}
+
+/**
  * Pack-driven notice days for a workflow type (used by calculateNoticePeriod).
  */
 export function noticePeriodDaysFromPack({
@@ -503,12 +529,17 @@ export async function calculateNoticePeriod({
     fetchError = error.message;
   }
 
+  const isEntryWorkflow = workflowType === 'entry' || workflowType === 'entry_notice';
+  const dateOffsetDays = isEntryWorkflow
+    ? entryNoticeCalendarDays(noticePeriodDays)
+    : noticePeriodDays;
+
   let requiredNoticeDate = null;
   if (context.effectiveDate) {
     const rentRules = resolvedRules(detectedJurisdiction).rentIncrease || {};
     requiredNoticeDate = calculateRequiredNoticeDate(
       context.effectiveDate,
-      noticePeriodDays,
+      dateOffsetDays,
       {
         excludeDayOfService:
           workflowType === 'rent_increase' && !!rentRules.excludeDayOfService,
@@ -525,6 +556,10 @@ export async function calculateNoticePeriod({
     effectiveDate: context.effectiveDate || null,
     source: 'jurisdiction_pack',
   };
+  if (isEntryWorkflow) {
+    result.noticePeriodHours = noticePeriodDays;
+    result.noticePeriodDays = dateOffsetDays;
+  }
 
   if (workflowType === 'rent_increase') {
     result.evaluation = evaluateRentIncrease({
