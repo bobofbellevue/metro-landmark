@@ -186,7 +186,7 @@ Store `sourceUrls` on each pack (now). A later Admin action can fetch those publ
 
 ## Remaining Compliance Center stubs (2026-08-17)
 
-**Status:** planned (roadmap **E13–E16**). E17 Entry Notices shipped a generate-then-serve worksheet with pack hours and an emergency exception.
+**Status:** planned (roadmap **E13–E16**). Security Deposit Return shipped an itemized statement (30 days after vacation). Move-in and move-out in E13 remain stubs.
 
 An older pass left catalog tiles with `getWorkflowSteps` shells and a last step that says “generate …” without generating anything. That was not a deliberate hold (unlike E11 subsidy). The bar for finishing them is the same as Rent Increase / Lease Termination / Tenant Screening: real pickers (no typed internal IDs), pack math, a document or recorded outcome. Do **not** copy RHAWA forms. Pack numbers are reference math, not legal advice.
 
@@ -194,13 +194,13 @@ An older pass left catalog tiles with `getWorkflowSteps` shells and a last step 
 | --- | --- | --- |
 | Move-In Process | E13 | Condition report / checklist PDF from the selected lease; store in Documents. |
 | Move-Out Process | E13 | Inspection + damage line items that can feed deposit deductions. |
-| Security Deposit Return | E13 | Itemized deductions, 30-day clock from termination/vacation (RCW 59.18.280; same in Seattle pack), statement PDF. `security_deposits` / `deposit_deductions` tables exist and are unused. Do not reuse the rent-increase notice-period widget — this is a deadline *after* move-out. |
+| Security Deposit Return | E13 | **Shipped.** Itemized deductions, 30-day clock from termination/vacation (RCW 59.18.280; same in Seattle), statement PDF. `security_deposits` / `deposit_deductions` are written when the statement generates. Do not reuse the rent-increase notice-period widget — this is a deadline *after* move-out. |
 | Collections Process | E14 | Amount owed + notice type; 3-day pay-or-vacate can hand off to Eviction generate-then-serve. |
 | Lease Violation Notices | E15 | Violation type, pack cure/notice days, generate-then-serve worksheet. |
 | Habitability Issues | E16 | Issue record + timeline; optional link to an existing maintenance request. |
 | Entry Notices | E17 | **Shipped.** Two-day written notice, one-day showing, emergency exception (RCW 59.18.150 already in the pack). |
 
-Suggested order when executing remaining stubs: **E13** (deposit is what operators will miss), then E15 / E14, then E16.
+Suggested order when executing remaining stubs: **move-in / move-out** (rest of E13), then E15 / E14, then E16.
 
 ---
 

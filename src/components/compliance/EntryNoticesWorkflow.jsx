@@ -21,6 +21,7 @@ import {
   validateNoticeService,
 } from '../../utils/notice-service-workflow.js';
 import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
+import { unitNumberText } from '../../utils/unit-display.js';
 
 const ENTRY_REASON_OPTIONS = [
   { value: 'inspection', label: 'Inspection' },
@@ -133,7 +134,6 @@ export default function EntryNoticesWorkflow({
           entry_time: data.entry_time || '',
           entry_reason: data.entry_reason,
           entry_reason_label: ENTRY_REASON_LABELS[data.entry_reason] || data.entry_reason,
-          notice_given_date: data.notice_given_date || '',
           required_notice_hours: requiredHours,
           is_emergency: options.isEmergency,
         },
@@ -190,26 +190,6 @@ export default function EntryNoticesWorkflow({
           if (!isCompleteWorkflowDate(data.entry_date)) {
             errors.entry_date = 'Planned entry date is required.';
           }
-          const options = entryNoticeOptionsFromReason(data.entry_reason);
-          if (!options.isEmergency && !isCompleteWorkflowDate(data.notice_given_date)) {
-            errors.notice_given_date = 'Date written notice was given is required.';
-          }
-          if (
-            !options.isEmergency &&
-            isCompleteWorkflowDate(data.entry_date) &&
-            isCompleteWorkflowDate(data.notice_given_date)
-          ) {
-            const hours = calculateEntryNoticePeriod(jurisdiction, options);
-            const days = entryNoticeCalendarDays(hours);
-            const check = validateNoticePeriod(
-              data.notice_given_date,
-              data.entry_date,
-              days
-            );
-            if (!check.valid) {
-              errors.notice_given_date = check.message;
-            }
-          }
           return errors;
         },
         render: ({ workflowData, updateField, errors }) => {
@@ -260,18 +240,10 @@ export default function EntryNoticesWorkflow({
                 />
               </div>
 
-              {!options.isEmergency ? (
-                <WorkflowDateInput
-                  label="Date Written Notice Given"
-                  required
-                  value={workflowData.notice_given_date || ''}
-                  onChange={(next) => updateField('notice_given_date', next)}
-                  error={errors.notice_given_date || ''}
-                />
-              ) : (
+              {!options.isEmergency ? null : (
                 <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-3">
                   Emergency exception: written notice is not required when you believe an
-                  emergency exists. Pack math is reference math, not legal advice.
+                  emergency exists. Not legal advice.
                 </p>
               )}
 
@@ -322,23 +294,23 @@ export default function EntryNoticesWorkflow({
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="font-semibold text-gray-800 mb-3">Notice Summary</h4>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between gap-4">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-gray-600">Property:</span>
-                  <span className="font-medium text-right">{property?.property_name}</span>
+                  <span className="font-medium">{property?.property_name}</span>
                 </div>
-                {lease?.units?.unit_number ? (
-                  <div className="flex justify-between gap-4">
+                {unitNumberText(lease?.units) ? (
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     <span className="text-gray-600">Unit:</span>
-                    <span className="font-medium">{lease.units.unit_number}</span>
+                    <span className="font-medium">{unitNumberText(lease?.units)}</span>
                   </div>
                 ) : null}
-                <div className="flex justify-between gap-4">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-gray-600">Reason:</span>
-                  <span className="font-medium text-right">
+                  <span className="font-medium">
                     {ENTRY_REASON_LABELS[workflowData.entry_reason] || workflowData.entry_reason}
                   </span>
                 </div>
-                <div className="flex justify-between gap-4">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-gray-600">Planned entry:</span>
                   <span className="font-medium">
                     {workflowData.entry_date}
@@ -346,25 +318,19 @@ export default function EntryNoticesWorkflow({
                   </span>
                 </div>
                 {workflowData.entry_reason === 'emergency' ? (
-                  <div className="flex justify-between gap-4">
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     <span className="text-gray-600">Notice:</span>
                     <span className="font-medium">Emergency exception</span>
                   </div>
-                ) : (
-                  <div className="flex justify-between gap-4">
-                    <span className="text-gray-600">Written notice given:</span>
-                    <span className="font-medium">{workflowData.notice_given_date}</span>
-                  </div>
-                )}
-                {noticeCalculation && (
-                  <div className="flex justify-between gap-4">
-                    <span className="text-gray-600">Pack notice:</span>
+                ) : noticeCalculation ? (
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                    <span className="text-gray-600">Written notice:</span>
                     <span className="font-medium">
                       {noticeCalculation.noticePeriodHours ?? noticeCalculation.noticePeriodDays}{' '}
-                      {noticeCalculation.noticePeriodHours != null ? 'hours' : 'days'}
+                      {noticeCalculation.noticePeriodHours != null ? 'hours' : 'days'} before entry
                     </span>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
             <div className="bg-blue-50 p-4 rounded-lg">
@@ -383,7 +349,24 @@ export default function EntryNoticesWorkflow({
         description: 'Print or email the worksheet, then record how written notice was given — or save it for later.',
         fields: [],
         completeBusyLabel: 'Recording service…',
-        validate: (data, ctx) => validateNoticeService(data, ctx),
+        validate: (data, ctx) => {
+          const errors = validateNoticeService(data, ctx);
+          if (ctx?.action !== 'record_service') return errors;
+          const options = entryNoticeOptionsFromReason(data.entry_reason);
+          if (
+            !options.isEmergency &&
+            isCompleteWorkflowDate(data.served_date) &&
+            isCompleteWorkflowDate(data.entry_date)
+          ) {
+            const hours = calculateEntryNoticePeriod(jurisdiction, options);
+            const days = entryNoticeCalendarDays(hours);
+            const check = validateNoticePeriod(data.served_date, data.entry_date, days);
+            if (!check.valid) {
+              errors.served_date = check.message;
+            }
+          }
+          return errors;
+        },
         finishActions: [
           {
             id: 'service_later',
@@ -406,7 +389,7 @@ export default function EntryNoticesWorkflow({
             documentId={workflowData.notice_document_id}
             tenantEmails={lease?.tenantEmails || []}
             propertyLabel={
-              [property?.property_name, lease?.units?.unit_number && `Unit ${lease.units.unit_number}`]
+              [property?.property_name, unitNumberText(lease?.units) && `Unit ${unitNumberText(lease?.units)}`]
                 .filter(Boolean)
                 .join(' — ')
             }

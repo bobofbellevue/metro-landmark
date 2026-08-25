@@ -9,6 +9,9 @@ describe('document-types catalog', () => {
     expect(formatDocumentTypeLabel('rent_increase_notice')).toBe(
       'Rent Increase Notice'
     );
+    expect(formatDocumentTypeLabel('deposit_return_statement')).toBe(
+      'Security Deposit Return Statement'
+    );
     expect(formatDocumentTypeLabel('template_document')).toBe(
       'Template Source File'
     );

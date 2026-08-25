@@ -176,7 +176,6 @@ export function entryNoticeFingerprint(data = {}) {
     data.entry_reason,
     data.entry_date,
     data.entry_time || '',
-    data.notice_given_date || '',
   ].join('|');
 }
 

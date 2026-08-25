@@ -68,7 +68,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'security_deposit',
     title: COMPLIANCE_WORKFLOW_TITLES.security_deposit,
-    description: 'Calculate deductions and generate a deposit return statement within the pack timeline (30 days under WA/Seattle).',
+    description: 'Itemize deductions and generate a deposit return statement within 30 days after the tenant vacates.',
     icon: <Banknote className="w-8 h-8 text-green-500" />,
     priority: 'high',
     category: 'core'

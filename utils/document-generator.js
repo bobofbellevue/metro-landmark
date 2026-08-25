@@ -32,6 +32,7 @@ import {
 } from '../src/jurisdictions/index.js';
 import { buildOfficialFormReferralLines, wrapNoticeText, buildRequiredNoticeLanguageLines, simpleNoticeWorksheetDisclaimerLine } from '../src/utils/notice-official-resources.js';
 import { brand } from '../api/utils/brand.js';
+import { buildDepositReturnStatementLines } from '../src/utils/deposit-return-statement.js';
 
 /**
  * Format date as MM/DD/YYYY (timezone-safe for YYYY-MM-DD strings).
@@ -1234,7 +1235,7 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
     y -= 12;
   } else if (isEntryWorksheet) {
     const disclaimerParts = wrapNoticeText(
-      'Pack math is reference math, not legal advice. See RCW 59.18.150.'
+      'Not legal advice. See RCW 59.18.150.'
     );
     for (const part of disclaimerParts) {
       page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
@@ -1370,16 +1371,6 @@ export function buildSimpleNoticeTenantLines(formData = {}) {
       lines.push(
         'Emergency exception: written notice is not required when the landlord believes an emergency exists (RCW 59.18.150).'
       );
-    } else if (
-      formData.required_notice_hours != null &&
-      formData.required_notice_hours !== ''
-    ) {
-      lines.push(
-        `Pack notice hours: ${formData.required_notice_hours} (reference math, not legal advice).`
-      );
-    }
-    if (formData.notice_given_date) {
-      lines.push(`Date written notice given: ${formData.notice_given_date}`);
     }
   }
 
@@ -1534,5 +1525,43 @@ async function appendOfficialFormReferralPage(pdfBytes, formData) {
     y -= 16;
   }
   return pdfDoc.save();
+}
+
+/**
+ * Itemized security deposit return statement PDF (RCW 59.18.280).
+ * @param {object} data
+ * @returns {Promise<{ pdfBytes: Uint8Array }>}
+ */
+export async function generateDepositReturnStatementPdf(data = {}) {
+  const { PDFDocument, StandardFonts } = await import('pdf-lib');
+  const pdfDoc = await PDFDocument.create();
+  let page = pdfDoc.addPage([612, 792]);
+  const { height } = page.getSize();
+  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const margin = 50;
+  let y = height - 50;
+
+  page.drawText('SECURITY DEPOSIT RETURN STATEMENT', {
+    x: margin,
+    y,
+    size: 16,
+    font: helveticaBoldFont,
+  });
+  y -= 22;
+  const subtitleParts = wrapNoticeText('Not legal advice. See RCW 59.18.280.');
+  for (const part of subtitleParts) {
+    page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
+    y -= 14;
+  }
+  y -= 10;
+
+  drawNoticeBodyLines(
+    pdfDoc,
+    page,
+    buildDepositReturnStatementLines(data),
+    { y, margin, height, font: helveticaFont }
+  );
+  return { pdfBytes: await pdfDoc.save() };
 }
 
