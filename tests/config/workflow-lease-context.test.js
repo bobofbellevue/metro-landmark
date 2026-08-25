@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   ACTIVE_WORKFLOW_LIST_SELECT,
   COMPLIANCE_WORKFLOW_DETAIL_SELECT,
@@ -6,6 +9,8 @@ import {
   leaseScopeFields,
   workflowLeaseSelectionPatch,
 } from '../../src/utils/workflow-lease-context.js';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
 const selectedLease = {
   lease_id: 42,
@@ -128,5 +133,17 @@ describe('COMPLIANCE_WORKFLOW_DETAIL_SELECT', () => {
     expect(COMPLIANCE_WORKFLOW_DETAIL_SELECT).toBe(ACTIVE_WORKFLOW_LIST_SELECT);
     expect(COMPLIANCE_WORKFLOW_DETAIL_SELECT).not.toMatch(/users\s*\(/);
     expect(COMPLIANCE_WORKFLOW_DETAIL_SELECT).not.toMatch(/landlords\s*\(/);
+  });
+});
+
+describe('CompliancePage active workflow list', () => {
+  test('imports ACTIVE_WORKFLOW_LIST_SELECT and the location label', () => {
+    const source = readFileSync(join(root, 'src/pages/CompliancePage.jsx'), 'utf8');
+    expect(source).toMatch(
+      /import\s*\{[\s\S]*ACTIVE_WORKFLOW_LIST_SELECT[\s\S]*\}\s*from\s*['"]\.\.\/utils\/workflow-lease-context\.js['"]/
+    );
+    expect(source).toMatch(
+      /import\s*\{[\s\S]*activeWorkflowLocationLabel[\s\S]*\}\s*from\s*['"]\.\.\/utils\/workflow-lease-context\.js['"]/
+    );
   });
 });
