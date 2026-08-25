@@ -4,6 +4,7 @@ import {
   buildNoticeEmailPlainText,
   evictionNoticeFingerprint,
   leaseTerminationNoticeFingerprint,
+  entryNoticeFingerprint,
   isAwaitingNoticeService,
   NOTICE_PICKER_GROUP_GENERATE,
   NOTICE_PICKER_GROUP_RECORD_SERVICE,
@@ -77,6 +78,13 @@ describe('isAwaitingNoticeService', () => {
     expect(
       isAwaitingNoticeService({ ...base, workflow_type: 'move_in' })
     ).toBe(false);
+    expect(
+      isAwaitingNoticeService({
+        status: 'in_progress',
+        workflow_type: 'entry_notice',
+        workflow_data: { notice_document_id: 5 },
+      })
+    ).toBe(true);
   });
 });
 
@@ -302,6 +310,24 @@ describe('leaseTerminationNoticeFingerprint', () => {
     );
     expect(leaseTerminationNoticeFingerprint(base)).not.toBe(
       leaseTerminationNoticeFingerprint({ ...base, termination_reason: 'Cause B' })
+    );
+  });
+});
+
+describe('entryNoticeFingerprint', () => {
+  test('changes when reason, date, or time changes', () => {
+    const base = {
+      lease_id: 4,
+      entry_reason: 'inspection',
+      entry_date: '2026-10-10',
+      entry_time: '10:00 AM',
+      notice_given_date: '2026-10-08',
+    };
+    expect(entryNoticeFingerprint(base)).not.toBe(
+      entryNoticeFingerprint({ ...base, entry_reason: 'showing' })
+    );
+    expect(entryNoticeFingerprint(base)).not.toBe(
+      entryNoticeFingerprint({ ...base, entry_date: '2026-10-11' })
     );
   });
 });

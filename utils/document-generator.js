@@ -1099,6 +1099,12 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
       effective_date || additional_data.effective_date || new Date().toISOString(),
       locale
     ),
+    entry_date: additional_data.entry_date
+      ? formatNoticeDate(additional_data.entry_date, locale)
+      : '',
+    notice_given_date: additional_data.notice_given_date
+      ? formatNoticeDate(additional_data.notice_given_date, locale)
+      : '',
     current_rent:
       currentRentRaw != null && currentRentRaw !== ''
         ? formatCurrency(currentRentRaw)
@@ -1204,9 +1210,12 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
   let y = height - 50;
   const margin = 50;
   const isRentIncreaseWorksheet = formData.notice_type_key === 'rent_increase';
+  const isEntryWorksheet = formData.notice_type_key === 'entry_notice';
   const title = isRentIncreaseWorksheet
     ? 'RENT INCREASE NOTICE WORKSHEET'
-    : `${formData.notice_type} NOTICE`;
+    : isEntryWorksheet
+      ? 'ENTRY NOTICE WORKSHEET'
+      : `${formData.notice_type} NOTICE`;
 
   page.drawText(title, {
     x: margin,
@@ -1218,6 +1227,15 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
 
   if (isRentIncreaseWorksheet) {
     const disclaimerParts = wrapNoticeText(simpleNoticeWorksheetDisclaimerLine());
+    for (const part of disclaimerParts) {
+      page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
+      y -= 14;
+    }
+    y -= 12;
+  } else if (isEntryWorksheet) {
+    const disclaimerParts = wrapNoticeText(
+      'Pack math is reference math, not legal advice. See RCW 59.18.150.'
+    );
     for (const part of disclaimerParts) {
       page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
       y -= 14;
@@ -1333,7 +1351,37 @@ export function buildSimpleNoticeTenantLines(formData = {}) {
     }
   }
 
-  lines.push(`Effective Date: ${formData.effective_date || ''}`);
+  lines.push(
+    formData.notice_type_key === 'entry_notice'
+      ? `Planned Entry Date: ${formData.effective_date || formData.entry_date || ''}`
+      : `Effective Date: ${formData.effective_date || ''}`
+  );
+
+  if (formData.notice_type_key === 'entry_notice') {
+    if (formData.entry_time) {
+      lines.push(`Planned Entry Time: ${formData.entry_time}`);
+    }
+    if (formData.entry_reason_label || formData.entry_reason) {
+      lines.push(
+        `Reason: ${formData.entry_reason_label || String(formData.entry_reason).replace(/_/g, ' ')}`
+      );
+    }
+    if (formData.is_emergency === true || formData.entry_reason === 'emergency') {
+      lines.push(
+        'Emergency exception: written notice is not required when the landlord believes an emergency exists (RCW 59.18.150).'
+      );
+    } else if (
+      formData.required_notice_hours != null &&
+      formData.required_notice_hours !== ''
+    ) {
+      lines.push(
+        `Pack notice hours: ${formData.required_notice_hours} (reference math, not legal advice).`
+      );
+    }
+    if (formData.notice_given_date) {
+      lines.push(`Date written notice given: ${formData.notice_given_date}`);
+    }
+  }
 
   if (formData.notice_type_key === 'lease_termination') {
     if (formData.initiated_by) {

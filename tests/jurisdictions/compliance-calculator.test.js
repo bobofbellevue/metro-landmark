@@ -7,6 +7,8 @@ import {
   calculateRentIncreaseNoticePeriod,
   calculateRequiredNoticeDate,
   calculateTerminationNoticePeriod,
+  entryNoticeCalendarDays,
+  entryNoticeOptionsFromReason,
   evaluateLeaseTermination,
   evaluateRentIncrease,
   noticeDaysForRentIncrease,
@@ -381,6 +383,24 @@ describe('termination, eviction, deposit, and entry', () => {
       calculateEntryNoticePeriod('washington_state', { isEmergency: true, purpose: 'showing' })
     ).toBe(0);
   });
+
+  test('entry hours convert to whole calendar days', () => {
+    expect(entryNoticeCalendarDays(48)).toBe(2);
+    expect(entryNoticeCalendarDays(24)).toBe(1);
+    expect(entryNoticeCalendarDays(0)).toBe(0);
+    expect(entryNoticeOptionsFromReason('showing')).toEqual({
+      purpose: 'showing',
+      isEmergency: false,
+    });
+    expect(entryNoticeOptionsFromReason('emergency')).toEqual({
+      purpose: 'general',
+      isEmergency: true,
+    });
+    expect(entryNoticeOptionsFromReason('repair')).toEqual({
+      purpose: 'general',
+      isEmergency: false,
+    });
+  });
 });
 
 describe('date helpers', () => {
@@ -491,5 +511,39 @@ describe('noticePeriodDaysFromPack / calculateNoticePeriod', () => {
     expect(result.noticePeriodDays).toBe(30);
     expect(result.rulesError).toBe('network down');
     expect(result.citations.map((c) => c.id)).toContain('RCW_59.18.280');
+  });
+
+  test('entry notice date math uses calendar days, not raw hours', async () => {
+    globalThis.fetch = async () => ({ ok: false });
+
+    const inspection = await calculateNoticePeriod({
+      workflowType: 'entry_notice',
+      leaseType: 'month_to_month',
+      jurisdiction: 'washington_state',
+      context: { effectiveDate: '2026-10-10', entryPurpose: 'general' },
+    });
+    expect(inspection.noticePeriodHours).toBe(48);
+    expect(inspection.noticePeriodDays).toBe(2);
+    expect(inspection.requiredNoticeDate).toBe('2026-10-08');
+
+    const showing = await calculateNoticePeriod({
+      workflowType: 'entry_notice',
+      leaseType: 'month_to_month',
+      jurisdiction: 'washington_state',
+      context: { effectiveDate: '2026-10-10', entryPurpose: 'showing' },
+    });
+    expect(showing.noticePeriodHours).toBe(24);
+    expect(showing.noticePeriodDays).toBe(1);
+    expect(showing.requiredNoticeDate).toBe('2026-10-09');
+
+    const emergency = await calculateNoticePeriod({
+      workflowType: 'entry_notice',
+      leaseType: 'month_to_month',
+      jurisdiction: 'washington_state',
+      context: { effectiveDate: '2026-10-10', isEmergency: true },
+    });
+    expect(emergency.noticePeriodHours).toBe(0);
+    expect(emergency.noticePeriodDays).toBe(0);
+    expect(emergency.requiredNoticeDate).toBe('2026-10-10');
   });
 });

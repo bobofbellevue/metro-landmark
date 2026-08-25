@@ -116,7 +116,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'entry_notice',
     title: COMPLIANCE_WORKFLOW_TITLES.entry_notice,
-    description: 'Track two-day entry notice (one day for showings) and document exceptions.',
+    description: 'Generate a two-day written entry notice (one day for showings), or record an emergency exception.',
     icon: <Lock className="w-8 h-8 text-indigo-500" />,
     priority: 'low',
     category: 'additional'
@@ -363,7 +363,7 @@ export default function CompliancePage() {
       {/* Active Workflows Section */}
       {activeWorkflows.length > 0 && (
         <Card title="Active Workflows" className="mb-6">
-          <div className="space-y-3">
+          <div className="finder-list space-y-3 max-h-[13.5rem] overflow-y-auto overflow-x-hidden pr-1 [scrollbar-gutter:stable]">
             {[...activeWorkflows]
               .sort((a, b) => Number(isAwaitingNoticeService(b)) - Number(isAwaitingNoticeService(a)))
               .map(workflow => (
