@@ -321,13 +321,15 @@ describe('entryNoticeFingerprint', () => {
       entry_reason: 'inspection',
       entry_date: '2026-10-10',
       entry_time: '10:00 AM',
-      notice_given_date: '2026-10-08',
     };
     expect(entryNoticeFingerprint(base)).not.toBe(
       entryNoticeFingerprint({ ...base, entry_reason: 'showing' })
     );
     expect(entryNoticeFingerprint(base)).not.toBe(
       entryNoticeFingerprint({ ...base, entry_date: '2026-10-11' })
+    );
+    expect(entryNoticeFingerprint(base)).toBe(
+      entryNoticeFingerprint({ ...base, notice_given_date: '2026-10-01' })
     );
   });
 });

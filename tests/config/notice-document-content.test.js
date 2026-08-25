@@ -113,6 +113,26 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(lines.some((l) => l.startsWith('Current Monthly Rent:'))).toBe(false);
   });
 
+  test('entry inspection worksheet omits operator notice-given and hours lines', () => {
+    const lines = buildSimpleNoticeContentLines({
+      notice_type_key: 'entry_notice',
+      tenant_names: 'Ada Lovelace',
+      property_name: 'Pine Court',
+      unit_number: 'B',
+      effective_date: '10/10/2026',
+      entry_reason: 'inspection',
+      entry_reason_label: 'Inspection',
+      required_notice_hours: 48,
+      notice_given_date: '08/25/2026',
+      is_emergency: false,
+    });
+
+    expect(lines).toContain('Reason: Inspection');
+    expect(lines.some((l) => l.includes('Pack notice hours'))).toBe(false);
+    expect(lines.some((l) => l.toLowerCase().includes('date written notice given'))).toBe(false);
+    expect(lines.some((l) => l.includes('08/25/2026'))).toBe(false);
+  });
+
   test('includes initiator and cause on lease termination worksheets', () => {
     const lines = buildSimpleNoticeContentLines({
       notice_type_key: 'lease_termination',

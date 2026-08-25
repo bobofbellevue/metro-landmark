@@ -72,6 +72,11 @@ export const DOCUMENT_TYPE_CATALOG = {
     category: 'notices',
     audiences: ['admin', 'landlord', 'tenant'],
   },
+  deposit_return_statement: {
+    label: 'Security Deposit Return Statement',
+    category: 'notices',
+    audiences: ['admin', 'landlord', 'tenant'],
+  },
   proof_of_service: {
     label: 'Proof of Service',
     category: 'notices',

@@ -301,6 +301,18 @@ export function calculateDepositReturnPeriod(jurisdiction) {
 }
 
 /**
+ * Last day to provide the itemized statement: vacation date plus pack days.
+ * @param {string} vacationDate YYYY-MM-DD
+ * @param {string} [jurisdiction]
+ * @returns {string} YYYY-MM-DD, or '' when vacationDate is not a calendar date
+ */
+export function calculateDepositReturnDeadline(vacationDate, jurisdiction) {
+  const iso = toWorkflowDateString(vacationDate);
+  if (!iso) return '';
+  return addDaysToWorkflowDate(iso, calculateDepositReturnPeriod(jurisdiction));
+}
+
+/**
  * Calculate required notice period for entry
  * @param {string} jurisdiction
  * @param {boolean|object} isEmergencyOrOptions

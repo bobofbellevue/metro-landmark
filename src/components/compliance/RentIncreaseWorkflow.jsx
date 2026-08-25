@@ -32,6 +32,7 @@ import {
   validateNoticeService,
 } from '../../utils/notice-service-workflow.js';
 import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
+import { unitNumberText } from '../../utils/unit-display.js';
 
 /**
  * RentIncreaseWorkflow - Guided workflow for rent increase notices
@@ -395,10 +396,12 @@ export default function RentIncreaseWorkflow({
                   <span className="text-gray-600">Property:</span>
                   <span className="font-medium">{property?.property_name}</span>
                 </div>
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                  <span className="text-gray-600">Unit:</span>
-                  <span className="font-medium">{lease?.units?.unit_number}</span>
-                </div>
+                {unitNumberText(lease?.units) ? (
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                    <span className="text-gray-600">Unit:</span>
+                    <span className="font-medium">{unitNumberText(lease?.units)}</span>
+                  </div>
+                ) : null}
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-gray-600">Questions contact:</span>
                   <span className="font-medium">
