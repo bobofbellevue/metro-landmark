@@ -34,6 +34,8 @@ export default function DocumentUpload({
   maxSize = 10,
   acceptedTypes = ['application/pdf', 'image/png', 'image/jpeg'],
   acceptFile = null,
+  compact = false,
+  multiple = false,
 }) {
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -161,54 +163,63 @@ export default function DocumentUpload({
     }
   };
 
+  const queueFiles = (fileList) => {
+    const files = Array.from(fileList || []);
+    const toUpload = multiple ? files : files.slice(0, 1);
+    toUpload.forEach((file) => handleFile(file));
+  };
+
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
-    }
+    queueFiles(e.dataTransfer.files);
   };
 
   const handleChange = (e) => {
     e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
-    }
+    queueFiles(e.target.files);
+    e.target.value = '';
   };
 
+  const acceptList = [...acceptedTypes, '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.heic', '.heif'].join(',');
+
   return (
-    <div className="w-full">
-      <label
-        className={`block cursor-pointer border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+    <div className={compact ? 'w-auto' : 'w-full'}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept={acceptList}
+        multiple={multiple}
+        onChange={handleChange}
+        disabled={uploading}
+      />
+      <button
+        type="button"
+        className={`block cursor-pointer border-2 border-dashed rounded-md text-center transition-colors ${
+          compact ? 'px-3 py-2' : 'w-full p-6'
+        } ${
           dragActive
             ? 'border-blue-500 bg-blue-50'
             : 'border-gray-300 hover:border-gray-400'
         } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+        onClick={() => fileInputRef.current?.click()}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
+        disabled={uploading}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="sr-only"
-          accept={[...acceptedTypes, '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.heic', '.heif'].join(',')}
-          onChange={handleChange}
-          disabled={uploading}
-        />
-
         {uploading ? (
-          <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
-            <p className="text-gray-600">Uploading...</p>
+          <div className={`flex items-center ${compact ? 'gap-2' : 'flex-col'}`}>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+            <p className="text-sm text-gray-600">Uploading...</p>
           </div>
         ) : (
-          <div className="flex flex-col items-center pointer-events-none">
+          <div className={`flex items-center pointer-events-none ${compact ? 'gap-2' : 'flex-col'}`}>
             <svg
-              className="w-10 h-10 text-gray-400 mb-2"
+              className={`${compact ? 'w-5 h-5' : 'w-10 h-10 mb-2'} text-gray-400`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -220,10 +231,12 @@ export default function DocumentUpload({
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="text-sm text-gray-600">Drop or click</p>
+            <p className="text-sm text-gray-600">
+              {compact ? (multiple ? 'Add photo or PDF' : 'Photo or PDF') : 'Drop or click'}
+            </p>
           </div>
         )}
-      </label>
+      </button>
     </div>
   );
 }

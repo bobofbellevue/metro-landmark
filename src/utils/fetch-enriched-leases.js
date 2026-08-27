@@ -11,15 +11,7 @@ import {
 
 const DEFAULT_STATUSES = ['active', 'pending', 'future'];
 
-/**
- * Load leases for the given statuses and enrich with tenants, landlord, address.
- * @param {string[]} statuses
- */
-export async function fetchEnrichedLeases(statuses = DEFAULT_STATUSES) {
-  const { data: leaseRows, error: leaseError } = await supabase
-    .from('leases')
-    .select(
-      `
+const LEASE_PICKER_SELECT = `
       lease_id,
       monthly_rent_amount,
       security_deposit_amount,
@@ -48,10 +40,73 @@ export async function fetchEnrichedLeases(statuses = DEFAULT_STATUSES) {
           )
         )
       )
-    `
-    )
-    .eq('is_archived', false)
-    .in('status', statuses);
+    `;
+
+function enrichLeaseRows(leases, { addresses, clientContacts, landlordContacts }) {
+  return leases.map((lease) => {
+    const property = lease.units?.properties || {};
+    const propertyId = property.property_id;
+    const address = addresses.find(
+      (a) => a.addressable_id === propertyId && a.addressable_type === 'property'
+    );
+    const addressLine = formatPropertyAddressLine(address);
+
+    const tenants = (lease.lease_clients || []).map((lc) => {
+      const client = lc.clients || {};
+      const user = client.users || {};
+      const contact =
+        clientContacts.find((c) => c.contactable_id === client.client_id) ||
+        clientContacts.find((c) => c.contactable_id === client.user_id) ||
+        null;
+      return {
+        client_id: client.client_id,
+        user_id: user.user_id || client.user_id,
+        email: user.email || '',
+        first_name: contact?.first_name || '',
+        middle_name: contact?.middle_name || '',
+        last_name: contact?.last_name || '',
+      };
+    });
+
+    const landlordId = lease.landlord_id || property.landlord_id;
+    const landlordContact = landlordContacts.find(
+      (c) => c.contactable_id === landlordId
+    );
+    const landlordName =
+      formatPersonDisplayName({
+        first_name: landlordContact?.first_name,
+        middle_name: landlordContact?.middle_name,
+        last_name: landlordContact?.last_name,
+      }) || '';
+
+    const tenantNames = formatTenantNamesList(tenants);
+
+    return {
+      ...lease,
+      tenants,
+      tenantNames,
+      landlordName,
+      addressLine,
+      address,
+    };
+  });
+}
+
+/**
+ * Load leases for the given statuses and enrich with tenants, landlord, address.
+ * @param {string[]|null} [statuses]
+ * @param {{ leaseIds?: Array<number|string> }} [options]
+ */
+export async function fetchEnrichedLeases(statuses = DEFAULT_STATUSES, options = {}) {
+  const leaseIds = (options.leaseIds || []).filter((id) => id != null && id !== '');
+  let query = supabase.from('leases').select(LEASE_PICKER_SELECT).eq('is_archived', false);
+  if (leaseIds.length) {
+    query = query.in('lease_id', leaseIds);
+  } else {
+    const statusList = Array.isArray(statuses) && statuses.length ? statuses : DEFAULT_STATUSES;
+    query = query.in('status', statusList);
+  }
+  const { data: leaseRows, error: leaseError } = await query;
 
   if (leaseError) throw leaseError;
 
@@ -120,58 +175,23 @@ export async function fetchEnrichedLeases(statuses = DEFAULT_STATUSES) {
         : Promise.resolve({ data: [] }),
     ]);
 
-  const addresses = addressesResult.data || [];
-  const clientContacts = [
-    ...(clientContactsResult.data || []),
-    ...(userContactsResult.data || []),
-  ];
-  const landlordContacts = landlordContactsResult.data || [];
-
-  return leases.map((lease) => {
-    const property = lease.units?.properties || {};
-    const propertyId = property.property_id;
-    const address = addresses.find(
-      (a) => a.addressable_id === propertyId && a.addressable_type === 'property'
-    );
-    const addressLine = formatPropertyAddressLine(address);
-
-    const tenants = (lease.lease_clients || []).map((lc) => {
-      const client = lc.clients || {};
-      const user = client.users || {};
-      const contact =
-        clientContacts.find((c) => c.contactable_id === client.client_id) ||
-        clientContacts.find((c) => c.contactable_id === client.user_id) ||
-        null;
-      return {
-        client_id: client.client_id,
-        user_id: user.user_id || client.user_id,
-        email: user.email || '',
-        first_name: contact?.first_name || '',
-        middle_name: contact?.middle_name || '',
-        last_name: contact?.last_name || '',
-      };
-    });
-
-    const landlordId = lease.landlord_id || property.landlord_id;
-    const landlordContact = landlordContacts.find(
-      (c) => c.contactable_id === landlordId
-    );
-    const landlordName =
-      formatPersonDisplayName({
-        first_name: landlordContact?.first_name,
-        middle_name: landlordContact?.middle_name,
-        last_name: landlordContact?.last_name,
-      }) || '';
-
-    const tenantNames = formatTenantNamesList(tenants);
-
-    return {
-      ...lease,
-      tenants,
-      tenantNames,
-      landlordName,
-      addressLine,
-      address,
-    };
+  return enrichLeaseRows(leases, {
+    addresses: addressesResult.data || [],
+    clientContacts: [
+      ...(clientContactsResult.data || []),
+      ...(userContactsResult.data || []),
+    ],
+    landlordContacts: landlordContactsResult.data || [],
   });
+}
+
+/**
+ * One lease for a picker chip, regardless of status (resume / prior selection).
+ * @param {number|string|null|undefined} leaseId
+ * @returns {Promise<object|null>}
+ */
+export async function fetchEnrichedLeaseById(leaseId) {
+  if (leaseId == null || leaseId === '') return null;
+  const rows = await fetchEnrichedLeases(null, { leaseIds: [leaseId] });
+  return rows[0] || null;
 }

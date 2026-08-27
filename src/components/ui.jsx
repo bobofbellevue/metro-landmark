@@ -21,7 +21,8 @@ export const ConfirmationModal = ({
     hideCancel = false,
     isDestructive = false,
     isSuccess = false,
-    isLoading = false 
+    isLoading = false,
+    reverseActionOrder = false,
 }) => {
     if (!isOpen) return null;
 
@@ -92,27 +93,54 @@ export const ConfirmationModal = ({
                         {message}
                     </p>
                     
-                    <div className="flex justify-end space-x-3">
-                        {!hideCancel && (
-                        <button
-                            onClick={onClose}
-                            disabled={isLoading}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50"
-                        >
-                            {cancelText}
-                        </button>
+                    <div className="flex justify-end gap-3">
+                        {reverseActionOrder ? (
+                          <>
+                            <button
+                                onClick={handleConfirm}
+                                disabled={isLoading}
+                                className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md shadow-sm disabled:opacity-50 ${
+                                    isDestructive
+                                        ? 'bg-red-600 hover:bg-red-700'
+                                        : 'bg-indigo-600 hover:bg-indigo-700'
+                                }`}
+                            >
+                                {isLoading ? 'Processing...' : confirmText}
+                            </button>
+                            {!hideCancel && (
+                            <button
+                                onClick={onClose}
+                                disabled={isLoading}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                {cancelText}
+                            </button>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {!hideCancel && (
+                            <button
+                                onClick={onClose}
+                                disabled={isLoading}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                {cancelText}
+                            </button>
+                            )}
+                            <button
+                                onClick={handleConfirm}
+                                disabled={isLoading}
+                                className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md shadow-sm disabled:opacity-50 ${
+                                    isDestructive
+                                        ? 'bg-red-600 hover:bg-red-700'
+                                        : 'bg-indigo-600 hover:bg-indigo-700'
+                                }`}
+                            >
+                                {isLoading ? 'Processing...' : confirmText}
+                            </button>
+                          </>
                         )}
-                        <button
-                            onClick={handleConfirm}
-                            disabled={isLoading}
-                            className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md shadow-sm disabled:opacity-50 ${
-                                isDestructive 
-                                    ? 'bg-red-600 hover:bg-red-700' 
-                                    : 'bg-indigo-600 hover:bg-indigo-700'
-                            }`}
-                        >
-                            {isLoading ? 'Processing...' : confirmText}
-                        </button>
                     </div>
                 </div>
             </div>

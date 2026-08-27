@@ -517,7 +517,7 @@ export default function LeaseTerminationWorkflow({
             ? 'Service recorded'
             : 'Workflow completed without a notice',
           message: data.notice_document_id
-            ? 'Service is recorded. The termination worksheet is in Documents.'
+            ? 'Service is recorded.'
             : 'Lease and effective date are required to generate the notice document.',
           documentId: data.notice_document_id,
           noticeId: data.notice_id,

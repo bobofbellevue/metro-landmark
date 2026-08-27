@@ -1,5 +1,6 @@
 import {
   isAllowedProofOfServiceFile,
+  normalizeProofOfServiceFiles,
   proofOfServiceFileLabel,
   PROOF_OF_SERVICE_DOCUMENT_TYPE,
 } from '../../src/utils/proof-of-service-file.js';
@@ -26,6 +27,23 @@ describe('proof-of-service file helpers', () => {
     expect(
       proofOfServiceFileLabel({ file_name: 'certified-mail.pdf', document_id: 9 })
     ).toBe('certified-mail.pdf');
+  });
+
+  test('normalizes a single file or a list', () => {
+    expect(normalizeProofOfServiceFiles(null)).toEqual([]);
+    expect(normalizeProofOfServiceFiles({ file_name: 'a.pdf', document_id: 1 })).toEqual([
+      { file_name: 'a.pdf', document_id: 1 },
+    ]);
+    expect(
+      normalizeProofOfServiceFiles([
+        { file_name: 'a.pdf', document_id: 1 },
+        { file_name: 'b.jpg', document_id: 2 },
+        null,
+      ])
+    ).toEqual([
+      { file_name: 'a.pdf', document_id: 1 },
+      { file_name: 'b.jpg', document_id: 2 },
+    ]);
   });
 
   test('catalog includes proof_of_service', () => {

@@ -192,42 +192,45 @@ export default function NoticeServiceStep({
         )}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         <h4 className="font-semibold text-gray-800">Record service</h4>
         <p className="text-sm text-gray-600">
           Required only if you click Record Service. Service Later saves the
           workflow so you can come back after the notice is actually served.
         </p>
 
-        <WorkflowDateInput
-          label="Date Notice Served"
-          value={workflowData.served_date || ''}
-          onChange={(next) => updateField('served_date', next)}
-          error={errors.served_date || ''}
-        />
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            Service Method
-          </label>
-          <select
-            value={workflowData.served_method || ''}
-            onChange={(e) => updateField('served_method', e.target.value)}
-            className={`w-full rounded-md border px-3 py-2 ${
-              errors.served_method ? 'border-red-300' : 'border-gray-300'
-            }`}
-          >
-            <option value="">Select…</option>
-            {methods.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-                {preferredMethodIds.includes(option.value) ? ' (typical here)' : ''}
-              </option>
-            ))}
-          </select>
-          {errors.served_method && (
-            <p className="mt-1 text-sm text-red-600">{errors.served_method}</p>
-          )}
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="w-44">
+            <WorkflowDateInput
+              label="Date Notice Served"
+              value={workflowData.served_date || ''}
+              onChange={(next) => updateField('served_date', next)}
+              error={errors.served_date || ''}
+            />
+          </div>
+          <div className="min-w-[12rem] max-w-xs flex-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Service Method
+            </label>
+            <select
+              value={workflowData.served_method || ''}
+              onChange={(e) => updateField('served_method', e.target.value)}
+              className={`w-full rounded-md border px-3 py-2 ${
+                errors.served_method ? 'border-red-300' : 'border-gray-300'
+              }`}
+            >
+              <option value="">Select…</option>
+              {methods.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                  {preferredMethodIds.includes(option.value) ? ' (typical here)' : ''}
+                </option>
+              ))}
+            </select>
+            {errors.served_method && (
+              <p className="mt-1 text-sm text-red-600">{errors.served_method}</p>
+            )}
+          </div>
         </div>
 
         <div>
@@ -235,7 +238,7 @@ export default function NoticeServiceStep({
             Proof of Service
           </label>
           <WorkflowFileField
-            value={workflowData.proof_of_service_file || null}
+            value={workflowData.proof_of_service_file || []}
             onChange={(fileMeta) => updateField('proof_of_service_file', fileMeta)}
             error={errors.proof_of_service_file}
             leaseId={leaseId}
@@ -244,7 +247,8 @@ export default function NoticeServiceStep({
             workflowId={workflowId}
             userId={userId}
             documentType={PROOF_OF_SERVICE_DOCUMENT_TYPE}
-            description="Upload a photo or PDF — certified mail receipt, posting photo, email confirmation, or similar."
+            multiple
+            description="Photos or PDFs — certified mail receipt, posting photo, email confirmation, or similar."
           />
         </div>
 
@@ -255,8 +259,8 @@ export default function NoticeServiceStep({
           <textarea
             value={workflowData.proof_of_service || ''}
             onChange={(e) => updateField('proof_of_service', e.target.value)}
-            rows={3}
-            className="w-full rounded-md border border-gray-300 px-3 py-2"
+            rows={2}
+            className="w-full max-w-xl rounded-md border border-gray-300 px-3 py-2"
             placeholder="Tracking number, who accepted service, etc."
           />
         </div>

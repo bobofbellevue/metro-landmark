@@ -47,3 +47,18 @@ export function proofOfServiceFileLabel(value) {
   if (typeof value === 'string') return value.trim();
   return String(value.file_name || value.document_name || '').trim();
 }
+
+/**
+ * One file or a list from a saved workflow field.
+ * @param {object|object[]|string|null|undefined} value
+ * @returns {object[]}
+ */
+export function normalizeProofOfServiceFiles(value) {
+  if (value == null || value === '') return [];
+  const rows = Array.isArray(value) ? value : [value];
+  return rows.filter((item) => {
+    if (!item) return false;
+    if (typeof item === 'string') return item.trim() !== '';
+    return Boolean(item.document_id || proofOfServiceFileLabel(item));
+  });
+}
