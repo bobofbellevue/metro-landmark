@@ -369,7 +369,7 @@ export default function EvictionWorkflow({
             ? 'Service recorded'
             : 'Workflow completed without a notice',
           message: data.notice_document_id
-            ? 'Service is recorded. The eviction notice is in Documents.'
+            ? 'Service is recorded.'
             : 'Lease, notice type, and effective date are required to generate the notice.',
           documentId: data.notice_document_id,
           noticeId: data.notice_id,

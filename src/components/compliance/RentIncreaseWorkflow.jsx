@@ -624,16 +624,13 @@ export default function RentIncreaseWorkflow({
           return;
         }
 
-        const usedTemplatePositions = data.notice_used_template === true;
         onComplete(data, {
           status: data.notice_document_id ? 'success' : 'error',
           title: data.notice_document_id
             ? 'Service recorded'
             : 'Workflow completed without a notice',
           message: data.notice_document_id
-            ? usedTemplatePositions || !data.notice_render_mode
-              ? 'Service is recorded. The rent increase notice is in Documents.'
-              : 'Service is recorded. The notice was saved using a simple layout (a Notice template with field positions was unavailable).'
+            ? 'Service is recorded.'
             : 'Lease, new rent, and effective date are required to generate the notice document.',
           documentId: data.notice_document_id,
           noticeId: data.notice_id,

@@ -630,7 +630,7 @@ export default function ComplianceWorkflow({
         ))}
       </div>
 
-      <Card title={currentStepData.title}>
+      <Card title={currentStepData.title} contentClassName="!overflow-visible">
         {currentStepData.description && (
           <p className="text-gray-600 mb-6">{currentStepData.description}</p>
         )}

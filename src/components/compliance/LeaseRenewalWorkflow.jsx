@@ -692,6 +692,11 @@ export default function LeaseRenewalWorkflow({
         }
       }}
       onCancel={onCancel}
+      onWorkflowCreated={onWorkflowCreated}
+      onWorkflowLoaded={(workflow) => {
+        const leaseId = workflow?.workflow_data?.lease_id || workflow?.lease_id;
+        if (leaseId) loadMappingContext(leaseId);
+      }}
     />
   );
 }

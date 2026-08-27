@@ -152,6 +152,11 @@ export default function NoticePeriodCalculator({
     unitLabel === 'hours' && noticePeriodHours != null
       ? noticePeriodHours
       : noticePeriodDays;
+  const isEmergency =
+    context.isEmergency === true ||
+    ((workflowType === 'entry' || workflowType === 'entry_notice') &&
+      (noticePeriodHours === 0 || Number(noticePeriodDays) === 0));
+  const showRequiredDate = Boolean(requiredNoticeDate) && !isEmergency;
 
   return (
     <div className="space-y-4">
@@ -159,21 +164,30 @@ export default function NoticePeriodCalculator({
         <div className="flex items-start gap-3">
           <Calendar className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <h4 className="text-sm font-semibold text-blue-900 mb-2">Notice Period Requirements</h4>
+            <h4 className="text-sm font-semibold text-blue-900 mb-2">
+              {isEmergency ? 'Emergency entry' : 'Notice Period Requirements'}
+            </h4>
             <div className="space-y-2 text-sm">
+              {isEmergency ? (
+                <p className="text-blue-900">
+                  Written notice is not required. You can still generate a worksheet
+                  to leave at the property.
+                </p>
+              ) : (
               <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                 <span className="text-blue-700">Required Notice Period:</span>
                 <span className="font-semibold text-blue-900">{periodValue} {unitLabel}</span>
               </div>
+              )}
               {calcJurisdiction && (
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                  <span className="text-blue-700">Jurisdiction pack:</span>
+                  <span className="text-blue-700">Jurisdiction:</span>
                   <span className="font-semibold text-blue-900">
                     {getJurisdictionDisplayName(calcJurisdiction)}
                   </span>
                 </div>
               )}
-              {leaseType && (
+              {leaseType && !isEmergency && (
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   <span className="text-blue-700">Lease Type:</span>
                   <span className="font-semibold text-blue-900">
@@ -206,7 +220,7 @@ export default function NoticePeriodCalculator({
                 </div>
               )}
               <p className="text-xs text-blue-800 pt-1">
-                Pack-dependent reference math — not a substitute for legal counsel.
+                Not legal advice.
               </p>
             </div>
           </div>
@@ -232,7 +246,7 @@ export default function NoticePeriodCalculator({
         </p>
       )}
 
-      {requiredNoticeDate && (
+      {showRequiredDate && (
         <div className={`p-4 border rounded-lg ${
           isNoticeDatePast 
             ? 'bg-red-50 border-red-200' 

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Check, X } from 'lucide-react';
 import { useFinderLimit } from '../hooks/useFinderLimit.js';
 import { filterLeasesBySearch, leasePickerHoverText, leasePickerPrimaryLabel } from '../utils/lease-display.js';
-import { fetchEnrichedLeases } from '../utils/fetch-enriched-leases.js';
+import { fetchEnrichedLeaseById, fetchEnrichedLeases } from '../utils/fetch-enriched-leases.js';
 import { partitionLeasePickerSections } from '../utils/notice-service-workflow.js';
 
 const DEFAULT_STATUSES = ['active', 'pending', 'future'];
@@ -47,6 +47,8 @@ export default function LeaseSelectionPicker({
   leaseAnnotations = {},
 }) {
   const [leases, setLeases] = useState([]);
+  const [pinnedLease, setPinnedLease] = useState(null);
+  const [pinFailed, setPinFailed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,6 +86,41 @@ export default function LeaseSelectionPicker({
       cancelled = true;
     };
   }, [statusKey]);
+
+  useEffect(() => {
+    if (value == null || value === '') {
+      setPinnedLease(null);
+      setPinFailed(false);
+      return undefined;
+    }
+    const fromList = leases.find((lease) => String(lease.lease_id) === String(value));
+    if (fromList) {
+      setPinnedLease(fromList);
+      setPinFailed(false);
+      return undefined;
+    }
+    if (pinnedLease && String(pinnedLease.lease_id) === String(value)) {
+      return undefined;
+    }
+    let cancelled = false;
+    fetchEnrichedLeaseById(value)
+      .then((row) => {
+        if (cancelled) return;
+        if (row) {
+          setPinnedLease(row);
+          setPinFailed(false);
+        } else {
+          setPinFailed(true);
+        }
+      })
+      .catch((err) => {
+        console.error('Error loading selected lease:', err);
+        if (!cancelled) setPinFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [value, leases, pinnedLease]);
 
   const filteredLeases = useMemo(
     () => filterLeasesBySearch(leases, debouncedSearchTerm),
@@ -125,7 +162,10 @@ export default function LeaseSelectionPicker({
   ]);
   const selectedLease =
     value != null && value !== ''
-      ? leases.find((l) => String(l.lease_id) === String(value))
+      ? leases.find((l) => String(l.lease_id) === String(value)) ||
+        (pinnedLease && String(pinnedLease.lease_id) === String(value)
+          ? pinnedLease
+          : null)
       : null;
 
   const handleSelect = (lease) => {
@@ -138,7 +178,7 @@ export default function LeaseSelectionPicker({
 
   return (
     <div className="space-y-3">
-      {!selectedLease && beforeSearchSections.length > 0 && !isLoading && !loadError && (
+      {!selectedLease && !(value && !pinFailed) && beforeSearchSections.length > 0 && !isLoading && !loadError && (
         <div className="space-y-4">
           {beforeSearchSections.map((section) => (
             <LeaseGroup
@@ -182,6 +222,10 @@ export default function LeaseSelectionPicker({
               <X className="w-4 h-4" />
             </button>
           </div>
+        ) : value && !pinFailed ? (
+          <div className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-800">
+            Loading selected lease…
+          </div>
         ) : (
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -202,7 +246,7 @@ export default function LeaseSelectionPicker({
         {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
       </div>
 
-      {!selectedLease && (
+      {!selectedLease && !(value && !pinFailed) && (
         <>
           <div className="text-sm text-gray-600">
             {isLoading ? (

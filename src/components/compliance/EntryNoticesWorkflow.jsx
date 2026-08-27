@@ -438,7 +438,7 @@ export default function EntryNoticesWorkflow({
             ? 'Service recorded'
             : 'Workflow completed without a notice',
           message: data.notice_document_id
-            ? 'Service is recorded. The entry notice worksheet is in Documents.'
+            ? 'Service is recorded.'
             : 'Lease, reason, and planned entry date are required to generate the notice.',
           documentId: data.notice_document_id,
           noticeId: data.notice_id,

@@ -460,6 +460,7 @@ export default function CompliancePage() {
         confirmText={completionNotice?.status === 'success' ? 'View Documents' : 'OK'}
         cancelText="Close"
         hideCancel={completionNotice?.status === 'pending_service'}
+        reverseActionOrder={completionNotice?.status === 'success'}
         isDestructive={completionNotice?.status === 'error'}
         isSuccess={
           completionNotice?.status === 'success' ||
