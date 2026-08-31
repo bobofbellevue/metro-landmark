@@ -397,6 +397,12 @@ export function noticePeriodDaysFromPack({
       jurisdiction: packId,
     });
   }
+  if (workflowType === 'lease_violation') {
+    return calculateEvictionNoticePeriod({
+      noticeType: context.noticeType || context.notice_kind || '10_day_compliance',
+      jurisdiction: packId,
+    });
+  }
   if (workflowType === 'security_deposit') {
     return calculateDepositReturnPeriod(packId);
   }
@@ -414,6 +420,7 @@ function citationsForWorkflow(jurisdiction, workflowType) {
     rent_increase: 'rentIncrease',
     lease_termination: 'termination',
     eviction: 'eviction',
+    lease_violation: 'eviction',
     security_deposit: 'deposit',
     entry: 'entry',
     entry_notice: 'entry',

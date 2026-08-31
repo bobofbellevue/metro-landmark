@@ -1215,11 +1215,14 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
   const margin = 50;
   const isRentIncreaseWorksheet = formData.notice_type_key === 'rent_increase';
   const isEntryWorksheet = formData.notice_type_key === 'entry_notice';
+  const isViolationWorksheet = formData.notice_type_key === 'lease_violation';
   const title = isRentIncreaseWorksheet
     ? 'RENT INCREASE NOTICE WORKSHEET'
     : isEntryWorksheet
       ? 'ENTRY NOTICE WORKSHEET'
-      : `${formData.notice_type} NOTICE`;
+      : isViolationWorksheet
+        ? 'LEASE VIOLATION NOTICE WORKSHEET'
+        : `${formData.notice_type} NOTICE`;
 
   page.drawText(title, {
     x: margin,
@@ -1239,6 +1242,15 @@ export async function generateNoticeDocument(noticeData, templateId, supabase) {
   } else if (isEntryWorksheet) {
     const disclaimerParts = wrapNoticeText(
       'Not legal advice. See RCW 59.18.150.'
+    );
+    for (const part of disclaimerParts) {
+      page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
+      y -= 14;
+    }
+    y -= 12;
+  } else if (isViolationWorksheet) {
+    const disclaimerParts = wrapNoticeText(
+      'Not legal advice. See RCW 59.12.030.'
     );
     for (const part of disclaimerParts) {
       page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
@@ -1358,7 +1370,9 @@ export function buildSimpleNoticeTenantLines(formData = {}) {
   lines.push(
     formData.notice_type_key === 'entry_notice'
       ? `Planned Entry Date: ${formData.effective_date || formData.entry_date || ''}`
-      : `Effective Date: ${formData.effective_date || ''}`
+      : formData.notice_type_key === 'lease_violation'
+        ? `Comply or vacate by: ${formData.effective_date || ''}`
+        : `Effective Date: ${formData.effective_date || ''}`
   );
 
   if (formData.notice_type_key === 'entry_notice') {
@@ -1387,6 +1401,20 @@ export function buildSimpleNoticeTenantLines(formData = {}) {
       lines.push('Just cause: yes (operator-confirmed)');
     } else if (formData.has_cause === 'no' || formData.has_cause === false) {
       lines.push('Just cause: no');
+    }
+  }
+
+  if (formData.notice_type_key === 'lease_violation') {
+    if (formData.violation_type_label || formData.violation_type) {
+      lines.push(
+        `Violation: ${formData.violation_type_label || String(formData.violation_type).replace(/_/g, ' ')}`
+      );
+    }
+    if (formData.notice_kind_label) {
+      lines.push(`Notice: ${formData.notice_kind_label}`);
+    }
+    if (formData.cure_period_days != null && formData.cure_period_days !== '') {
+      lines.push(`Cure period: ${formData.cure_period_days} days`);
     }
   }
 

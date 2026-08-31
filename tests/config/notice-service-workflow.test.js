@@ -85,6 +85,13 @@ describe('isAwaitingNoticeService', () => {
         workflow_data: { notice_document_id: 5 },
       })
     ).toBe(true);
+    expect(
+      isAwaitingNoticeService({
+        status: 'in_progress',
+        workflow_type: 'lease_violation',
+        workflow_data: { notice_document_id: 7 },
+      })
+    ).toBe(true);
   });
 });
 
