@@ -6,17 +6,19 @@ This document holds **ideas and design notes** that are not yet committed roadma
 
 ---
 
-## Documents & templates (parked 2026-08-14)
+## Documents & templates (roadmap E19)
 
-**Context:** Template import + field-position measurement are useful but fragile today. Re-running import often yields a slightly different field set (mostly right; some missing or mistyped). Positions are often right but rarely all correct. Editing fields requires learning JSON. We are pausing further template/doc-creation hardening to focus on the Metro Landmark migration; revisit after cutover (or as a Phase E build).
+**Status:** planned (roadmap **E19**) — unparked 2026-08-31. This outranks remaining E7 work and E8–E10. The first slice is the visual placement editor (idea **b**). Prompt-guided missing-fields (**c**) and generation-time refine (**a**) stay later. Natural-language commands (**d**) stay gated on E7.
 
-**Maintainer hold (2026-08-21):** Do **not** import or test RHAWA city-specific lease agreements until this reliability work is un-parked and placement is trustworthy. Joining RHAWA remains the intended association path; using those leases as templates is blocked on import/placement (ideas **b** then **a** below), not on more city packs. Do not copy RHAWA PDFs into the repo.
+**Context:** Template import + field-position measurement are useful but fragile. Re-running import often yields a slightly different field set (mostly right; some missing or mistyped). Positions are often right but rarely all correct. Editing fields used to require learning JSON. Auto-detect is a draft; operator-confirmed boxes on the page image are truth.
+
+**Maintainer hold (2026-08-21):** Do **not** import or test RHAWA city-specific lease agreements until placement is trustworthy. Joining RHAWA remains the intended association path; using those leases as templates is blocked on import/placement (editor **b**, then generation refine **a**), not on more city packs. Do not copy RHAWA PDFs into the repo.
 
 ### Observed fragilities
 
 1. **Non-deterministic schema extraction** — Vision/LLM import does not guarantee a stable field inventory or consistent names/types across runs.
 2. **Precomputed positions drift** — Geometric + vision measurement is heuristic; mid-line blanks, next-line underscores, and multi-sentence clauses remain easy to misplace.
-3. **Expert-only correction path** — Template JSON is editable, but that is not a product UX.
+3. **Expert-only correction path** — Template JSON remains editable. The product path is the page-image placement editor (E19).
 
 ### Direction ideas
 
@@ -30,7 +32,7 @@ This document holds **ideas and design notes** that are not yet committed roadma
 - Better pattern: **import stores schema + optional hint positions**; **generate re-measures or refines** (geometry first, vision only for unresolved fields), optionally caching a signed “position revision” on the template when the user accepts placements.
 - Still needs a correct field *list*; on-the-fly placement does not fix missing/wrong field definitions.
 
-**Status:** idea (strong candidate after migration)
+**Status:** idea (after E19 editor)
 
 #### b) DocuSign-style interactive placement UI
 
@@ -40,7 +42,7 @@ This document holds **ideas and design notes** that are not yet committed roadma
 
 Priority relative to (a): **UI confirmation > pure on-the-fly** for operator trust. On-the-fly alone still ships wrong placements silently.
 
-**Status:** idea (highest leverage for template reliability)
+**Status:** planned (roadmap **E19** — first slice)
 
 #### c) Prompt-guided re-import / “find the missing fields”
 
@@ -54,7 +56,7 @@ Priority relative to (a): **UI confirmation > pure on-the-fly** for operator tru
 
 Risks: prompt injection into schema shape; still non-deterministic without approval UI.
 
-**Status:** idea (good interim; best as layer on top of (b))
+**Status:** idea (after E19 editor)
 
 #### d) App-wide natural-language commands
 
@@ -71,12 +73,12 @@ Overlaps existing voice/maintenance-bot direction. Treat as **Phase E+** after M
 
 **Status:** idea (post-migration / Phase E+)
 
-### Suggested sequencing (when we un-pin this)
+### Sequencing
 
-1. **Visual placement editor (b)** — make auto-detect a draft the user can fix.  
+1. **Visual placement editor (b) — E19, now.** Auto-detect is a draft the operator can fix on the page image.  
 2. **Prompt-guided completion (c)** — speed up “missing fields” without hand-editing JSON.  
-3. **Generation-time refine (a)** — use approved schema; re-detect only unresolved or stale positions; cache when user saves.  
-4. **NL command palette (d)** — after auth hardening and stable tool APIs.
+3. **Generation-time refine (a)** — use approved schema; re-detect only unresolved or stale positions; cache when the operator saves.  
+4. **NL command palette (d)** — after auth hardening (E7) and stable tool APIs. Not part of E19.
 
 ---
 

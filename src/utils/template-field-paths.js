@@ -3,9 +3,22 @@
  * Helpers for listing template schema leaf fields and applying measured positions.
  */
 
+function isMetaKey(key) {
+  return typeof key === 'string' && key.startsWith('_');
+}
+
+function leafFieldRecord(path, node, fallbackName) {
+  return {
+    path,
+    type: node.type,
+    description: node.description || fallbackName || path.split('.').pop() || path,
+    position: node.position && typeof node.position === 'object' ? node.position : null,
+  };
+}
+
 /**
  * @param {object} templateData
- * @returns {Array<{ path: string, type: string, description: string }>}
+ * @returns {Array<{ path: string, type: string, description: string, position: object|null }>}
  */
 export function listTemplateLeafFields(templateData) {
   const fields = [];
@@ -21,38 +34,27 @@ export function listTemplateLeafFields(templateData) {
     if (node.type && (node.position || node.description !== undefined || node.items)) {
       // Leaf-ish field definition (may still be array/object typed)
       if (node.type !== 'object' || !node.properties) {
-        fields.push({
-          path: pathPrefix,
-          type: node.type,
-          description: node.description || pathPrefix.split('.').pop() || pathPrefix,
-        });
+        fields.push(leafFieldRecord(pathPrefix, node, pathPrefix.split('.').pop()));
         return;
       }
     }
 
     for (const [key, value] of Object.entries(node)) {
+      if (isMetaKey(key)) continue;
       if (!value || typeof value !== 'object') continue;
       const nextPath = pathPrefix ? `${pathPrefix}.${key}` : key;
 
       if (value.type === 'array' && value.items?.properties) {
         // Record the array itself only if it has a position; otherwise walk items
         if (value.position) {
-          fields.push({
-            path: nextPath,
-            type: value.type,
-            description: value.description || key,
-          });
+          fields.push(leafFieldRecord(nextPath, value, key));
         }
         walk(value.items.properties, `${nextPath}[]`);
         continue;
       }
 
       if (value.type && value.type !== 'object') {
-        fields.push({
-          path: nextPath,
-          type: value.type,
-          description: value.description || key,
-        });
+        fields.push(leafFieldRecord(nextPath, value, key));
         continue;
       }
 
@@ -72,14 +74,13 @@ export function listTemplateLeafFields(templateData) {
 }
 
 /**
- * Set position on a field by dotted path (supports `[]` for array item props).
+ * Resolve the parent object and leaf key for a dotted path (supports `[]`).
  * @param {object} templateData
  * @param {string} path
- * @param {{ page: number, x: number, y: number, space?: string }} position
- * @returns {boolean}
+ * @returns {{ parent: object, key: string }|null}
  */
-export function setFieldPositionByPath(templateData, path, position) {
-  if (!templateData || !path || !position) return false;
+export function resolveLeafParent(templateData, path) {
+  if (!templateData || !path) return null;
   const parts = path.split('.').filter(Boolean);
   let node = templateData;
 
@@ -88,33 +89,90 @@ export function setFieldPositionByPath(templateData, path, position) {
     const isArrayItems = key.endsWith('[]');
     if (isArrayItems) key = key.slice(0, -2);
 
-    if (!node || typeof node !== 'object') return false;
+    if (!node || typeof node !== 'object') return null;
 
     if (isArrayItems) {
       const arrNode = node[key];
-      if (!arrNode?.items?.properties) return false;
+      if (!arrNode?.items?.properties) return null;
       node = arrNode.items.properties;
       continue;
     }
 
     if (i === parts.length - 1) {
-      if (!node[key] || typeof node[key] !== 'object') return false;
-      const nextPosition = {
-        page: position.page,
-        x: position.x,
-        y: position.y,
-      };
-      if (position.space) nextPosition.space = position.space;
-      node[key] = {
-        ...node[key],
-        position: nextPosition,
-      };
-      return true;
+      if (!node[key] || typeof node[key] !== 'object') return null;
+      return { parent: node, key };
     }
 
     node = node[key];
   }
-  return false;
+  return null;
+}
+
+/**
+ * Resolve a container object for adding fields (`Lease` or `Lease.Applicants[]`).
+ * Empty path returns the root schema object.
+ * @param {object} templateData
+ * @param {string} [path]
+ * @returns {object|null}
+ */
+export function resolveFieldContainer(templateData, path = '') {
+  if (!templateData || typeof templateData !== 'object') return null;
+  if (!path) return templateData;
+  const parts = path.split('.').filter(Boolean);
+  let node = templateData;
+  for (const part of parts) {
+    let key = part;
+    const isArrayItems = key.endsWith('[]');
+    if (isArrayItems) key = key.slice(0, -2);
+    if (!node || typeof node !== 'object') return null;
+    if (isArrayItems) {
+      if (!node[key]?.items?.properties) return null;
+      node = node[key].items.properties;
+    } else {
+      if (!node[key] || typeof node[key] !== 'object') return null;
+      node = node[key];
+    }
+  }
+  return node;
+}
+
+function mergePosition(existing, position) {
+  const prev =
+    existing && typeof existing === 'object' ? { ...existing } : {};
+  const next = {
+    ...prev,
+    page: position.page,
+    x: position.x,
+    y: position.y,
+  };
+  if (position.space) next.space = position.space;
+  if (Number.isFinite(Number(position.width)) && Number(position.width) > 0) {
+    next.width = Number(position.width);
+  }
+  if (Number.isFinite(Number(position.height)) && Number(position.height) > 0) {
+    next.height = Number(position.height);
+  }
+  return next;
+}
+
+/**
+ * Set position on a field by dotted path (supports `[]` for array item props).
+ * Merges width/height/space onto any existing position.
+ * @param {object} templateData
+ * @param {string} path
+ * @param {{ page: number, x: number, y: number, width?: number, height?: number, space?: string }} position
+ * @returns {boolean}
+ */
+export function setFieldPositionByPath(templateData, path, position) {
+  if (!templateData || !path || !position) return false;
+  const resolved = resolveLeafParent(templateData, path);
+  if (!resolved) return false;
+  const { parent, key } = resolved;
+  parent[key] = {
+    ...parent[key],
+    position: mergePosition(parent[key].position, position),
+  };
+  return true;
 }
 
 /**
