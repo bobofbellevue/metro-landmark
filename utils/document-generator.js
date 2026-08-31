@@ -33,6 +33,7 @@ import {
 import { buildOfficialFormReferralLines, wrapNoticeText, buildRequiredNoticeLanguageLines, simpleNoticeWorksheetDisclaimerLine } from '../src/utils/notice-official-resources.js';
 import { brand } from '../api/utils/brand.js';
 import { buildDepositReturnStatementLines } from '../src/utils/deposit-return-statement.js';
+import { formatWorkflowTimeForLocale } from '../src/utils/workflow-time.js';
 
 /**
  * Format date as MM/DD/YYYY (timezone-safe for YYYY-MM-DD strings).
@@ -1360,7 +1361,9 @@ export function buildSimpleNoticeTenantLines(formData = {}) {
 
   if (formData.notice_type_key === 'entry_notice') {
     if (formData.entry_time) {
-      lines.push(`Planned Entry Time: ${formData.entry_time}`);
+      lines.push(
+        `Planned Entry Time: ${formatWorkflowTimeForLocale(formData.entry_time) || formData.entry_time}`
+      );
     }
     if (formData.entry_reason_label || formData.entry_reason) {
       lines.push(

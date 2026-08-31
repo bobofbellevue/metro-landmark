@@ -153,23 +153,29 @@ export default function DocumentPreview({ document, isOpen, onClose, onDownload 
           ) : null}
         </div>
 
-        {/* Footer with metadata */}
-        {document.metadata && Object.keys(document.metadata).length > 0 && (
-          <div className="p-4 border-t border-gray-200 bg-gray-50">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Metadata</h4>
-            <div className="text-xs text-gray-600 space-y-1">
-              {document.metadata.processing_status && (
-                <p>Processing Status: {document.metadata.processing_status}</p>
-              )}
-              {document.metadata.extraction_confidence && (
-                <p>Extraction Confidence: {Math.round(document.metadata.extraction_confidence)}%</p>
-              )}
-              {document.is_signed && document.signed_at && (
-                <p>Signed: {formatDate(document.signed_at)}</p>
-              )}
-            </div>
+        <div className="flex items-end justify-between gap-4 p-4 border-t border-gray-200 bg-gray-50">
+          <div className="text-xs text-gray-600 space-y-1 min-h-[1.25rem]">
+            {document.metadata?.processing_status ? (
+              <p>Processing status: {document.metadata.processing_status}</p>
+            ) : null}
+            {document.metadata?.extraction_confidence ? (
+              <p>
+                Extraction confidence:{' '}
+                {Math.round(document.metadata.extraction_confidence)}%
+              </p>
+            ) : null}
+            {document.is_signed && document.signed_at ? (
+              <p>Signed: {formatDate(document.signed_at)}</p>
+            ) : null}
           </div>
-        )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 shrink-0"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
