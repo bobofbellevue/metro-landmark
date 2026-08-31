@@ -1,6 +1,6 @@
 /* eslint-env node */
 import { createClient } from '@supabase/supabase-js';
-import { generateMoveInConditionReportPdf } from '../../../utils/document-generator.js';
+import { generateMoveOutInspectionPdf } from '../../../utils/document-generator.js';
 import { fetchFirstTenantUserId } from '../../../src/utils/lease-tenants.js';
 import { formatPersonDisplayName } from '../../../src/utils/lease-display.js';
 import { unitNumberText } from '../../../src/utils/unit-display.js';
@@ -9,16 +9,16 @@ import {
   isCompleteWorkflowDate,
   toWorkflowDateString,
 } from '../../../src/utils/workflow-date.js';
-import {
-  normalizeChecklistItems,
-  tenantPresentFlag,
-} from '../../../src/utils/move-in-condition-report.js';
+import { tenantPresentFlag } from '../../../src/utils/move-in-condition-report.js';
+import { normalizeMoveOutChecklistItems } from '../../../src/utils/move-out-inspection.js';
+import { normalizeDepositDeductions } from '../../../src/utils/deposit-return-statement.js';
 
 /**
- * POST /api/documents/generate/condition-report
+ * POST /api/documents/generate/move-out-report
  *
  * Body: lease_id, inspection_date, tenant_present, overall_condition,
- * condition_notes, checklist[], tenant_names, user_id
+ * condition_notes, checklist[], deductions[], move_in_inspection_date,
+ * tenant_names, user_id
  */
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -65,6 +65,8 @@ export default async function handler(req, res) {
       overall_condition,
       condition_notes,
       checklist = [],
+      deductions = [],
+      move_in_inspection_date,
       tenant_names,
       user_id,
     } = req.body || {};
@@ -110,7 +112,12 @@ export default async function handler(req, res) {
     const inspectionIso = toWorkflowDateString(inspection_date);
     const locale = 'en-US';
     const inspectionLabel = formatWorkflowDateForLocale(inspectionIso, locale);
-    const items = normalizeChecklistItems(checklist);
+    const moveInIso = isCompleteWorkflowDate(move_in_inspection_date)
+      ? toWorkflowDateString(move_in_inspection_date)
+      : '';
+    const moveInLabel = moveInIso ? formatWorkflowDateForLocale(moveInIso, locale) : '';
+    const items = normalizeMoveOutChecklistItems(checklist);
+    const deductionRows = normalizeDepositDeductions(deductions);
     const tenantWasPresent = tenantPresentFlag(tenant_present);
     const overall = String(overall_condition || '').trim() || null;
     const notes = String(condition_notes || '').trim() || null;
@@ -157,19 +164,21 @@ export default async function handler(req, res) {
       if (label) resolvedNames.push(label);
     }
 
-    const { pdfBytes } = await generateMoveInConditionReportPdf({
+    const { pdfBytes } = await generateMoveOutInspectionPdf({
       tenantNames: tenant_names || resolvedNames.join(', ') || 'Tenant',
       propertyName: property?.property_name || '',
       unitNumber: unitNumberText(unit),
       inspectionDateLabel: inspectionLabel,
+      moveInDateLabel: moveInLabel,
       tenantPresent: tenantWasPresent,
       overallCondition: overall,
       checklist: items,
+      deductions: deductionRows,
       notes,
     });
 
-    const fileName = `move_in_condition_${lease_id}_${Date.now()}.pdf`;
-    const storagePath = `documents/move_in/${lease_id}/${fileName}`;
+    const fileName = `move_out_inspection_${lease_id}_${Date.now()}.pdf`;
+    const storagePath = `documents/move_out/${lease_id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('documents')
@@ -188,18 +197,19 @@ export default async function handler(req, res) {
     const tenantUserId = await fetchFirstTenantUserId(supabase, lease_id);
     const insertPayload = {
       lease_id,
-      document_name: 'Move-In Condition Report',
+      document_name: 'Move-Out Inspection Report',
       file_name: fileName,
       storage_path: storagePath,
       file_type: 'application/pdf',
       file_size: pdfBytes.length,
       mime_type: 'application/pdf',
       uploaded_by_user_id: user_id || null,
-      document_type: 'move_in_condition_report',
+      document_type: 'move_out_inspection_report',
       metadata: {
         inspection_date: inspectionIso,
         tenant_present: tenantWasPresent,
         overall_condition: overall,
+        deduction_count: deductionRows.length,
         generated_at: new Date().toISOString(),
       },
     };
@@ -228,12 +238,18 @@ export default async function handler(req, res) {
         .insert({
           lease_id,
           unit_id: unit.unit_id,
-          inspection_type: 'move_in',
+          inspection_type: 'move_out',
           inspection_date: inspectionIso,
           conducted_by_user_id: user_id || null,
           tenant_present: tenantWasPresent,
           tenant_user_id: tenantUserId || null,
-          condition_report: { items, overall_condition: overall, notes },
+          condition_report: {
+            items,
+            overall_condition: overall,
+            notes,
+            deductions: deductionRows,
+            move_in_inspection_date: moveInIso || null,
+          },
           notes,
           overall_condition: overall,
         })
@@ -243,7 +259,7 @@ export default async function handler(req, res) {
       if (!inspectionError && inspectionRow?.inspection_id) {
         inspectionId = inspectionRow.inspection_id;
       } else if (inspectionError) {
-        console.warn('[Condition report] property_inspections insert skipped:', inspectionError.message);
+        console.warn('[Move-out report] property_inspections insert skipped:', inspectionError.message);
       }
     }
 
@@ -254,7 +270,7 @@ export default async function handler(req, res) {
       file_path: storagePath,
     });
   } catch (error) {
-    console.error('Move-in condition report generation error:', error);
+    console.error('Move-out inspection generation error:', error);
     return res.status(500).json({
       success: false,
       error: error.message || 'Internal server error',

@@ -21,11 +21,12 @@ import {
   normalizeDepositDeductions,
   sumDepositDeductions,
 } from '../../utils/deposit-return-statement.js';
+import {
+  deductionsFromMoveOutInspection,
+  deductionsNeedSeed,
+  newDeductionRow,
+} from '../../utils/move-out-inspection.js';
 import { readResponseJson } from '../../utils/read-response-json.js';
-
-function newDeductionRow() {
-  return { key: `${Date.now()}-${Math.random()}`, reason: '', amount: null };
-}
 
 /**
  * Security Deposit Return — itemized statement due 30 days after the tenant
@@ -60,8 +61,19 @@ export default function SecurityDepositReturnWorkflow({
         .single();
       if (error) throw error;
       setLease(data);
+
+      const { data: inspections } = await supabase
+        .from('property_inspections')
+        .select('inspection_id, inspection_date, condition_report')
+        .eq('lease_id', leaseId)
+        .eq('inspection_type', 'move_out')
+        .order('inspection_date', { ascending: false })
+        .limit(1);
+      const moveOut = Array.isArray(inspections) ? inspections[0] : inspections;
+      return { lease: data, moveOutInspection: moveOut || null };
     } catch (error) {
       console.error('Error fetching lease details:', error);
+      return { lease: null, moveOutInspection: null };
     }
   };
 
@@ -113,7 +125,7 @@ export default function SecurityDepositReturnWorkflow({
             statuses={['active', 'terminated']}
             showDeposit
             emptyMessage="No active or terminated leases found."
-            onChange={(leaseId, selected) => {
+            onChange={async (leaseId, selected) => {
               stampLeaseSelection(updateField, leaseId, selected);
               updateField(
                 'original_deposit',
@@ -127,11 +139,31 @@ export default function SecurityDepositReturnWorkflow({
                   ? Number(selected.pet_deposit_amount)
                   : 0
               );
-              if (!Array.isArray(workflowData.deductions) || workflowData.deductions.length === 0) {
-                updateField('deductions', [newDeductionRow()]);
+              if (leaseId) {
+                const ctx = await fetchLeaseDetails(leaseId);
+                if (deductionsNeedSeed(workflowData.deductions)) {
+                  const fromInspection = deductionsFromMoveOutInspection(
+                    ctx.moveOutInspection
+                  );
+                  updateField(
+                    'deductions',
+                    fromInspection.length
+                      ? fromInspection.map((row) => ({ ...newDeductionRow(), ...row }))
+                      : [newDeductionRow()]
+                  );
+                }
+                if (
+                  !isCompleteWorkflowDate(workflowData.vacation_date) &&
+                  ctx.moveOutInspection?.inspection_date
+                ) {
+                  updateField('vacation_date', ctx.moveOutInspection.inspection_date);
+                }
+              } else {
+                setLease(null);
+                if (deductionsNeedSeed(workflowData.deductions)) {
+                  updateField('deductions', [newDeductionRow()]);
+                }
               }
-              if (leaseId) fetchLeaseDetails(leaseId);
-              else setLease(null);
             }}
           />
         ),

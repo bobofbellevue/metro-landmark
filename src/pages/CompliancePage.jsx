@@ -60,7 +60,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'move_out',
     title: COMPLIANCE_WORKFLOW_TITLES.move_out,
-    description: 'Move-out inspection, condition comparison, and damage assessment.',
+    description: 'Inspect at move-out, compare to move-in, and list deductions for the deposit statement.',
     icon: <DoorOpen className="w-8 h-8 text-orange-500" />,
     priority: 'high',
     category: 'core'
@@ -185,10 +185,19 @@ export default function CompliancePage() {
   };
 
   const handleWorkflowComplete = (_data, generationResult = null) => {
+    fetchActiveWorkflows();
+    if (generationResult?.nextProcess) {
+      setCompletionNotice(null);
+      setSelectedProcess(generationResult.nextProcess);
+      setSelectedWorkflowId(null);
+      setSelectedWorkflowRecord({
+        workflow_data: generationResult.nextInitialData || {},
+      });
+      return;
+    }
     setSelectedProcess(null);
     setSelectedWorkflowId(null);
     setSelectedWorkflowRecord(null);
-    fetchActiveWorkflows();
     if (generationResult && generationResult.status && generationResult.status !== 'skipped') {
       setCompletionNotice(generationResult);
     }
