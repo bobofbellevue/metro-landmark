@@ -76,7 +76,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'collections',
     title: COMPLIANCE_WORKFLOW_TITLES.collections,
-    description: 'Late rent notices, payment plans, and debt collection compliance.',
+    description: 'Record the amount owed, then start a 3-day pay-or-vacate notice in Eviction or save a payment-plan outcome.',
     icon: <DollarSign className="w-8 h-8 text-red-500" />,
     priority: 'high',
     category: 'core'

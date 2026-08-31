@@ -455,6 +455,12 @@ describe('noticePeriodDaysFromPack / calculateNoticePeriod', () => {
         context: { notice_kind: '10_day_compliance' },
       })
     ).toBe(10);
+    expect(
+      noticePeriodDaysFromPack({
+        workflowType: 'collections',
+        jurisdiction: 'washington_state',
+      })
+    ).toBe(3);
   });
 
   test('calculateNoticePeriod uses pack days even when DB rules disagree', async () => {
