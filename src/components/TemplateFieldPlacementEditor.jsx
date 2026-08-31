@@ -375,8 +375,8 @@ export default function TemplateFieldPlacementEditor({
                         onPointerDown={(e) => startDrag(e, field, 'move')}
                         className={`absolute border-2 ${
                           selectedHere
-                            ? 'border-indigo-600 bg-indigo-500/20'
-                            : 'border-amber-500 bg-amber-400/15'
+                            ? 'border-indigo-600 bg-indigo-500/25'
+                            : 'border-amber-500 bg-amber-400/30'
                         }`}
                         style={{
                           left: `${(box.x / pageSize.width) * 100}%`,
