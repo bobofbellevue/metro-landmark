@@ -18,6 +18,9 @@ describe('document-types catalog', () => {
     expect(formatDocumentTypeLabel('move_out_inspection_report')).toBe(
       'Move-Out Inspection Report'
     );
+    expect(formatDocumentTypeLabel('habitability_record')).toBe(
+      'Habitability Issue Worksheet'
+    );
     expect(formatDocumentTypeLabel('template_document')).toBe(
       'Template Source File'
     );

@@ -108,7 +108,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'habitability',
     title: COMPLIANCE_WORKFLOW_TITLES.habitability,
-    description: 'Repair and deduct process, required timelines, and tenant rights.',
+    description: 'Record a defective condition, the commence-repair window, and an optional work order, then save a worksheet in Documents.',
     icon: <Wrench className="w-8 h-8 text-blue-500" />,
     priority: 'low',
     category: 'additional'

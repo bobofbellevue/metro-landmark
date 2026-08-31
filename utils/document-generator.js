@@ -35,6 +35,7 @@ import { brand } from '../api/utils/brand.js';
 import { buildDepositReturnStatementLines } from '../src/utils/deposit-return-statement.js';
 import { buildMoveInConditionReportLines } from '../src/utils/move-in-condition-report.js';
 import { buildMoveOutInspectionLines } from '../src/utils/move-out-inspection.js';
+import { buildHabitabilityRecordLines } from '../src/utils/habitability-issue.js';
 import { formatWorkflowTimeForLocale } from '../src/utils/workflow-time.js';
 
 /**
@@ -1669,6 +1670,46 @@ export async function generateMoveOutInspectionPdf(data = {}) {
     pdfDoc,
     page,
     buildMoveOutInspectionLines(data),
+    { y, margin, height, font: helveticaFont }
+  );
+  return { pdfBytes: await pdfDoc.save() };
+}
+
+/**
+ * Habitability issue worksheet PDF (RCW 59.18.070).
+ * @param {object} data
+ * @returns {Promise<{ pdfBytes: Uint8Array }>}
+ */
+export async function generateHabitabilityRecordPdf(data = {}) {
+  const { PDFDocument, StandardFonts } = await import('pdf-lib');
+  const pdfDoc = await PDFDocument.create();
+  let page = pdfDoc.addPage([612, 792]);
+  const { height } = page.getSize();
+  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const margin = 50;
+  let y = height - 50;
+
+  page.drawText('HABITABILITY ISSUE WORKSHEET', {
+    x: margin,
+    y,
+    size: 16,
+    font: helveticaBoldFont,
+  });
+  y -= 22;
+  const subtitleParts = wrapNoticeText(
+    'Not legal advice. See RCW 59.18.060 and RCW 59.18.070.'
+  );
+  for (const part of subtitleParts) {
+    page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
+    y -= 14;
+  }
+  y -= 10;
+
+  drawNoticeBodyLines(
+    pdfDoc,
+    page,
+    buildHabitabilityRecordLines(data),
     { y, margin, height, font: helveticaFont }
   );
   return { pdfBytes: await pdfDoc.save() };
