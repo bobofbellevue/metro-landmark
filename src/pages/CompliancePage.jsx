@@ -92,7 +92,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'lease_violation',
     title: COMPLIANCE_WORKFLOW_TITLES.lease_violation,
-    description: 'Generate violation notices with required cure periods.',
+    description: 'Generate a comply-or-vacate worksheet from the 10- or 20-day notice type, then print or email it and record service.',
     icon: <AlertTriangle className="w-8 h-8 text-yellow-500" />,
     priority: 'medium',
     category: 'notices'

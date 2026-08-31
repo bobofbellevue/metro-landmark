@@ -448,6 +448,13 @@ describe('noticePeriodDaysFromPack / calculateNoticePeriod', () => {
         context: { entryPurpose: 'showing' },
       })
     ).toBe(24);
+    expect(
+      noticePeriodDaysFromPack({
+        workflowType: 'lease_violation',
+        jurisdiction: 'washington_state',
+        context: { notice_kind: '10_day_compliance' },
+      })
+    ).toBe(10);
   });
 
   test('calculateNoticePeriod uses pack days even when DB rules disagree', async () => {

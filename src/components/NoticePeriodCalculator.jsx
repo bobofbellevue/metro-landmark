@@ -53,6 +53,8 @@ export default function NoticePeriodCalculator({
     context.entryPurpose,
     context.purpose,
     context.isEmergency,
+    context.noticeType,
+    context.notice_kind,
   ]);
 
   useEffect(() => {

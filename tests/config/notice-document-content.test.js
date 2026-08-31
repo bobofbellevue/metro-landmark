@@ -150,6 +150,30 @@ describe('buildSimpleNoticeContentLines', () => {
     expect(lines.some((l) => l.includes('not the statutory'))).toBe(true);
   });
 
+  test('includes violation type, cure days, and comply-or-vacate date', () => {
+    const lines = buildSimpleNoticeContentLines({
+      notice_type_key: 'lease_violation',
+      tenant_names: 'Ada Lovelace',
+      property_name: 'Pine Court',
+      unit_number: 'B',
+      effective_date: '09/15/2026',
+      violation_type: 'noise',
+      violation_type_label: 'Noise Complaint',
+      notice_kind_label: '10-Day Comply or Vacate',
+      cure_period_days: 10,
+      additional_text: 'Repeated noise after 10pm.',
+    });
+    expect(lines).toContain('To: Ada Lovelace');
+    expect(lines).toContain('Unit: B');
+    expect(lines).toContain('Comply or vacate by: 09/15/2026');
+    expect(lines).toContain('Violation: Noise Complaint');
+    expect(lines).toContain('Notice: 10-Day Comply or Vacate');
+    expect(lines).toContain('Cure period: 10 days');
+    expect(lines).toContain('Repeated noise after 10pm.');
+    expect(lines.some((l) => l.startsWith('Effective Date:'))).toBe(false);
+    expect(lines.some((l) => l.toLowerCase().includes('pack'))).toBe(false);
+  });
+
   test('shows the assigned property manager, not the landlord or PMC header', () => {
     const lines = buildSimpleNoticeContentLines({
       notice_type_key: 'rent_increase',

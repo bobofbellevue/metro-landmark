@@ -1,5 +1,6 @@
 /**
- * Generate-then-serve helpers for rent-increase (and eviction) notice workflows.
+ * Generate-then-serve helpers for rent-increase, eviction, termination, entry,
+ * and lease-violation notice workflows.
  *
  * The notice PDF is created on Generate → Next. Service may be recorded
  * immediately or deferred ("Service Later") while the workflow stays open.
@@ -12,6 +13,7 @@ export const GENERATE_THEN_SERVE_WORKFLOW_TYPES = new Set([
   'eviction',
   'lease_termination',
   'entry_notice',
+  'lease_violation',
 ]);
 
 /**
@@ -176,6 +178,20 @@ export function entryNoticeFingerprint(data = {}) {
     data.entry_reason,
     data.entry_date,
     data.entry_time || '',
+  ].join('|');
+}
+
+/**
+ * @param {Record<string, unknown>} data
+ * @returns {string}
+ */
+export function leaseViolationNoticeFingerprint(data = {}) {
+  return [
+    data.lease_id,
+    data.violation_type,
+    data.notice_kind || data.notice_type,
+    data.effective_date,
+    String(data.violation_description || '').trim(),
   ].join('|');
 }
 
