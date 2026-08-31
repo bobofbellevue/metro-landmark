@@ -12,6 +12,9 @@ describe('document-types catalog', () => {
     expect(formatDocumentTypeLabel('deposit_return_statement')).toBe(
       'Security Deposit Return Statement'
     );
+    expect(formatDocumentTypeLabel('move_in_condition_report')).toBe(
+      'Move-In Condition Report'
+    );
     expect(formatDocumentTypeLabel('template_document')).toBe(
       'Template Source File'
     );

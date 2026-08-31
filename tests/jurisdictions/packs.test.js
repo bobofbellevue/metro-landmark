@@ -67,7 +67,7 @@ describe('jurisdiction packs', () => {
     expect(wa.resolvedRules.rentControl.enabled).toBe(true);
     expect(wa.resolvedRules.rentControl.annualMaxIncreasePercentByYear[2026]).toBe(9.683);
     expect(wa.resolvedStatuteRefs.map((r) => r.id)).toEqual(
-      expect.arrayContaining(['RCW_59.18.140', 'RCW_59.18.280', 'RCW_59.18.650', 'RCW_59.18.700'])
+      expect.arrayContaining(['RCW_59.18.140', 'RCW_59.18.260', 'RCW_59.18.280', 'RCW_59.18.650', 'RCW_59.18.700'])
     );
   });
 
@@ -118,6 +118,11 @@ describe('jurisdiction packs', () => {
 
     const screening = getRuleCitations('seattle', 'screening');
     expect(screening.map((c) => c.id)).toContain('SMC_14.09');
+
+    const deposit = getRuleCitations('washington_state', 'deposit');
+    expect(deposit.map((c) => c.id)).toContain('RCW_59.18.280');
+    const moveIn = getRuleCitations('seattle', 'moveIn');
+    expect(moveIn.map((c) => c.id)).toContain('RCW_59.18.260');
   });
 
   test('pack-driven service methods and official form URLs', () => {

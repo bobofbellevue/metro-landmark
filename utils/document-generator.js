@@ -33,6 +33,7 @@ import {
 import { buildOfficialFormReferralLines, wrapNoticeText, buildRequiredNoticeLanguageLines, simpleNoticeWorksheetDisclaimerLine } from '../src/utils/notice-official-resources.js';
 import { brand } from '../api/utils/brand.js';
 import { buildDepositReturnStatementLines } from '../src/utils/deposit-return-statement.js';
+import { buildMoveInConditionReportLines } from '../src/utils/move-in-condition-report.js';
 import { formatWorkflowTimeForLocale } from '../src/utils/workflow-time.js';
 
 /**
@@ -1563,6 +1564,44 @@ export async function generateDepositReturnStatementPdf(data = {}) {
     pdfDoc,
     page,
     buildDepositReturnStatementLines(data),
+    { y, margin, height, font: helveticaFont }
+  );
+  return { pdfBytes: await pdfDoc.save() };
+}
+
+/**
+ * Move-in condition report / checklist PDF (RCW 59.18.260).
+ * @param {object} data
+ * @returns {Promise<{ pdfBytes: Uint8Array }>}
+ */
+export async function generateMoveInConditionReportPdf(data = {}) {
+  const { PDFDocument, StandardFonts } = await import('pdf-lib');
+  const pdfDoc = await PDFDocument.create();
+  let page = pdfDoc.addPage([612, 792]);
+  const { height } = page.getSize();
+  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const margin = 50;
+  let y = height - 50;
+
+  page.drawText('MOVE-IN CONDITION REPORT', {
+    x: margin,
+    y,
+    size: 16,
+    font: helveticaBoldFont,
+  });
+  y -= 22;
+  const subtitleParts = wrapNoticeText('Not legal advice. See RCW 59.18.260.');
+  for (const part of subtitleParts) {
+    page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
+    y -= 14;
+  }
+  y -= 10;
+
+  drawNoticeBodyLines(
+    pdfDoc,
+    page,
+    buildMoveInConditionReportLines(data),
     { y, margin, height, font: helveticaFont }
   );
   return { pdfBytes: await pdfDoc.save() };

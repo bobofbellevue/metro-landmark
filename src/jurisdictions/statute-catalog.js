@@ -24,6 +24,11 @@ export const STATUTE_CATALOG = Object.freeze({
     label: 'RCW 59.18.200 (tenant end of periodic tenancy)',
     href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.200',
   },
+  RCW_59_18_260: {
+    id: 'RCW_59.18.260',
+    label: 'RCW 59.18.260 (move-in checklist / condition statement)',
+    href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.260',
+  },
   RCW_59_18_280: {
     id: 'RCW_59.18.280',
     label: 'RCW 59.18.280 (security deposit statement and refund)',

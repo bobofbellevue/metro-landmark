@@ -52,7 +52,7 @@ const COMPLIANCE_PROCESSES = [
   {
     id: 'move_in',
     title: COMPLIANCE_WORKFLOW_TITLES.move_in,
-    description: 'Property condition report, inspection checklist, and required disclosures.',
+    description: 'Record the unit condition at move-in and save a checklist PDF in Documents.',
     icon: <Key className="w-8 h-8 text-purple-500" />,
     priority: 'high',
     category: 'core'
