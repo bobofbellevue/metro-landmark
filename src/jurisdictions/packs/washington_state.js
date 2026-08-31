@@ -46,6 +46,7 @@ export const washingtonStatePack = {
     'RCW_59.18.140',
     'RCW_59.18.150',
     'RCW_59.18.200',
+    'RCW_59.18.260',
     'RCW_59.18.280',
     'RCW_59.18.650',
     'RCW_59.18.700',
@@ -119,6 +120,8 @@ export const washingtonStatePack = {
       '20_day_violation': 20,
     },
     evictionCitationIds: ['RCW_59.12.030', 'RCW_59.18.650'],
+    /** RCW 59.18.260 — written checklist at commencement of tenancy */
+    moveInCitationIds: ['RCW_59.18.260'],
     /** RCW 59.18.280 — 30 days after termination and vacation */
     depositReturnDays: 30,
     depositCitationIds: ['RCW_59.18.280'],

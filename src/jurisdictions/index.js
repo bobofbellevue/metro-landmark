@@ -174,7 +174,7 @@ export function getMaxRentIncreasePercent(packId, year = new Date().getFullYear(
 /**
  * Resolve citation objects for a rule section (falls back to pack statute list).
  * @param {string} packId
- * @param {string} [section] rentIncrease | termination | eviction | deposit | entry | rentControl | screening
+ * @param {string} [section] rentIncrease | termination | eviction | deposit | moveIn | entry | rentControl | screening
  */
 export function getRuleCitations(packId, section) {
   const resolved = getResolvedJurisdictionPack(packId);
@@ -184,6 +184,7 @@ export function getRuleCitations(packId, section) {
     termination: rules.termination?.citationIds,
     eviction: rules.evictionCitationIds,
     deposit: rules.depositCitationIds,
+    moveIn: rules.moveInCitationIds,
     entry: rules.entryCitationIds,
     rentControl: rules.rentControl?.citationIds,
     screening: rules.screening?.citationIds,
