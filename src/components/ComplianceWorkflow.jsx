@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { CheckCircle, Circle, ArrowRight, ArrowLeft, AlertCircle, Shield } from 'lucide-react';
 import { Card } from './ui';
 import DateInput from './DateInput';
+import WorkflowTimeInput from './WorkflowTimeInput';
 import WorkflowFileField from './WorkflowFileField';
 import { AuthContext } from '../contexts';
 import {
@@ -686,6 +687,13 @@ export default function ComplianceWorkflow({
                     value={workflowData[field.id] || ''}
                     onChange={(e) => updateField(field.id, e.target.value || null)}
                     className={stepErrors[field.id] ? 'border-red-300' : ''}
+                  />
+                )}
+                {field.type === 'time' && (
+                  <WorkflowTimeInput
+                    value={workflowData[field.id] || ''}
+                    onChange={(next) => updateField(field.id, next)}
+                    error={stepErrors[field.id] || ''}
                   />
                 )}
                 {field.type === 'select' && (

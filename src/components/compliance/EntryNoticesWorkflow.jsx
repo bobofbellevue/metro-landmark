@@ -3,6 +3,7 @@ import ComplianceWorkflow from '../ComplianceWorkflow';
 import NoticePeriodCalculator from '../NoticePeriodCalculator';
 import LeaseSelectionPicker from '../LeaseSelectionPicker';
 import WorkflowDateInput from '../WorkflowDateInput';
+import WorkflowTimeInput from '../WorkflowTimeInput';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import { DEFAULT_JURISDICTION_PACK_ID, getNoticeServiceMethods } from '../../jurisdictions/index.js';
@@ -22,6 +23,7 @@ import {
 } from '../../utils/notice-service-workflow.js';
 import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 import { unitNumberText } from '../../utils/unit-display.js';
+import { formatWorkflowTimeForLocale } from '../../utils/workflow-time.js';
 
 const ENTRY_REASON_OPTIONS = [
   { value: 'inspection', label: 'Inspection' },
@@ -131,7 +133,7 @@ export default function EntryNoticesWorkflow({
         notice_data: {
           effective_date: data.entry_date,
           entry_date: data.entry_date,
-          entry_time: data.entry_time || '',
+          entry_time: formatWorkflowTimeForLocale(data.entry_time) || data.entry_time || '',
           entry_reason: data.entry_reason,
           entry_reason_label: ENTRY_REASON_LABELS[data.entry_reason] || data.entry_reason,
           required_notice_hours: requiredHours,
@@ -196,48 +198,45 @@ export default function EntryNoticesWorkflow({
           const options = entryNoticeOptionsFromReason(workflowData.entry_reason);
           return (
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reason for Entry <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={workflowData.entry_reason || ''}
-                  onChange={(e) => updateField('entry_reason', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md ${
-                    errors.entry_reason ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Select...</option>
-                  {ENTRY_REASON_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.entry_reason ? (
-                  <p className="mt-1 text-sm text-red-600">{errors.entry_reason}</p>
-                ) : null}
-              </div>
-
-              <WorkflowDateInput
-                label="Planned Entry Date"
-                required
-                value={workflowData.entry_date || ''}
-                onChange={(next) => updateField('entry_date', next)}
-                error={errors.entry_date || ''}
-              />
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Planned Entry Time
-                </label>
-                <input
-                  type="text"
-                  value={workflowData.entry_time || ''}
-                  onChange={(e) => updateField('entry_time', e.target.value)}
-                  placeholder="e.g., 10:00 AM"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
+              <div className="flex flex-wrap items-start gap-3">
+                <div className="w-64 max-w-full">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reason for Entry <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={workflowData.entry_reason || ''}
+                    onChange={(e) => updateField('entry_reason', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      errors.entry_reason ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select...</option>
+                    {ENTRY_REASON_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.entry_reason ? (
+                    <p className="mt-1 text-sm text-red-600">{errors.entry_reason}</p>
+                  ) : null}
+                </div>
+                <div className="w-44">
+                  <WorkflowDateInput
+                    label="Planned Entry Date"
+                    required
+                    value={workflowData.entry_date || ''}
+                    onChange={(next) => updateField('entry_date', next)}
+                    error={errors.entry_date || ''}
+                  />
+                </div>
+                <div className="w-36">
+                  <WorkflowTimeInput
+                    label="Planned Entry Time"
+                    value={workflowData.entry_time || ''}
+                    onChange={(next) => updateField('entry_time', next)}
+                  />
+                </div>
               </div>
 
               {!options.isEmergency ? null : (
@@ -314,7 +313,9 @@ export default function EntryNoticesWorkflow({
                   <span className="text-gray-600">Planned entry:</span>
                   <span className="font-medium">
                     {workflowData.entry_date}
-                    {workflowData.entry_time ? ` · ${workflowData.entry_time}` : ''}
+                    {workflowData.entry_time
+                      ? ` · ${formatWorkflowTimeForLocale(workflowData.entry_time) || workflowData.entry_time}`
+                      : ''}
                   </span>
                 </div>
                 {workflowData.entry_reason === 'emergency' ? (
