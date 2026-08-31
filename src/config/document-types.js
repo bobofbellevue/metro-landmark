@@ -82,6 +82,11 @@ export const DOCUMENT_TYPE_CATALOG = {
     category: 'notices',
     audiences: ['admin', 'landlord', 'tenant'],
   },
+  move_out_inspection_report: {
+    label: 'Move-Out Inspection Report',
+    category: 'notices',
+    audiences: ['admin', 'landlord', 'tenant'],
+  },
   proof_of_service: {
     label: 'Proof of Service',
     category: 'notices',

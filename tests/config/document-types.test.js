@@ -15,6 +15,9 @@ describe('document-types catalog', () => {
     expect(formatDocumentTypeLabel('move_in_condition_report')).toBe(
       'Move-In Condition Report'
     );
+    expect(formatDocumentTypeLabel('move_out_inspection_report')).toBe(
+      'Move-Out Inspection Report'
+    );
     expect(formatDocumentTypeLabel('template_document')).toBe(
       'Template Source File'
     );
