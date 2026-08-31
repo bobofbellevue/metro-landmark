@@ -29,6 +29,10 @@ export const washingtonStatePack = {
   },
   sourceUrls: [
     {
+      label: 'RCW 59.18.070 (landlord remedial action)',
+      href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.070',
+    },
+    {
       label: 'RCW 59.18.140 (notice period)',
       href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.140',
     },
@@ -43,6 +47,8 @@ export const washingtonStatePack = {
   ],
   statuteRefIds: [
     'RCW_59.18',
+    'RCW_59.18.060',
+    'RCW_59.18.070',
     'RCW_59.18.140',
     'RCW_59.18.150',
     'RCW_59.18.200',
@@ -120,6 +126,17 @@ export const washingtonStatePack = {
       '20_day_violation': 20,
     },
     evictionCitationIds: ['RCW_59.12.030', 'RCW_59.18.650'],
+    /**
+     * RCW 59.18.070 — commence remedial action after written notice.
+     * Hours from receipt (not calendar days). 10 days stored as 240 hours.
+     */
+    habitabilityRepair: {
+      imminentHours: 24,
+      utilitiesHours: 24,
+      majorFixtureHours: 72,
+      otherHours: 240,
+      citationIds: ['RCW_59.18.060', 'RCW_59.18.070'],
+    },
     /** RCW 59.18.260 — written checklist at commencement of tenancy */
     moveInCitationIds: ['RCW_59.18.260'],
     /** RCW 59.18.280 — 30 days after termination and vacation */

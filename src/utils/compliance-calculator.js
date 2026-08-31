@@ -428,6 +428,7 @@ function citationsForWorkflow(jurisdiction, workflowType) {
     eviction: 'eviction',
     lease_violation: 'eviction',
     collections: 'eviction',
+    habitability: 'habitability',
     security_deposit: 'deposit',
     entry: 'entry',
     entry_notice: 'entry',

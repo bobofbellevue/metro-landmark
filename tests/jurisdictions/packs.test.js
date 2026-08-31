@@ -60,6 +60,9 @@ describe('jurisdiction packs', () => {
     expect(wa.resolvedRules.depositReturnDays).toBe(30);
     expect(wa.resolvedRules.entryNoticeHours).toBe(48);
     expect(wa.resolvedRules.entryShowingNoticeHours).toBe(24);
+    expect(wa.resolvedRules.habitabilityRepair.utilitiesHours).toBe(24);
+    expect(wa.resolvedRules.habitabilityRepair.majorFixtureHours).toBe(72);
+    expect(wa.resolvedRules.habitabilityRepair.otherHours).toBe(240);
     expect(wa.resolvedRules.termination.tenantFixedTermNoticeDays).toBe(20);
     expect(wa.resolvedRules.termination.landlordEndOfInitialTermNoticeDays).toBe(60);
     expect(wa.resolvedRules.termination.requiresJustCauseForNoCauseMonthToMonth).toBe(true);

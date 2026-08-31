@@ -125,6 +125,10 @@ export function getResolvedJurisdictionPack(packId) {
         parent.resolvedRules.noticeService,
         pack.rules.noticeService
       ),
+      habitabilityRepair: mergeRuleSection(
+        parent.resolvedRules.habitabilityRepair,
+        pack.rules.habitabilityRepair
+      ),
     },
     resolvedStatuteRefs: resolveStatuteRefs(
       mergeStatuteRefIds(parent.statuteRefIds, pack.statuteRefIds)
@@ -189,6 +193,7 @@ export function getRuleCitations(packId, section) {
     rentControl: rules.rentControl?.citationIds,
     screening: rules.screening?.citationIds,
     noticeService: rules.noticeService?.citationIds,
+    habitability: rules.habitabilityRepair?.citationIds,
   }[section];
   if (sectionIds?.length) return resolveStatuteRefs(sectionIds);
   return resolved.resolvedStatuteRefs || [];

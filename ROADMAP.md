@@ -19,6 +19,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 | E13 Move-in / move-out / deposit return | Move-In condition report (RCW 59.18.260), Move-Out inspection compared to move-in with proposed deductions, and Security Deposit Return statement (30 days after vacation, RCW 59.18.280). PDFs go to Documents. Move-out deductions seed the deposit-return workflow. |
 | E14 Collections process | Amount owed + 3-day pay-or-vacate from pack eviction days. Hands off to Eviction generate-then-serve. FDCPA reminder in the workflow. Not a statutory form. Do not copy RHAWA forms. |
 | E15 Lease violation notices | 10-day comply or 20-day notice from pack eviction days. Generate a worksheet into Documents, then print/email and record service. Not a statutory form. Do not copy RHAWA forms. |
+| E16 Habitability | Defective-condition record with RCW 59.18.070 commence-repair windows (24 hours / 72 hours / 10 days). Optional link to an existing maintenance request. Worksheet PDF in Documents. Not a legal opinion. Do not copy RHAWA forms. |
 
 ## Partial
 
@@ -27,7 +28,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 | E5 Listing syndication | Operator **Listings** page matches the other finder pages: **Add Listing** (Select Unit) on the left, **Listing Search** with Actions on the right. Vacant units only (no active/future lease, and no current tenant assignment without a lease). Asking rent, available date, description, and a **Listed** flag. Search filters include listed/unlisted, owner, PM, and PMC and are remembered for the browser tab until logout. XML and CSV export the current search results; Listed is a flag in the file, not the export filter. XML `<id>` is a stable per-unit key (`unit{id}`) for the destination system, not a file-local index. Live Zillow/Apartments.com APIs are later. Without E11 subsidy flags, reserved units are not auto-excluded. |
 | E6 Additional city packs | Child packs of WA for **Tacoma** (TMC 1.95.060, 180-day notice), **Bellingham** (BMC 6.12.020, 120-day), **Olympia** (OMC 5.82.030 percent tiers 90/120/180), **Federal Way** (statewide 90-day rent notice; FWRC 20.05 renewal offer), **Kirkland** (KMC 7.75.030, >3% / >10%), **Kenmore** (KMC 8.55.030, same tiers as Kirkland), **Shoreline** (SMC 9.35.030, >3% / ≥10%), and **Auburn** (ACC 5.23.040, >5% → 120 days). Detected from property city. Official citations and city URLs only — no RHAWA PDFs. Trailing 12-month stacking (Olympia 7%) and Tacoma relocation payment math are not computed. Kirkland’s stale 60-day table and Shoreline’s 60-day optional-rent figure are not encoded (shorter than RCW 59.18.140). |
 | E7 Auth hardening | Login issues a signed session token. Listings, payments, phones, org theme, notifications, and audit logs verify `Authorization: Bearer` and load role from `users` — client `x-user-id` / `x-user-role` headers are ignored. CORS on those routes is origin-allowlisted (localhost, Vercel URL, optional `CORS_ORIGIN`). Remaining: documents/compliance/cron routes, and replacing permissive anon/authenticated `USING (true)` RLS for the browser Supabase client. |
-| Compliance Center | Rent Increase, Lease Renewal, Eviction, Lease Termination, Tenant Screening, Entry Notices, Security Deposit Return, Move-In, Move-Out, Lease Violation Notices, and Collections are operator-ready. Remaining catalog tile is a leftover stub (E16 Habitability). |
+| Compliance Center | Rent Increase, Lease Renewal, Eviction, Lease Termination, Tenant Screening, Entry Notices, Security Deposit Return, Move-In, Move-Out, Lease Violation Notices, Collections, and Habitability are operator-ready. |
 | Documents | Staff registry + type catalog exist; contextual panels incomplete across landlord/maintenance/portals |
 | Voice / chat maintenance | Works with Vapi/OpenAI when configured; numbers can be assigned per purpose (E3), with a shared env DID as fallback |
 
@@ -40,7 +41,6 @@ This list is intentionally short. Finish or cut items before expanding it.
 | E10 | Expand template kinds | Template types beyond Application / Lease as new packs and notice/maintenance templates land |
 | E11 | Subsidy / low-income program tracking | Record *that* a tenancy or unit is subsidized, plus **jurisdiction** and **program**. Lease-level (subsidized tenant) and unit-level (reserved for low-income occupancy) are distinct. Unblocks the RCW 59.18.140(3)(b) 30-day rent-increase path. Design notes: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#subsidy--low-income-program-tracking-2026-08-15) |
 | E12 | Rent-increase exemptions + statutory form template | Property/unit exemption flags (RCW 59.18.710 / Seattle list), fillable RCW 59.18.720 notice + Seattle helpline addendum. Worksheet+links shipped; serving the worksheet as the notice is not compliant. [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#rent-increase-completeness--seattle-cities-forms-exemptions-2026-08-16) |
-| E16 | Habitability | Replace leftover stub. Record issue, pack repair timeline if encoded, link to maintenance where a work order exists. Document outcome; not a legal opinion. |
 | E18 | Configure and test SendGrid and Twilio | Notification preference UI and Test buttons are shipped. Later: verify a SendGrid Sender Identity (`FROM_EMAIL` / `SENDGRID_FROM_EMAIL`) and Twilio Account SID (`AC…`) plus Auth Token or API key (`SK…` + `TWILIO_API_SECRET`) on the Vercel deploy, then send a real email and SMS from Settings → Notifications. |
 
 ## Out of scope (near term)
@@ -56,5 +56,5 @@ Consulting and adaptation for custom packs, branding, or production hardening: R
 
 ## Parking lot
 
-Longer design notes and deferred ideas: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md) — parked template/doc-creation reliability, E11 subsidy tracking, notice-service automation, rent-increase city/form/exemption completeness, and remaining Compliance Center stub (E16 Habitability).
+Longer design notes and deferred ideas: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md) — parked template/doc-creation reliability, E11 subsidy tracking, notice-service automation, and rent-increase city/form/exemption completeness.
 

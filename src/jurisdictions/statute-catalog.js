@@ -9,6 +9,16 @@ export const STATUTE_CATALOG = Object.freeze({
     label: 'RCW 59.18 (Residential Landlord-Tenant Act)',
     href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18',
   },
+  RCW_59_18_060: {
+    id: 'RCW_59.18.060',
+    label: 'RCW 59.18.060 (landlord duties)',
+    href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.060',
+  },
+  RCW_59_18_070: {
+    id: 'RCW_59.18.070',
+    label: 'RCW 59.18.070 (landlord remedial action after notice)',
+    href: 'https://app.leg.wa.gov/RCW/default.aspx?cite=59.18.070',
+  },
   RCW_59_18_140: {
     id: 'RCW_59.18.140',
     label: 'RCW 59.18.140 (rent-increase notice)',
