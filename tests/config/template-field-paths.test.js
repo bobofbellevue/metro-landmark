@@ -74,13 +74,25 @@ describe('template-field-paths', () => {
     );
   });
 
-  test('setFieldPositionByPath returns false for missing path', () => {
+  test('setFieldPositionByPath merges width, height, and space', () => {
+    const data = schema();
     expect(
-      setFieldPositionByPath(schema(), 'Lease.Missing', {
+      setFieldPositionByPath(data, 'Lease.Lessor', {
         page: 0,
-        x: 1,
-        y: 2,
+        x: 410,
+        y: 246,
+        width: 200,
+        height: 30,
+        space: 'image_2x',
       })
-    ).toBe(false);
+    ).toBe(true);
+    expect(data.Lease.Lessor.position).toEqual({
+      page: 0,
+      x: 410,
+      y: 246,
+      width: 200,
+      height: 30,
+      space: 'image_2x',
+    });
   });
 });

@@ -32,6 +32,7 @@ const SCHEMA_META_KEYS = new Set([
   'default',
   'title',
   'sensitive',
+  '_placement',
 ]);
 
 /**

@@ -36,6 +36,7 @@ This list is intentionally short. Finish or cut items before expanding it.
 
 | Priority | Item | Notes |
 |----------|------|--------|
+| E19 | Template field placement editor | Auto-detect is a draft. Operators drag, resize, rename, retype, add, and remove fields on the page image. Confirmed placements are the source of truth and may be saved even when auto-detect still looks like a vertical column. More important than remaining E7 work and E8–E10. Prompt-guided missing-fields and generation-time refine come after this slice. Do not import RHAWA city leases until placement is trustworthy. Do not copy RHAWA PDFs. Design notes: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md#documents--templates-roadmap-e19) |
 | E8 | Contextual documents for landlords & maintenance | Mount `DocumentManagement` on landlord property/lease/maintenance views (bids, work authorizations, etc.) |
 | E9 | Audience-aware document lists in portals | Tenant / landlord / vendor portals show only related docs (catalog audiences + FK scoping) |
 | E10 | Expand template kinds | Template types beyond Application / Lease as new packs and notice/maintenance templates land |
@@ -56,5 +57,5 @@ Consulting and adaptation for custom packs, branding, or production hardening: R
 
 ## Parking lot
 
-Longer design notes and deferred ideas: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md) — parked template/doc-creation reliability, E11 subsidy tracking, notice-service automation, and rent-increase city/form/exemption completeness.
+Longer design notes and deferred ideas: [`docs/FUTURE_FEATURES.md`](docs/FUTURE_FEATURES.md) — E19 template field placement (visual editor in progress; prompt-guided missing-fields and generation-time refine later), E11 subsidy tracking, notice-service automation, and rent-increase city/form/exemption completeness.
 

@@ -8,7 +8,9 @@ import { convertFileToJSONSchema } from '../utils/pdf-to-json-client.js';
 import { getTemplateDataString } from '../utils/template-data.js';
 import { insertWithAudit, updateWithAudit } from '../lib/auditHelpers.js';
 import { analyzeTemplatePositionQuality } from '../utils/template-position-quality.js';
+import { isPlacementApproved } from '../utils/template-field-placement.js';
 import ArchiveModal from './ArchiveModal.jsx';
+import TemplateFieldPlacementEditor from './TemplateFieldPlacementEditor.jsx';
 
 export default function TemplateManagement() {
     const { user } = useContext(AuthContext);
@@ -410,6 +412,8 @@ const EditTemplateModal = ({ template, companies, landlords, onClose, onSuccess 
     const [templateImages, setTemplateImages] = useState(null); // Store the converted images for saving
     const [templateFiles, setTemplateFiles] = useState([]); // Store template files for viewing
     const [loadingFiles, setLoadingFiles] = useState(false);
+    const [showPlacementEditor, setShowPlacementEditor] = useState(false);
+    const [placementEditorError, setPlacementEditorError] = useState('');
     
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
@@ -467,8 +471,7 @@ const EditTemplateModal = ({ template, companies, landlords, onClose, onSuccess 
                     setConversionError(
                       'Import could not measure real blank positions (still a vertical column with the same X — ' +
                         `${positionQuality.reason}). ` +
-                        'Schema fields are shown for inspection, but do not save until positions spread across ' +
-                        'the page (re-import the original PDF, or edit x/y per blank from the page images).'
+                        'Schema fields are shown for inspection. Place fields on the page image before saving.'
                     );
                 } else if (result.position_measure?.method === 'pdf_text_gaps') {
                     console.log(
@@ -689,11 +692,11 @@ const EditTemplateModal = ({ template, companies, landlords, onClose, onSuccess 
                 sampleField: getSampleField(parsedData)
             });
 
-            if (positionQuality.synthetic) {
+            if (positionQuality.synthetic && !isPlacementApproved(parsedData)) {
                 setFormError(
                   'Cannot save: field positions look invented (same X in a vertical column — ' +
-                    `${positionQuality.reason}). Re-import the PDF or fix each blank’s x/y so they ` +
-                    'match real underline locations on the page images.'
+                    `${positionQuality.reason}). Place fields on the page image so the boxes match ` +
+                    'the real blanks, then save.'
                 );
                 setIsSubmitting(false);
                 return;
@@ -978,7 +981,7 @@ const EditTemplateModal = ({ template, companies, landlords, onClose, onSuccess 
                             // Upload image to storage
                             const imageStoragePath = `templates/${templateId}/images/page_${pageIndex + 1}.png`;
                             
-                            const { data: imageUploadData, error: imageUploadError } = await supabase.storage
+                            const { error: imageUploadError } = await supabase.storage
                                 .from('documents')
                                 .upload(imageStoragePath, blob, {
                                     contentType: 'image/png',
@@ -1077,16 +1080,34 @@ const EditTemplateModal = ({ template, companies, landlords, onClose, onSuccess 
                     .list(imagesPath);
                 
                 if (!imageError && imageFiles && imageFiles.length > 0) {
-                    files.push(...imageFiles
-                        .filter(file => file.name.endsWith('.png'))
-                        .map(file => ({
-                            type: 'image',
-                            id: null,
-                            name: file.name,
-                            path: `${imagesPath}${file.name}`,
-                            mimeType: 'image/png',
-                            size: file.metadata?.size || null
-                        })));
+                    const pageFiles = imageFiles
+                        .filter(file => /^page_\d+\.png$/i.test(file.name))
+                        .sort((a, b) => {
+                            const aNum = parseInt(a.name.match(/(\d+)/)?.[1] || '0', 10);
+                            const bNum = parseInt(b.name.match(/(\d+)/)?.[1] || '0', 10);
+                            return aNum - bNum;
+                        });
+                    files.push(...pageFiles.map(file => ({
+                        type: 'image',
+                        id: null,
+                        name: file.name,
+                        path: `${imagesPath}${file.name}`,
+                        mimeType: 'image/png',
+                        size: file.metadata?.size || null
+                    })));
+
+                    const urls = [];
+                    for (const file of pageFiles) {
+                        const { data: signed } = await supabase.storage
+                            .from('documents')
+                            .createSignedUrl(`${imagesPath}${file.name}`, 3600);
+                        if (signed?.signedUrl) urls.push(signed.signedUrl);
+                    }
+                    if (urls.length > 0) {
+                        setTemplateImages((prev) =>
+                            prev && Array.isArray(prev) && prev.length > 0 ? prev : urls
+                        );
+                    }
                 }
             }
             
@@ -1097,6 +1118,38 @@ const EditTemplateModal = ({ template, companies, landlords, onClose, onSuccess 
             setLoadingFiles(false);
         }
     };
+
+    const openPlacementEditor = () => {
+        setPlacementEditorError('');
+        try {
+            JSON.parse(templateData);
+            setJsonError('');
+            setShowPlacementEditor(true);
+        } catch (error) {
+            setJsonError('Invalid JSON: ' + error.message);
+            setPlacementEditorError('Fix the JSON before placing fields.');
+        }
+    };
+
+    const handlePlacementApply = (nextSchema) => {
+        setTemplateData(JSON.stringify(nextSchema, null, 2));
+        setJsonError('');
+        setConversionError('');
+        setFormError('');
+        setPlacementEditorError('');
+        setShowPlacementEditor(false);
+    };
+
+    let parsedForPlacement = null;
+    try {
+        parsedForPlacement = JSON.parse(templateData);
+    } catch {
+        parsedForPlacement = null;
+    }
+    const hasPageImages = Array.isArray(templateImages) && templateImages.length > 0;
+    const placementsConfirmed = parsedForPlacement
+        ? isPlacementApproved(parsedForPlacement)
+        : false;
     
     const handleViewFile = async (file) => {
         try {
@@ -1355,22 +1408,48 @@ const EditTemplateModal = ({ template, companies, landlords, onClose, onSuccess 
                     <div>
                         <div className="flex items-center justify-between mb-2">
                             <label className="block text-sm font-medium text-gray-700">Template Data (JSON)</label>
-                            <label className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 cursor-pointer">
-                                <File size={16} />
-                                {isConvertingPDF ? 'Converting...' : 'Import Form'}
-                                <input
-                                    type="file"
-                                    accept=".pdf,.docx,.doc"
-                                    onChange={handleFileUpload}
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={openPlacementEditor}
                                     disabled={isConvertingPDF}
-                                    className="hidden"
-                                />
-                            </label>
+                                    className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                                >
+                                    <Move size={16} />
+                                    Place fields
+                                </button>
+                                <label className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 cursor-pointer">
+                                    <File size={16} />
+                                    {isConvertingPDF ? 'Converting...' : 'Import Form'}
+                                    <input
+                                        type="file"
+                                        accept=".pdf,.docx,.doc"
+                                        onChange={handleFileUpload}
+                                        disabled={isConvertingPDF}
+                                        className="hidden"
+                                    />
+                                </label>
+                            </div>
                         </div>
                         {conversionError && (
                             <div className="mb-2 p-3 text-sm text-red-700 bg-red-100 border border-red-400 rounded-md">
                                 {conversionError}
                             </div>
+                        )}
+                        {placementEditorError && (
+                            <div className="mb-2 p-3 text-sm text-red-700 bg-red-100 border border-red-400 rounded-md">
+                                {placementEditorError}
+                            </div>
+                        )}
+                        {placementsConfirmed && (
+                            <div className="mb-2 p-3 text-sm text-green-800 bg-green-50 border border-green-200 rounded-md">
+                                Field placements confirmed. Save the template to keep them.
+                            </div>
+                        )}
+                        {!hasPageImages && (
+                            <p className="mb-2 text-sm text-gray-500">
+                                Import the original form first so page images are available for placement.
+                            </p>
                         )}
                         <textarea
                             value={templateData}
@@ -1462,6 +1541,14 @@ const EditTemplateModal = ({ template, companies, landlords, onClose, onSuccess 
                     </button>
                 </div>
             </div>
+            {showPlacementEditor && parsedForPlacement && (
+                <TemplateFieldPlacementEditor
+                    images={hasPageImages ? templateImages : []}
+                    templateData={parsedForPlacement}
+                    onApply={handlePlacementApply}
+                    onClose={() => setShowPlacementEditor(false)}
+                />
+            )}
         </div>
     );
 };
