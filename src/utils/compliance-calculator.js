@@ -403,6 +403,12 @@ export function noticePeriodDaysFromPack({
       jurisdiction: packId,
     });
   }
+  if (workflowType === 'collections') {
+    return calculateEvictionNoticePeriod({
+      noticeType: context.noticeType || context.notice_kind || '3_day_pay_or_vacate',
+      jurisdiction: packId,
+    });
+  }
   if (workflowType === 'security_deposit') {
     return calculateDepositReturnPeriod(packId);
   }
@@ -421,6 +427,7 @@ function citationsForWorkflow(jurisdiction, workflowType) {
     lease_termination: 'termination',
     eviction: 'eviction',
     lease_violation: 'eviction',
+    collections: 'eviction',
     security_deposit: 'deposit',
     entry: 'entry',
     entry_notice: 'entry',
