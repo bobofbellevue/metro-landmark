@@ -21,6 +21,9 @@ describe('document-types catalog', () => {
     expect(formatDocumentTypeLabel('habitability_record')).toBe(
       'Habitability Issue Worksheet'
     );
+    expect(formatDocumentTypeLabel('screening_decision_record')).toBe(
+      'Screening Decision Worksheet'
+    );
     expect(formatDocumentTypeLabel('template_document')).toBe(
       'Template Source File'
     );

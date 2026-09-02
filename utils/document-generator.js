@@ -36,6 +36,7 @@ import { buildDepositReturnStatementLines } from '../src/utils/deposit-return-st
 import { buildMoveInConditionReportLines } from '../src/utils/move-in-condition-report.js';
 import { buildMoveOutInspectionLines } from '../src/utils/move-out-inspection.js';
 import { buildHabitabilityRecordLines } from '../src/utils/habitability-issue.js';
+import { buildScreeningDecisionLines } from '../src/utils/screening-decision-record.js';
 import { formatWorkflowTimeForLocale } from '../src/utils/workflow-time.js';
 
 /**
@@ -1710,6 +1711,44 @@ export async function generateHabitabilityRecordPdf(data = {}) {
     pdfDoc,
     page,
     buildHabitabilityRecordLines(data),
+    { y, margin, height, font: helveticaFont }
+  );
+  return { pdfBytes: await pdfDoc.save() };
+}
+
+/**
+ * Screening decision worksheet PDF (internal record, not an adverse-action notice).
+ * @param {object} data
+ * @returns {Promise<{ pdfBytes: Uint8Array }>}
+ */
+export async function generateScreeningDecisionPdf(data = {}) {
+  const { PDFDocument, StandardFonts } = await import('pdf-lib');
+  const pdfDoc = await PDFDocument.create();
+  let page = pdfDoc.addPage([612, 792]);
+  const { height } = page.getSize();
+  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const margin = 50;
+  let y = height - 50;
+
+  page.drawText('SCREENING DECISION WORKSHEET', {
+    x: margin,
+    y,
+    size: 16,
+    font: helveticaBoldFont,
+  });
+  y -= 22;
+  const subtitleParts = wrapNoticeText(data.disclaimer || 'Not legal advice.');
+  for (const part of subtitleParts) {
+    page.drawText(part, { x: margin, y, size: 10, font: helveticaFont });
+    y -= 14;
+  }
+  y -= 10;
+
+  drawNoticeBodyLines(
+    pdfDoc,
+    page,
+    buildScreeningDecisionLines(data),
     { y, margin, height, font: helveticaFont }
   );
   return { pdfBytes: await pdfDoc.save() };

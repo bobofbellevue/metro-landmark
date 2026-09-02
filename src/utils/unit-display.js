@@ -103,6 +103,21 @@ export function formatPlaceWithUnit(place, unitOrNumber) {
 }
 
 /**
+ * Unit qualifier, or the street address when the dwelling has no unit name.
+ * Never returns a stand-in such as "Unit —".
+ * @param {object|string|number|null|undefined} unitOrNumber
+ * @param {object|null|undefined} [address]
+ * @returns {string}
+ */
+export function formatUnitOrAddress(unitOrNumber, address) {
+  const qualifier = formatUnitQualifier(unitOrNumber);
+  if (qualifier) return qualifier;
+  return formatUnitAddressLine(
+    address || unitOrNumber?.property_address || unitOrNumber?.address
+  );
+}
+
+/**
  * Two or more units on a property must each have a distinct number.
  * @param {Array<{ unit_number?: string|null, unitNumber?: string|null }>} units
  * @returns {{ ok: true } | { ok: false, message: string }}

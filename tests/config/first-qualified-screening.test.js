@@ -1,6 +1,10 @@
 import {
   evaluateFirstQualifiedScreening,
+  firstQualifiedBlockReason,
   pendingApplicationsInOrder,
+  screeningQueueNote,
+  screeningReferenceDisclaimer,
+  writtenCriteriaRequiredMessage,
 } from '../../src/utils/first-qualified-screening.js';
 
 const queue = [
@@ -29,6 +33,8 @@ describe('evaluateFirstQualifiedScreening', () => {
     expect(result.writtenCriteriaRequired).toBe(true);
     expect(result.blocked).toBe(true);
     expect(result.earlierPendingCount).toBe(1);
+    expect(result.blockReason).toBe(firstQualifiedBlockReason());
+    expect(result.blockReason.toLowerCase()).not.toContain('pack');
   });
 
   test('Seattle allows approving the earliest pending applicant', () => {
@@ -60,5 +66,22 @@ describe('evaluateFirstQualifiedScreening', () => {
     });
     expect(result.firstQualifiedApplicant).toBe(false);
     expect(result.blocked).toBe(false);
+  });
+});
+
+describe('screening operator copy', () => {
+  test('names the city without pack jargon', () => {
+    expect(
+      screeningQueueNote('City of Auburn', { firstQualifiedApplicant: false })
+    ).toBe(
+      'City of Auburn. Review pending applications in the order they were received.'
+    );
+    expect(
+      screeningQueueNote('City of Seattle', { firstQualifiedApplicant: true })
+    ).toMatch(/^City of Seattle\./);
+    expect(screeningQueueNote('City of Auburn', {}).toLowerCase()).not.toContain('pack');
+    expect(screeningReferenceDisclaimer().toLowerCase()).not.toContain('pack');
+    expect(screeningReferenceDisclaimer().toLowerCase()).not.toContain('math');
+    expect(writtenCriteriaRequiredMessage().toLowerCase()).not.toContain('pack');
   });
 });

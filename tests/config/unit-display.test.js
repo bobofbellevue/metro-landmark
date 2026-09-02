@@ -5,6 +5,7 @@ import {
   formatUnitAddressLine,
   formatUnitAtProperty,
   formatUnitLocationLine,
+  formatUnitOrAddress,
   formatUnitPickerLabel,
   formatUnitQualifier,
   normalizeStoredUnitNumber,
@@ -102,6 +103,22 @@ describe('unit-display helpers', () => {
     expect(formatPlaceWithUnit('9 Oak Ave', { unit_number: 'A' })).toBe('9 Oak Ave - Unit A');
     expect(formatUnitAtProperty({ unit_number: '2B' }, 'Pine Court')).toBe('Unit 2B at Pine Court');
     expect(formatUnitAtProperty({ unit_number: null }, 'Oak House')).toBe('Oak House');
+  });
+
+  test('falls back to the address when the unit has no name', () => {
+    expect(
+      formatUnitOrAddress(
+        { unit_number: '2B' },
+        { address_line_1: '9 Oak Ave', city: 'Auburn' }
+      )
+    ).toBe('Unit 2B');
+    expect(
+      formatUnitOrAddress(
+        { unit_number: null },
+        { address_line_1: '9 Oak Ave', city: 'Auburn' }
+      )
+    ).toBe('9 Oak Ave, Auburn');
+    expect(formatUnitOrAddress({ unit_number: '' })).toBe('');
   });
 
   test('formats bath counts in quarter steps, not tenths', () => {

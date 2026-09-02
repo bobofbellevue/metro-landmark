@@ -92,6 +92,11 @@ export const DOCUMENT_TYPE_CATALOG = {
     category: 'notices',
     audiences: ['admin', 'landlord', 'tenant'],
   },
+  screening_decision_record: {
+    label: 'Screening Decision Worksheet',
+    category: 'notices',
+    audiences: ['admin', 'landlord'],
+  },
   proof_of_service: {
     label: 'Proof of Service',
     category: 'notices',
