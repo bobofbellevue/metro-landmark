@@ -1,9 +1,9 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useMemo, useRef } from 'react';
 import { 
-  Shield, FileText, Banknote, Home, ArrowRight, 
+  Shield, FileText, Banknote, ArrowRight, 
   UserCheck, Calendar, AlertTriangle, Key, DoorOpen,
-  ClipboardCheck, DollarSign, Gavel, Wrench,
-  Lock, Search, TrendingUp, Clock, CheckCircle, Trash2
+  DollarSign, Gavel, Wrench,
+  Lock, Search, TrendingUp, Clock, Trash2, X
 } from 'lucide-react';
 import { AuthContext, SidebarContext } from '../contexts';
 import { Card, ConfirmationModal } from '../components/ui';
@@ -11,7 +11,19 @@ import { supabase } from '../lib/supabase';
 import { readResponseJson } from '../utils/read-response-json.js';
 import { isAwaitingNoticeService, GENERATE_THEN_SERVE_WORKFLOW_TYPES } from '../utils/notice-service-workflow.js';
 import { hydrateWorkflowData } from '../utils/compliance-workflow-persistence.js';
-import { COMPLIANCE_WORKFLOW_TITLES, complianceWorkflowTitle } from '../config/compliance-workflows.js';
+import {
+  COMPLIANCE_LIFECYCLE_STAGES,
+  complianceWorkflowCardId,
+  formatComplianceWorkflowNumber,
+  labeledComplianceWorkflow,
+  pickComplianceWorkflowForJump,
+  searchComplianceWorkflows,
+} from '../config/compliance-workflows.js';
+import {
+  PAGE_SEARCH_KEYS,
+  readPageSearchSession,
+  writePageSearchSession,
+} from '../utils/page-search-session.js';
 import {
   ACTIVE_WORKFLOW_LIST_SELECT,
   activeWorkflowLocationLabel,
@@ -31,133 +43,71 @@ import HabitabilityWorkflow from '../components/compliance/HabitabilityWorkflow'
 import EntryNoticesWorkflow from '../components/compliance/EntryNoticesWorkflow';
 import TenantScreeningWorkflow from '../components/compliance/TenantScreeningWorkflow';
 
-// Compliance process definitions
-const COMPLIANCE_PROCESSES = [
-  {
-    id: 'rent_increase',
-    title: COMPLIANCE_WORKFLOW_TITLES.rent_increase,
-    description: 'Calculate the notice period, generate the PDF, then print or email it and record service (or save for later).',
-    icon: <TrendingUp className="w-8 h-8 text-blue-500" />,
-    priority: 'high',
-    category: 'core'
-  },
-  {
-    id: 'lease_renewal',
-    title: COMPLIANCE_WORKFLOW_TITLES.lease_renewal,
-    description: 'Generate renewal offer with proper notice period and track acceptance.',
-    icon: <Calendar className="w-8 h-8 text-green-500" />,
-    priority: 'high',
-    category: 'core'
-  },
-  {
-    id: 'move_in',
-    title: COMPLIANCE_WORKFLOW_TITLES.move_in,
-    description: 'Record the unit condition at move-in and save a checklist PDF in Documents.',
-    icon: <Key className="w-8 h-8 text-purple-500" />,
-    priority: 'high',
-    category: 'core'
-  },
-  {
-    id: 'move_out',
-    title: COMPLIANCE_WORKFLOW_TITLES.move_out,
-    description: 'Inspect at move-out, compare to move-in, and list deductions for the deposit statement.',
-    icon: <DoorOpen className="w-8 h-8 text-orange-500" />,
-    priority: 'high',
-    category: 'core'
-  },
-  {
-    id: 'security_deposit',
-    title: COMPLIANCE_WORKFLOW_TITLES.security_deposit,
-    description: 'Itemize deductions and generate a deposit return statement within 30 days after the tenant vacates.',
-    icon: <Banknote className="w-8 h-8 text-green-500" />,
-    priority: 'high',
-    category: 'core'
-  },
-  {
-    id: 'collections',
-    title: COMPLIANCE_WORKFLOW_TITLES.collections,
-    description: 'Record the amount owed, then start a 3-day pay-or-vacate notice in Eviction or save a payment-plan outcome.',
-    icon: <DollarSign className="w-8 h-8 text-red-500" />,
-    priority: 'high',
-    category: 'core'
-  },
-  {
-    id: 'eviction',
-    title: COMPLIANCE_WORKFLOW_TITLES.eviction,
-    description: 'Generate the eviction notice, then print or email it and record service (or save for later).',
-    icon: <Gavel className="w-8 h-8 text-red-500" />,
-    priority: 'medium',
-    category: 'notices'
-  },
-  {
-    id: 'lease_violation',
-    title: COMPLIANCE_WORKFLOW_TITLES.lease_violation,
-    description: 'Generate a comply-or-vacate worksheet from the 10- or 20-day notice type, then print or email it and record service.',
-    icon: <AlertTriangle className="w-8 h-8 text-yellow-500" />,
-    priority: 'medium',
-    category: 'notices'
-  },
-  {
-    id: 'lease_termination',
-    title: COMPLIANCE_WORKFLOW_TITLES.lease_termination,
-    description: 'End a tenancy with pack notice days, just-cause / renewal-offer checks, then generate a worksheet and record service.',
-    icon: <FileText className="w-8 h-8 text-gray-500" />,
-    priority: 'medium',
-    category: 'notices'
-  },
-  {
-    id: 'habitability',
-    title: COMPLIANCE_WORKFLOW_TITLES.habitability,
-    description: 'Record a defective condition, the commence-repair window, and an optional work order, then save a worksheet in Documents.',
-    icon: <Wrench className="w-8 h-8 text-blue-500" />,
-    priority: 'low',
-    category: 'additional'
-  },
-  {
-    id: 'entry_notice',
-    title: COMPLIANCE_WORKFLOW_TITLES.entry_notice,
-    description: 'Generate a two-day written entry notice (one day for showings), or record an emergency exception.',
-    icon: <Lock className="w-8 h-8 text-indigo-500" />,
-    priority: 'low',
-    category: 'additional'
-  },
-  {
-    id: 'tenant_screening',
-    title: COMPLIANCE_WORKFLOW_TITLES.tenant_screening,
-    description: 'Screen the applicant queue in received order. Seattle first-qualified: decide earlier pending applications first.',
-    icon: <UserCheck className="w-8 h-8 text-teal-500" />,
-    priority: 'low',
-    category: 'additional'
-  }
-];
+const WORKFLOW_ICONS = {
+  tenant_screening: <UserCheck className="w-8 h-8 text-teal-500" />,
+  move_in: <Key className="w-8 h-8 text-purple-500" />,
+  entry_notice: <Lock className="w-8 h-8 text-indigo-500" />,
+  rent_increase: <TrendingUp className="w-8 h-8 text-blue-500" />,
+  lease_renewal: <Calendar className="w-8 h-8 text-green-500" />,
+  habitability: <Wrench className="w-8 h-8 text-blue-500" />,
+  lease_violation: <AlertTriangle className="w-8 h-8 text-yellow-500" />,
+  collections: <DollarSign className="w-8 h-8 text-red-500" />,
+  lease_termination: <FileText className="w-8 h-8 text-gray-500" />,
+  eviction: <Gavel className="w-8 h-8 text-red-500" />,
+  move_out: <DoorOpen className="w-8 h-8 text-orange-500" />,
+  security_deposit: <Banknote className="w-8 h-8 text-green-500" />,
+};
 
 // This is the main component for the Compliance page
 export default function CompliancePage() {
   const { user } = useContext(AuthContext);
   const { setActivePage } = useContext(SidebarContext);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchTerm, setSearchTerm] = useState(() =>
+    readPageSearchSession(PAGE_SEARCH_KEYS.compliance, user?.user_id, {
+      searchTerm: '',
+    }).searchTerm
+  );
+  const [highlightedWorkflowId, setHighlightedWorkflowId] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef(null);
+  const highlightTimerRef = useRef(null);
   const [selectedProcess, setSelectedProcess] = useState(null);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState(null);
   const [selectedWorkflowRecord, setSelectedWorkflowRecord] = useState(null);
   const [activeWorkflows, setActiveWorkflows] = useState([]);
-  const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(true);
+  const [, setIsLoadingWorkflows] = useState(true);
   const [workflowPendingDelete, setWorkflowPendingDelete] = useState(null);
   const [isDeletingWorkflow, setIsDeletingWorkflow] = useState(false);
   const [completionNotice, setCompletionNotice] = useState(null);
 
-  const categories = [
-    { id: 'all', label: 'All Processes' },
-    { id: 'core', label: 'Core Processes' },
-    { id: 'notices', label: 'Notices & Evictions' },
-    { id: 'additional', label: 'Additional Compliance' }
-  ];
+  const matchedWorkflows = useMemo(
+    () => searchComplianceWorkflows(searchTerm),
+    [searchTerm]
+  );
 
-  const filteredProcesses = selectedCategory === 'all'
-    ? COMPLIANCE_PROCESSES
-    : COMPLIANCE_PROCESSES.filter(p => p.category === selectedCategory);
+  const workflowsByStage = useMemo(() => {
+    return COMPLIANCE_LIFECYCLE_STAGES.map((stage) => ({
+      ...stage,
+      workflows: matchedWorkflows.filter((item) => item.stage === stage.id),
+    })).filter((stage) => stage.workflows.length > 0);
+  }, [matchedWorkflows]);
 
   useEffect(() => {
     fetchActiveWorkflows();
+  }, []);
+
+  useEffect(() => {
+    if (user?.user_id) {
+      writePageSearchSession(PAGE_SEARCH_KEYS.compliance, user.user_id, {
+        searchTerm,
+      });
+    }
+  }, [searchTerm, user?.user_id]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
   }, []);
 
   const fetchActiveWorkflows = async () => {
@@ -182,6 +132,28 @@ export default function CompliancePage() {
     setSelectedProcess(processId);
     setSelectedWorkflowId(workflowId);
     setSelectedWorkflowRecord(workflow || null);
+  };
+
+  const highlightWorkflow = (workflowId) => {
+    setHighlightedWorkflowId(workflowId);
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => setHighlightedWorkflowId(null), 1800);
+  };
+
+  const scrollToWorkflow = (item) => {
+    if (!item) return;
+    const el = document.getElementById(complianceWorkflowCardId(item.id));
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    highlightWorkflow(item.id);
+  };
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+    const jump = pickComplianceWorkflowForJump(searchTerm, matchedWorkflows);
+    scrollToWorkflow(jump || matchedWorkflows[0] || null);
+    setSearchOpen(false);
   };
 
   const handleWorkflowComplete = (_data, generationResult = null) => {
@@ -320,15 +292,8 @@ export default function CompliancePage() {
     );
   }
 
-  const workflowLabel = (workflow) => {
-    if (workflow.workflow_type === 'rent_control') {
-      return 'Rent Control (removed)';
-    }
-    return (
-      complianceWorkflowTitle(workflow.workflow_type) ||
-      workflow.workflow_type
-    );
-  };
+  const workflowLabel = (workflow) =>
+    labeledComplianceWorkflow(workflow.workflow_type) || workflow.workflow_type;
 
   const isAdmin = user?.role === 'global_admin' || user?.role === 'company_admin';
 
@@ -352,22 +317,66 @@ export default function CompliancePage() {
         )}
       </div>
 
-      {/* Category Filter */}
-      <div className="flex gap-2 flex-wrap">
-        {categories.map(category => (
-          <button
-            key={category.id}
-            onClick={() => setSelectedCategory(category.id)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              selectedCategory === category.id
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {category.label}
-          </button>
-        ))}
-      </div>
+      {/* Workflow search */}
+      <form onSubmit={handleSearchSubmit} className="relative">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setSearchOpen(true);
+            }}
+            placeholder="Find a workflow by number, name, or description"
+            aria-label="Find a workflow by number, name, or description"
+            className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            onFocus={() => setSearchOpen(true)}
+            onBlur={() => {
+              window.setTimeout(() => setSearchOpen(false), 150);
+            }}
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                searchInputRef.current?.focus();
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label="Clear workflow search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        {searchTerm.trim() && searchOpen && matchedWorkflows.length > 0 && (
+          <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-72 overflow-y-auto">
+            {matchedWorkflows.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 hover:bg-indigo-50 flex items-start gap-3"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    scrollToWorkflow(item);
+                    setSearchOpen(false);
+                  }}
+                >
+                  <span className="font-mono text-sm font-semibold text-indigo-700 w-8 shrink-0">
+                    {formatComplianceWorkflowNumber(item.number)}
+                  </span>
+                  <span>
+                    <span className="block text-sm font-medium text-gray-900">{item.title}</span>
+                    <span className="block text-xs text-gray-500 line-clamp-1">{item.description}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </form>
 
       {/* Active Workflows Section */}
       {activeWorkflows.length > 0 && (
@@ -477,33 +486,49 @@ export default function CompliancePage() {
         }
       />
 
-      {/* Process Cards Grid */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredProcesses.map(process => {
-          const matchingWorkflows = activeWorkflows.filter(
-            (workflow) => workflow.workflow_type === process.id
-          );
-          const activeWorkflow = matchingWorkflows[0] || null;
-          const awaitingCount = matchingWorkflows.filter(isAwaitingNoticeService).length;
-          const startFresh = GENERATE_THEN_SERVE_WORKFLOW_TYPES.has(process.id);
-          return (
-            <ComplianceActionCard
-              key={process.id}
-              process={process}
-              activeWorkflow={activeWorkflow}
-              awaitingCount={awaitingCount}
-              inProgressCount={matchingWorkflows.length}
-              startFresh={startFresh}
-              onStartWorkflow={() =>
-                handleStartWorkflow(
-                  process.id,
-                  startFresh ? null : activeWorkflow?.workflow_id ?? null
-                )
-              }
-            />
-          );
-        })}
-      </div>
+      {/* Process cards in tenancy lifecycle order */}
+      {matchedWorkflows.length === 0 ? (
+        <p className="text-sm text-gray-600">
+          No workflows match &quot;{searchTerm.trim()}&quot;.
+        </p>
+      ) : (
+        <div className="space-y-8">
+          {workflowsByStage.map((stage) => (
+            <section key={stage.id}>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">
+                {stage.label}
+              </h3>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {stage.workflows.map((process) => {
+                  const matchingWorkflows = activeWorkflows.filter(
+                    (workflow) => workflow.workflow_type === process.id
+                  );
+                  const activeWorkflow = matchingWorkflows[0] || null;
+                  const awaitingCount = matchingWorkflows.filter(isAwaitingNoticeService).length;
+                  const startFresh = GENERATE_THEN_SERVE_WORKFLOW_TYPES.has(process.id);
+                  return (
+                    <ComplianceActionCard
+                      key={process.id}
+                      process={process}
+                      highlighted={highlightedWorkflowId === process.id}
+                      activeWorkflow={activeWorkflow}
+                      awaitingCount={awaitingCount}
+                      inProgressCount={matchingWorkflows.length}
+                      startFresh={startFresh}
+                      onStartWorkflow={() =>
+                        handleStartWorkflow(
+                          process.id,
+                          startFresh ? null : activeWorkflow?.workflow_id ?? null
+                        )
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
@@ -568,30 +593,37 @@ export default function CompliancePage() {
 // A reusable component for each action on the compliance page
 const ComplianceActionCard = ({
   process,
+  highlighted = false,
   activeWorkflow,
   awaitingCount = 0,
   inProgressCount = 0,
   startFresh = false,
   onStartWorkflow,
 }) => {
-  const priorityColors = {
-    high: 'bg-red-100 text-red-800',
-    medium: 'bg-yellow-100 text-yellow-800',
-    low: 'bg-blue-100 text-blue-800'
-  };
   const showResume = Boolean(activeWorkflow) && !startFresh;
+  const number = formatComplianceWorkflowNumber(process.number);
 
   return (
-    <Card title="" className="bg-white hover:shadow-lg transition-shadow h-full flex flex-col">
-      <div className="flex flex-col h-full p-4">
+    <Card
+      title=""
+      className={`bg-white hover:shadow-lg transition-shadow h-full flex flex-col ${
+        highlighted ? 'ring-2 ring-indigo-500' : ''
+      }`}
+    >
+      <div
+        id={complianceWorkflowCardId(process.id)}
+        className="flex flex-col h-full p-4 scroll-mt-4"
+      >
         <div className="flex items-start justify-between mb-3">
-          <div className="p-3 bg-gray-100 rounded-lg">
-            {process.icon}
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-gray-100 rounded-lg">
+              {WORKFLOW_ICONS[process.id]}
+            </div>
+            <span className="font-mono text-lg font-semibold text-indigo-700">
+              {number}
+            </span>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <span className={`px-2 py-1 rounded text-xs font-semibold ${priorityColors[process.priority]}`}>
-              {process.priority}
-            </span>
             {awaitingCount > 0 ? (
               <span className="px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 bg-amber-100 text-amber-800">
                 <Clock className="w-3 h-3" />

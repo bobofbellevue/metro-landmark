@@ -12,6 +12,7 @@ export const PAGE_SEARCH_KEYS = Object.freeze({
   leases: 'ml-search:leases',
   payments: 'ml-search:payments',
   listings: 'listings-search',
+  compliance: 'ml-search:compliance',
 });
 
 function resolveSearchStorage(storage) {
