@@ -7,12 +7,13 @@ import {
 } from 'lucide-react';
 import { isAwaitingNoticeService } from '../utils/notice-service-workflow.js';
 import { activeWorkflowLocationLabel } from '../utils/workflow-lease-context.js';
+import { labeledComplianceWorkflow } from '../config/compliance-workflows.js';
 
 /**
  * ComplianceDashboard - Dashboard view for compliance workflows
  */
 export default function ComplianceDashboard() {
-  const { user } = useContext(AuthContext);
+  const { user: _user } = useContext(AuthContext);
   const [stats, setStats] = useState({
     active: 0,
     completed: 0,
@@ -154,23 +155,7 @@ export default function ComplianceDashboard() {
     }
   };
 
-  const getWorkflowTypeLabel = (type) => {
-    const labels = {
-      rent_increase: 'Rent Increase',
-      eviction: 'Eviction',
-      move_in: 'Move-In',
-      move_out: 'Move-Out',
-      security_deposit: 'Security Deposit',
-      collections: 'Collections',
-      lease_renewal: 'Lease Renewal',
-      lease_violation: 'Lease Violation',
-      lease_termination: 'Lease Termination',
-      habitability: 'Habitability',
-      entry_notice: 'Entry Notice',
-      tenant_screening: 'Tenant Screening'
-    };
-    return labels[type] || type;
-  };
+  const getWorkflowTypeLabel = (type) => labeledComplianceWorkflow(type) || type;
 
   if (isLoading) {
     return (

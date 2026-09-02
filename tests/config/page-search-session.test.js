@@ -46,6 +46,7 @@ describe('page search session', () => {
     writePageSearchSession(PAGE_SEARCH_KEYS.listings, 7, { searchTerm: 'B' }, memory);
     clearPageSearchSession(PAGE_SEARCH_KEYS.properties, memory);
     expect(readPageSearchSession(PAGE_SEARCH_KEYS.properties, 7, defaults, memory).searchTerm).toBe('');
+    expect(PAGE_SEARCH_KEYS.compliance).toBe('ml-search:compliance');
     expect(readPageSearchSession(PAGE_SEARCH_KEYS.listings, 7, { searchTerm: '' }, memory).searchTerm).toBe(
       'B'
     );
