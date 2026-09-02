@@ -9,11 +9,20 @@ import {
   getJurisdictionDisplayName,
 } from '../../jurisdictions/index.js';
 import { formatPersonDisplayName } from '../../utils/lease-display.js';
+import { formatUnitOrAddress } from '../../utils/unit-display.js';
 import {
   evaluateFirstQualifiedScreening,
   pendingApplicationsInOrder,
+  screeningQueueNote,
+  screeningReferenceDisclaimer,
+  writtenCriteriaRequiredMessage,
 } from '../../utils/first-qualified-screening.js';
+import {
+  screeningDecisionFingerprint,
+  screeningDecisionLabel,
+} from '../../utils/screening-decision-record.js';
 import { formatWorkflowDateForLocale } from '../../utils/workflow-date.js';
+import { readResponseJson } from '../../utils/read-response-json.js';
 
 function applicationStatusLabel(status) {
   const value = String(status || 'pending').toLowerCase();
@@ -43,7 +52,7 @@ export default function TenantScreeningWorkflow({
     (async () => {
       const { data, error } = await supabase
         .from('properties')
-        .select('property_id, property_name, city_of_jurisdiction')
+        .select('property_id, property_name, city_of_jurisdiction, landlord_id')
         .eq('is_archived', false)
         .order('property_name');
       if (cancelled) return;
@@ -130,16 +139,33 @@ export default function TenantScreeningWorkflow({
         (units || []).map((unit) => [String(unit.unit_id), unit.unit_number])
       );
 
+      const { data: addressRow } = await supabase
+        .from('addresses')
+        .select(
+          'address_line_1, address_line_2, city, state_province_region, postal_code'
+        )
+        .eq('addressable_type', 'property')
+        .eq('addressable_id', propertyId)
+        .maybeSingle();
+      const propertyAddress = addressRow || null;
+
       setApplications(
         (rows || []).map((row) => {
           const userId = userIdByClientId.get(String(row.client_id));
           const contact = userId != null ? contactByUserId.get(String(userId)) : null;
           const unit = Array.isArray(row.units) ? row.units[0] : row.units;
+          const unitNumber =
+            unit?.unit_number || unitNumberById.get(String(row.unit_id)) || '';
+          const locationLabel =
+            formatUnitOrAddress({ unit_number: unitNumber }, propertyAddress) ||
+            property?.property_name ||
+            '';
           return {
             ...row,
             applicant_name: formatPersonDisplayName(contact) || `Applicant ${row.client_id}`,
-            unit_number:
-              unit?.unit_number || unitNumberById.get(String(row.unit_id)) || '',
+            unit_number: unitNumber,
+            property_address: propertyAddress,
+            location_label: locationLabel,
           };
         })
       );
@@ -181,6 +207,43 @@ export default function TenantScreeningWorkflow({
         decision_notes: data.decision_reason || null,
       })
       .eq('application_id', data.application_id);
+  };
+
+  const generateRecord = async (data) => {
+    const fingerprint = screeningDecisionFingerprint(data);
+    if (data.report_document_id && data.report_fingerprint === fingerprint) {
+      return {
+        status: 'success',
+        document_id: data.report_document_id,
+        reused: true,
+      };
+    }
+    const selected = applications.find(
+      (row) => String(row.application_id) === String(data.application_id)
+    );
+    const response = await fetch('/api/documents/generate/screening-record', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        property_id: data.property_id || property?.property_id,
+        unit_id: data.unit_id || selected?.unit_id,
+        application_id: data.application_id,
+        applicant_name: data.applicant_name || selected?.applicant_name,
+        decision: data.decision,
+        decision_reason: data.decision_reason,
+        meets_written_criteria: data.meets_written_criteria,
+        written_criteria_notes: data.written_criteria_notes,
+        applied_at: data.applied_at || selected?.applied_at,
+        unit_or_address: data.unit_or_address || selected?.location_label,
+        user_id: user?.user_id || null,
+      }),
+    });
+    const parsed = await readResponseJson(response);
+    const result = parsed.data || {};
+    if (!parsed.ok || !result.success) {
+      throw new Error(parsed.error || result.error || 'Failed to generate screening worksheet');
+    }
+    return result;
   };
 
   const getWorkflowSteps = () => {
@@ -232,7 +295,7 @@ export default function TenantScreeningWorkflow({
                     }`}
                   >
                     <span className="font-medium text-gray-900">
-                      {row.property_name || `Property ${row.property_id}`}
+                      {row.property_name || 'Property'}
                     </span>
                     {row.city_of_jurisdiction && (
                       <span className="block text-xs text-gray-500">
@@ -255,7 +318,10 @@ export default function TenantScreeningWorkflow({
         render: ({ workflowData, updateField, errors }) => (
           <div className="space-y-4">
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-800">
-              Pack: {packName}. Pack math is reference math, not legal advice.
+              {screeningQueueNote(
+                packName,
+                evaluateFirstQualifiedScreening({ jurisdiction })
+              )}
             </div>
             {loadingApps && <p className="text-sm text-gray-500">Loading applications…</p>}
             {!loadingApps && applications.length === 0 && (
@@ -281,6 +347,8 @@ export default function TenantScreeningWorkflow({
                       updateField('application_id', row.application_id);
                       updateField('unit_id', row.unit_id);
                       updateField('applicant_name', row.applicant_name);
+                      updateField('unit_or_address', row.location_label || '');
+                      updateField('applied_at', row.applied_at || '');
                     }}
                     className={`w-full text-left p-3 rounded-lg border ${
                       selected
@@ -301,15 +369,19 @@ export default function TenantScreeningWorkflow({
                       </span>
                     </div>
                     <p className="text-xs text-gray-600 mt-1">
-                      {row.unit_number ? `Unit ${row.unit_number}` : 'Unit —'}
-                      {row.applied_at
-                        ? ` · Applied ${formatWorkflowDateForLocale(
-                            String(row.applied_at).slice(0, 10),
-                            typeof navigator !== 'undefined'
-                              ? navigator.language
-                              : 'en-US'
-                          )}`
-                        : ''}
+                      {[
+                        row.location_label,
+                        row.applied_at
+                          ? `Applied ${formatWorkflowDateForLocale(
+                              String(row.applied_at).slice(0, 10),
+                              typeof navigator !== 'undefined'
+                                ? navigator.language
+                                : 'en-US'
+                            )}`
+                          : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </p>
                   </button>
                 );
@@ -340,8 +412,7 @@ export default function TenantScreeningWorkflow({
             decision: data.decision,
           });
           if (evaluation.writtenCriteriaRequired && !data.written_criteria_notes) {
-            errors.written_criteria_notes =
-              'This pack requires written screening criteria. Note the criteria used.';
+            errors.written_criteria_notes = writtenCriteriaRequiredMessage();
           }
           if (evaluation.blocked) {
             errors.decision = evaluation.blockReason;
@@ -366,7 +437,9 @@ export default function TenantScreeningWorkflow({
                   {selected?.applicant_name || workflowData.applicant_name || 'Applicant'}
                 </p>
                 <p className="text-gray-600">
-                  {selected?.unit_number ? `Unit ${selected.unit_number}` : ''}
+                  {selected?.location_label ||
+                    workflowData.unit_or_address ||
+                    ''}
                 </p>
               </div>
 
@@ -471,17 +544,27 @@ export default function TenantScreeningWorkflow({
       {
         title: 'Complete',
         fields: [],
+        description: 'Review the decision, then click Complete to save a worksheet in Documents.',
+        advanceBusyLabel: 'Saving worksheet…',
+        onAdvance: async (data) => {
+          if (!data.application_id || !data.decision) {
+            throw new Error('Applicant and decision are required to save the worksheet.');
+          }
+          const result = await generateRecord(data);
+          return {
+            report_document_id: result.document_id,
+            report_fingerprint: screeningDecisionFingerprint(data),
+          };
+        },
         render: ({ workflowData }) => (
           <div className="space-y-3 text-sm text-gray-700">
             <p>
               Completing this workflow records the screening decision on the application
               ({workflowData.applicant_name || 'selected applicant'}:{' '}
-              {workflowData.decision || '—'}).
+              {screeningDecisionLabel(workflowData.decision) || workflowData.decision || '—'})
+              and saves a worksheet in Documents.
             </p>
-            <p className="text-gray-500">
-              Pack numbers and first-qualified order are reference math, not a substitute
-              for legal counsel.
-            </p>
+            <p className="text-gray-500">{screeningReferenceDisclaimer()}</p>
           </div>
         ),
       },
@@ -508,11 +591,21 @@ export default function TenantScreeningWorkflow({
         }
         if (onComplete) {
           onComplete(data, {
-            status: 'success',
-            title: 'Screening decision recorded',
-            message: data.applicant_name
-              ? `${data.applicant_name}: ${data.decision || 'decision saved'}.`
-              : 'The screening decision is saved on the application.',
+            status: data.report_document_id ? 'success' : 'error',
+            title: data.report_document_id
+              ? 'Screening decision recorded'
+              : 'Workflow completed without a worksheet',
+            message: data.report_document_id
+              ? [
+                  data.applicant_name
+                    ? `${data.applicant_name}: ${
+                        screeningDecisionLabel(data.decision) || data.decision || 'decision saved'
+                      }.`
+                    : 'The screening decision is saved on the application.',
+                  'The worksheet is in Documents.',
+                ].join(' ')
+              : 'Applicant and decision are required to generate the worksheet.',
+            documentId: data.report_document_id,
           });
         }
       }}

@@ -81,12 +81,38 @@ export function evaluateFirstQualifiedScreening({
     firstQualifiedApplicant,
     writtenCriteriaRequired,
     blocked: skippedEarlier,
-    blockReason: skippedEarlier
-      ? 'This pack requires first-qualified order: decide earlier pending applications before approving a later one.'
-      : '',
+    blockReason: skippedEarlier ? firstQualifiedBlockReason() : '',
     earlierPendingCount: earlierPending.length,
     pendingCount: pending.length,
     jurisdiction: packId,
     citations: getRuleCitations(packId, 'screening'),
   };
+}
+
+/** Operator copy: decide earlier pending files first. */
+export function firstQualifiedBlockReason() {
+  return 'Decide earlier pending applications before approving a later one (first-qualified order).';
+}
+
+/** Operator copy when written criteria must be noted. */
+export function writtenCriteriaRequiredMessage() {
+  return 'Note the published written screening criteria used for this decision.';
+}
+
+/**
+ * Queue banner: jurisdiction name plus how to work the list.
+ * @param {string} [jurisdictionName]
+ * @param {{ firstQualifiedApplicant?: boolean }} [opts]
+ */
+export function screeningQueueNote(jurisdictionName, { firstQualifiedApplicant } = {}) {
+  const place = String(jurisdictionName || '').trim().replace(/\.$/, '');
+  const rule = firstQualifiedApplicant
+    ? 'Offer housing to the first pending applicant who meets the published written criteria.'
+    : 'Review pending applications in the order they were received.';
+  return [place, rule].filter(Boolean).join('. ');
+}
+
+/** Operator copy on the Complete step. */
+export function screeningReferenceDisclaimer() {
+  return 'These screening steps are a reference, not a substitute for legal counsel.';
 }
