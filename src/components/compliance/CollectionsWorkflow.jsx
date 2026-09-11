@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
 import NoticePeriodCalculator from '../NoticePeriodCalculator';
-import LeaseSelectionPicker from '../LeaseSelectionPicker';
-import CurrencyInput, { formatCurrencyDisplay } from '../CurrencyInput';
+import WorkflowField from '../WorkflowField';
+import { formatCurrencyDisplay } from '../CurrencyInput';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import { DEFAULT_JURISDICTION_PACK_ID } from '../../jurisdictions/index.js';
-import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 import { unitNumberText } from '../../utils/unit-display.js';
 import {
   COLLECTION_FDCPA_NOTICE,
-  COLLECTION_PAY_OR_VACATE,
   collectionNoticeDays,
   collectionNoticeKindLabel,
   collectionNoticeKindOptions,
@@ -78,24 +76,21 @@ export default function CollectionsWorkflow({
       {
         title: 'Select Lease',
         description: 'Choose the lease with unpaid rent.',
-        fields: [{ id: 'lease_id', label: 'Lease', type: 'select', required: true }],
-        render: ({ workflowData, updateField, errors }) => (
-          <LeaseSelectionPicker
-            value={workflowData.lease_id || null}
-            error={errors?.lease_id}
-            statuses={['active']}
-            showRent
-            emptyMessage="No active leases found."
-            onChange={(leaseId, selected) => {
-              stampLeaseSelection(updateField, leaseId, selected);
-              if (!workflowData.notice_type) {
-                updateField('notice_type', COLLECTION_PAY_OR_VACATE);
-              }
-              if (leaseId) fetchLeaseDetails(leaseId);
-              else setLease(null);
-            }}
-          />
-        ),
+        fields: [
+          {
+            id: 'lease_id',
+            label: 'Lease',
+            type: 'lease',
+            required: true,
+            statuses: ['active'],
+            showRent: true,
+            emptyMessage: 'No active leases found.',
+          },
+        ],
+        onLeaseSelected: (leaseId) => {
+          if (leaseId) fetchLeaseDetails(leaseId);
+          else setLease(null);
+        },
       },
       {
         title: 'Collection Details',
@@ -114,59 +109,45 @@ export default function CollectionsWorkflow({
         render: ({ workflowData, updateField, errors }) => {
           const noticeType = normalizeCollectionNoticeType(workflowData.notice_type);
           const cureDays = collectionNoticeDays(jurisdiction, noticeType);
+          const fieldProps = { workflowData, updateField };
           return (
             <div className="space-y-4">
               <div className="flex flex-wrap items-start gap-3">
-                <div className="w-44">
-                  <CurrencyInput
-                    label="Amount Owed"
-                    required
-                    value={workflowData.amount_owed}
-                    onChange={(next) => updateField('amount_owed', next)}
-                    className={errors.amount_owed ? '[&_input]:border-red-300' : ''}
-                  />
-                  {errors.amount_owed ? (
-                    <p className="mt-1 text-sm text-red-600">{errors.amount_owed}</p>
-                  ) : null}
-                </div>
-                <div className="w-64 max-w-full">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Notice Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={noticeType}
-                    onChange={(e) => updateField('notice_type', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      errors.notice_type ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                  >
-                    {kindOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.notice_type ? (
-                    <p className="mt-1 text-sm text-red-600">{errors.notice_type}</p>
-                  ) : null}
-                </div>
-                <div className="w-44 max-w-full">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment plan offered
-                  </label>
-                  <select
-                    value={workflowData.payment_plan || ''}
-                    onChange={(e) => updateField('payment_plan', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="">Select...</option>
-                    {PAYMENT_PLAN_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <WorkflowField
+                  field={{
+                    id: 'amount_owed',
+                    label: 'Amount Owed',
+                    type: 'currency',
+                    required: true,
+                    width: 'sm',
+                  }}
+                  {...fieldProps}
+                  error={errors.amount_owed || ''}
+                />
+                <WorkflowField
+                  field={{
+                    id: 'notice_type',
+                    label: 'Notice Type',
+                    type: 'select',
+                    required: true,
+                    width: 'md',
+                    includeEmpty: false,
+                    options: kindOptions,
+                  }}
+                  workflowData={{ ...workflowData, notice_type: noticeType }}
+                  updateField={updateField}
+                  error={errors.notice_type || ''}
+                />
+                <WorkflowField
+                  field={{
+                    id: 'payment_plan',
+                    label: 'Payment plan offered',
+                    type: 'select',
+                    width: 'sm',
+                    options: PAYMENT_PLAN_OPTIONS,
+                  }}
+                  {...fieldProps}
+                />
               </div>
 
               <p className="text-sm text-blue-900 bg-blue-50 border border-blue-200 rounded-lg p-3">

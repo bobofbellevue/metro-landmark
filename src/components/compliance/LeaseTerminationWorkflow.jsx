@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
 import NoticePeriodCalculator from '../NoticePeriodCalculator';
-import LeaseSelectionPicker from '../LeaseSelectionPicker';
 import WorkflowDateInput from '../WorkflowDateInput';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
@@ -25,7 +24,6 @@ import {
   tenantEmailsFromLeaseClients,
   validateNoticeService,
 } from '../../utils/notice-service-workflow.js';
-import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 import {
   evaluateLeaseTermination,
   leaseTypeFromLease,
@@ -41,6 +39,8 @@ export default function LeaseTerminationWorkflow({
   onComplete,
   onCancel,
   onWorkflowCreated,
+  onResumeWorkflow,
+  openWorkflows = [],
 }) {
   const [lease, setLease] = useState(null);
   const [noticeCalculation, setNoticeCalculation] = useState(null);
@@ -165,22 +165,23 @@ export default function LeaseTerminationWorkflow({
     return [
       {
         title: 'Select Lease',
-        description: 'Choose the lease to end.',
-        fields: [{ id: 'lease_id', label: 'Lease', type: 'select', required: true }],
-        render: ({ workflowData, updateField, errors }) => (
-          <LeaseSelectionPicker
-            value={workflowData.lease_id || null}
-            error={errors?.lease_id}
-            statuses={['active']}
-            showRent
-            emptyMessage="No active leases found."
-            onChange={(leaseId, selected) => {
-              stampLeaseSelection(updateField, leaseId, selected);
-              if (leaseId) fetchLeaseDetails(leaseId);
-              else setLease(null);
-            }}
-          />
-        ),
+        description:
+          'Leases with a generated notice still waiting to be served are listed first. Pick one of those to record service, or pick another lease to generate a notice.',
+        fields: [
+          {
+            id: 'lease_id',
+            label: 'Lease',
+            type: 'lease',
+            required: true,
+            statuses: ['active'],
+            showRent: true,
+            emptyMessage: 'No active leases found.',
+          },
+        ],
+        onLeaseSelected: (leaseId) => {
+          if (leaseId) fetchLeaseDetails(leaseId);
+          else setLease(null);
+        },
       },
       {
         title: 'Termination Details',
@@ -497,6 +498,8 @@ export default function LeaseTerminationWorkflow({
           : initialData.jurisdiction || DEFAULT_JURISDICTION_PACK_ID,
       }}
       workflowId={workflowId}
+      openWorkflows={openWorkflows}
+      onResumeWorkflow={onResumeWorkflow}
       getSteps={getWorkflowSteps}
       onComplete={async (data, meta = {}) => {
         if (!onComplete) return;

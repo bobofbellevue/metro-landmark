@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
-import LeaseSelectionPicker from '../LeaseSelectionPicker';
 import CurrencyInput, { formatCurrencyDisplay } from '../CurrencyInput';
 import WorkflowDateInput from '../WorkflowDateInput';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import { DEFAULT_JURISDICTION_PACK_ID, getRuleCitations } from '../../jurisdictions/index.js';
-import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 import { unitNumberText } from '../../utils/unit-display.js';
 import {
   formatWorkflowDateForLocale,
@@ -117,56 +115,57 @@ export default function SecurityDepositReturnWorkflow({
       {
         title: 'Select Lease',
         description: 'Choose the lease whose deposit is being returned.',
-        fields: [{ id: 'lease_id', label: 'Lease', type: 'select', required: true }],
-        render: ({ workflowData, updateField, errors }) => (
-          <LeaseSelectionPicker
-            value={workflowData.lease_id || null}
-            error={errors?.lease_id}
-            statuses={['active', 'terminated']}
-            showDeposit
-            emptyMessage="No active or terminated leases found."
-            onChange={async (leaseId, selected) => {
-              stampLeaseSelection(updateField, leaseId, selected);
-              updateField(
-                'original_deposit',
-                selected?.security_deposit_amount != null
-                  ? Number(selected.security_deposit_amount)
-                  : null
+        fields: [
+          {
+            id: 'lease_id',
+            label: 'Lease',
+            type: 'lease',
+            required: true,
+            statuses: ['active', 'terminated'],
+            showDeposit: true,
+            showRent: true,
+            emptyMessage: 'No active or terminated leases found.',
+          },
+        ],
+        onLeaseSelected: async (leaseId, selected, updateField, workflowData = {}) => {
+          updateField(
+            'original_deposit',
+            selected?.security_deposit_amount != null
+              ? Number(selected.security_deposit_amount)
+              : null
+          );
+          updateField(
+            'pet_deposit',
+            selected?.pet_deposit_amount != null
+              ? Number(selected.pet_deposit_amount)
+              : 0
+          );
+          if (leaseId) {
+            const ctx = await fetchLeaseDetails(leaseId);
+            if (deductionsNeedSeed(workflowData.deductions)) {
+              const fromInspection = deductionsFromMoveOutInspection(
+                ctx.moveOutInspection
               );
               updateField(
-                'pet_deposit',
-                selected?.pet_deposit_amount != null
-                  ? Number(selected.pet_deposit_amount)
-                  : 0
+                'deductions',
+                fromInspection.length
+                  ? fromInspection.map((row) => ({ ...newDeductionRow(), ...row }))
+                  : [newDeductionRow()]
               );
-              if (leaseId) {
-                const ctx = await fetchLeaseDetails(leaseId);
-                if (deductionsNeedSeed(workflowData.deductions)) {
-                  const fromInspection = deductionsFromMoveOutInspection(
-                    ctx.moveOutInspection
-                  );
-                  updateField(
-                    'deductions',
-                    fromInspection.length
-                      ? fromInspection.map((row) => ({ ...newDeductionRow(), ...row }))
-                      : [newDeductionRow()]
-                  );
-                }
-                if (
-                  !isCompleteWorkflowDate(workflowData.vacation_date) &&
-                  ctx.moveOutInspection?.inspection_date
-                ) {
-                  updateField('vacation_date', ctx.moveOutInspection.inspection_date);
-                }
-              } else {
-                setLease(null);
-                if (deductionsNeedSeed(workflowData.deductions)) {
-                  updateField('deductions', [newDeductionRow()]);
-                }
-              }
-            }}
-          />
-        ),
+            }
+            if (
+              !isCompleteWorkflowDate(workflowData.vacation_date) &&
+              ctx.moveOutInspection?.inspection_date
+            ) {
+              updateField('vacation_date', ctx.moveOutInspection.inspection_date);
+            }
+          } else {
+            setLease(null);
+            if (deductionsNeedSeed(workflowData.deductions)) {
+              updateField('deductions', [newDeductionRow()]);
+            }
+          }
+        },
       },
       {
         title: 'Deductions and Deadline',

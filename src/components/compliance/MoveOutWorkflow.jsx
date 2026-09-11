@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
-import LeaseSelectionPicker from '../LeaseSelectionPicker';
 import CurrencyInput, { formatCurrencyDisplay } from '../CurrencyInput';
 import WorkflowDateInput from '../WorkflowDateInput';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import { DEFAULT_JURISDICTION_PACK_ID, getRuleCitations } from '../../jurisdictions/index.js';
-import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 import { unitNumberText } from '../../utils/unit-display.js';
 import {
   formatWorkflowDateForLocale,
@@ -147,46 +145,47 @@ export default function MoveOutWorkflow({
       {
         title: 'Select Lease',
         description: 'Choose the lease for the move-out inspection.',
-        fields: [{ id: 'lease_id', label: 'Lease', type: 'select', required: true }],
-        render: ({ workflowData, updateField, errors }) => (
-          <LeaseSelectionPicker
-            value={workflowData.lease_id || null}
-            error={errors?.lease_id}
-            statuses={['active', 'terminated']}
-            showDeposit
-            emptyMessage="No active or terminated leases found."
-            onChange={async (leaseId, selected) => {
-              stampLeaseSelection(updateField, leaseId, selected);
-              if (leaseId) {
-                const ctx = await fetchLeaseContext(leaseId);
-                if (
-                  !Array.isArray(workflowData.checklist) ||
-                  workflowData.checklist.length === 0
-                ) {
-                  updateField(
-                    'checklist',
-                    checklistFromMoveInReport(ctx.moveInInspection?.condition_report)
-                  );
-                }
-                if (ctx.moveInInspection?.inspection_date) {
-                  updateField(
-                    'move_in_inspection_date',
-                    ctx.moveInInspection.inspection_date
-                  );
-                }
-                if (
-                  !Array.isArray(workflowData.deductions) ||
-                  workflowData.deductions.length === 0
-                ) {
-                  updateField('deductions', [newDeductionRow()]);
-                }
-              } else {
-                setLease(null);
-                setMoveInInspection(null);
-              }
-            }}
-          />
-        ),
+        fields: [
+          {
+            id: 'lease_id',
+            label: 'Lease',
+            type: 'lease',
+            required: true,
+            statuses: ['active', 'terminated'],
+            showDeposit: true,
+            showRent: true,
+            emptyMessage: 'No active or terminated leases found.',
+          },
+        ],
+        onLeaseSelected: async (leaseId, _selected, updateField, workflowData = {}) => {
+          if (leaseId) {
+            const ctx = await fetchLeaseContext(leaseId);
+            if (
+              !Array.isArray(workflowData.checklist) ||
+              workflowData.checklist.length === 0
+            ) {
+              updateField(
+                'checklist',
+                checklistFromMoveInReport(ctx.moveInInspection?.condition_report)
+              );
+            }
+            if (ctx.moveInInspection?.inspection_date) {
+              updateField(
+                'move_in_inspection_date',
+                ctx.moveInInspection.inspection_date
+              );
+            }
+            if (
+              !Array.isArray(workflowData.deductions) ||
+              workflowData.deductions.length === 0
+            ) {
+              updateField('deductions', [newDeductionRow()]);
+            }
+          } else {
+            setLease(null);
+            setMoveInInspection(null);
+          }
+        },
       },
       {
         title: 'Inspection and Deductions',

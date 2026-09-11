@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
 import NoticePeriodCalculator from '../NoticePeriodCalculator';
-import LeaseSelectionPicker from '../LeaseSelectionPicker';
-import WorkflowDateInput from '../WorkflowDateInput';
+import WorkflowField from '../WorkflowField';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import { DEFAULT_JURISDICTION_PACK_ID, getNoticeServiceMethods } from '../../jurisdictions/index.js';
@@ -14,7 +13,6 @@ import {
   tenantEmailsFromLeaseClients,
   validateNoticeService,
 } from '../../utils/notice-service-workflow.js';
-import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 import { unitNumberText } from '../../utils/unit-display.js';
 import {
   VIOLATION_TYPE_LABELS,
@@ -34,6 +32,8 @@ export default function LeaseViolationWorkflow({
   onComplete,
   onCancel,
   onWorkflowCreated,
+  onResumeWorkflow,
+  openWorkflows = [],
 }) {
   const [lease, setLease] = useState(null);
   const [noticeCalculation, setNoticeCalculation] = useState(null);
@@ -135,25 +135,23 @@ export default function LeaseViolationWorkflow({
     return [
       {
         title: 'Select Lease',
-        description: 'Choose the lease for the violation notice.',
-        fields: [{ id: 'lease_id', label: 'Lease', type: 'select', required: true }],
-        render: ({ workflowData, updateField, errors }) => (
-          <LeaseSelectionPicker
-            value={workflowData.lease_id || null}
-            error={errors?.lease_id}
-            statuses={['active']}
-            showRent
-            emptyMessage="No active leases found."
-            onChange={(leaseId, selected) => {
-              stampLeaseSelection(updateField, leaseId, selected);
-              if (!workflowData.notice_kind) {
-                updateField('notice_kind', '10_day_compliance');
-              }
-              if (leaseId) fetchLeaseDetails(leaseId);
-              else setLease(null);
-            }}
-          />
-        ),
+        description:
+          'Leases with a generated notice still waiting to be served are listed first. Pick one of those to record service, or pick another lease to generate a notice.',
+        fields: [
+          {
+            id: 'lease_id',
+            label: 'Lease',
+            type: 'lease',
+            required: true,
+            statuses: ['active'],
+            showRent: true,
+            emptyMessage: 'No active leases found.',
+          },
+        ],
+        onLeaseSelected: (leaseId) => {
+          if (leaseId) fetchLeaseDetails(leaseId);
+          else setLease(null);
+        },
       },
       {
         title: 'Violation Details',
@@ -184,61 +182,47 @@ export default function LeaseViolationWorkflow({
         render: ({ workflowData, updateField, errors }) => {
           const noticeKind = workflowData.notice_kind || '10_day_compliance';
           const cureDays = violationCureDays(jurisdiction, noticeKind);
+          const fieldProps = { workflowData, updateField };
           return (
             <div className="space-y-4">
               <div className="flex flex-wrap items-start gap-3">
-                <div className="w-64 max-w-full">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Violation Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={workflowData.violation_type || ''}
-                    onChange={(e) => updateField('violation_type', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      errors.violation_type ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Select...</option>
-                    {VIOLATION_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.violation_type ? (
-                    <p className="mt-1 text-sm text-red-600">{errors.violation_type}</p>
-                  ) : null}
-                </div>
-                <div className="w-64 max-w-full">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Notice Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={noticeKind}
-                    onChange={(e) => updateField('notice_kind', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      errors.notice_kind ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                  >
-                    {kindOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.notice_kind ? (
-                    <p className="mt-1 text-sm text-red-600">{errors.notice_kind}</p>
-                  ) : null}
-                </div>
-                <div className="w-44">
-                  <WorkflowDateInput
-                    label="Comply or vacate by"
-                    required
-                    value={workflowData.effective_date || ''}
-                    onChange={(next) => updateField('effective_date', next)}
-                    error={errors.effective_date || ''}
-                  />
-                </div>
+                <WorkflowField
+                  field={{
+                    id: 'violation_type',
+                    label: 'Violation Type',
+                    type: 'select',
+                    required: true,
+                    width: 'md',
+                    options: VIOLATION_TYPE_OPTIONS,
+                  }}
+                  {...fieldProps}
+                  error={errors.violation_type || ''}
+                />
+                <WorkflowField
+                  field={{
+                    id: 'notice_kind',
+                    label: 'Notice Type',
+                    type: 'select',
+                    required: true,
+                    width: 'md',
+                    includeEmpty: false,
+                    options: kindOptions,
+                  }}
+                  workflowData={{ ...workflowData, notice_kind: noticeKind }}
+                  updateField={updateField}
+                  error={errors.notice_kind || ''}
+                />
+                <WorkflowField
+                  field={{
+                    id: 'effective_date',
+                    label: 'Comply or vacate by',
+                    type: 'date',
+                    required: true,
+                    width: 'sm',
+                  }}
+                  {...fieldProps}
+                  error={errors.effective_date || ''}
+                />
               </div>
 
               <p className="text-sm text-blue-900 bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -246,22 +230,18 @@ export default function LeaseViolationWorkflow({
                 RCW 59.12.030.
               </p>
 
-              <div className="max-w-xl">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={workflowData.violation_description || ''}
-                  onChange={(e) => updateField('violation_description', e.target.value)}
-                  rows={3}
-                  className={`w-full px-3 py-2 border rounded-md text-sm ${
-                    errors.violation_description ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                />
-                {errors.violation_description ? (
-                  <p className="mt-1 text-sm text-red-600">{errors.violation_description}</p>
-                ) : null}
-              </div>
+              <WorkflowField
+                field={{
+                  id: 'violation_description',
+                  label: 'Description',
+                  type: 'textarea',
+                  required: true,
+                  rows: 3,
+                  width: 'lg',
+                }}
+                {...fieldProps}
+                error={errors.violation_description || ''}
+              />
 
               {workflowData.lease_id && isCompleteWorkflowDate(workflowData.effective_date) ? (
                 <NoticePeriodCalculator
@@ -417,6 +397,8 @@ export default function LeaseViolationWorkflow({
           : initialData.jurisdiction || DEFAULT_JURISDICTION_PACK_ID,
       }}
       workflowId={workflowId}
+      openWorkflows={openWorkflows}
+      onResumeWorkflow={onResumeWorkflow}
       getSteps={getWorkflowSteps}
       onComplete={async (data, meta = {}) => {
         if (!onComplete) return;

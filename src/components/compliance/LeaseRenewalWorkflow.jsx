@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
 import CurrencyInput from '../CurrencyInput';
-import LeaseSelectionPicker from '../LeaseSelectionPicker';
 import WorkflowDateInput from '../WorkflowDateInput';
 import { ApplicationFormBuilder } from '../ApplicationFormBuilder';
 import { supabase } from '../../lib/supabase';
@@ -24,7 +23,6 @@ import {
 } from '../../utils/template-field-filter.js';
 import { parseTemplateData } from '../../utils/template-data.js';
 import { mapLeaseLikeDataToTemplate } from '../../../utils/map-template-fields.js';
-import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 
 function formatMoney(amount) {
   if (amount == null || amount === '') return '—';
@@ -278,35 +276,35 @@ export default function LeaseRenewalWorkflow({
       {
         title: 'Select Lease',
         description: 'Choose the existing lease to renew.',
-        fields: [{ id: 'lease_id', label: 'Lease', type: 'select', required: true }],
-        render: ({ workflowData, updateField, errors }) => (
-          <LeaseSelectionPicker
-            value={workflowData.lease_id || null}
-            error={errors?.lease_id}
-            statuses={['active', 'pending', 'future']}
-            showRent
-            emptyMessage="No active, pending, or future leases found to renew."
-            onChange={(leaseId, selected) => {
-              stampLeaseSelection(updateField, leaseId, selected);
-              updateField('document_data', {});
-              setSelectedLeaseMeta(selected || null);
-              setShowMoreFields(false);
-              setTemplateSchema(null);
-              setTemplateId(null);
-              setMoreFieldsError('');
-              if (leaseId) {
-                loadMappingContext(leaseId);
-                if (selected) {
-                  suggestTermsFromLease(selected, updateField);
-                }
-              } else {
-                setLease(null);
-                setSelectedLeaseMeta(null);
-                setMappingContext(null);
-              }
-            }}
-          />
-        ),
+        fields: [
+          {
+            id: 'lease_id',
+            label: 'Lease',
+            type: 'lease',
+            required: true,
+            statuses: ['active', 'pending', 'future'],
+            showRent: true,
+            emptyMessage: 'No active, pending, or future leases found to renew.',
+          },
+        ],
+        onLeaseSelected: (leaseId, selected, updateField) => {
+          updateField('document_data', {});
+          setSelectedLeaseMeta(selected || null);
+          setShowMoreFields(false);
+          setTemplateSchema(null);
+          setTemplateId(null);
+          setMoreFieldsError('');
+          if (leaseId) {
+            loadMappingContext(leaseId);
+            if (selected) {
+              suggestTermsFromLease(selected, updateField);
+            }
+          } else {
+            setLease(null);
+            setSelectedLeaseMeta(null);
+            setMappingContext(null);
+          }
+        },
       },
       {
         title: 'Renewal Terms',

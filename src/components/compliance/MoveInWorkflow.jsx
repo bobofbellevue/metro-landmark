@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
-import LeaseSelectionPicker from '../LeaseSelectionPicker';
 import WorkflowDateInput from '../WorkflowDateInput';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import { DEFAULT_JURISDICTION_PACK_ID, getRuleCitations } from '../../jurisdictions/index.js';
-import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 import { unitNumberText } from '../../utils/unit-display.js';
 import {
   formatWorkflowDateForLocale,
@@ -102,27 +100,28 @@ export default function MoveInWorkflow({
       {
         title: 'Select Lease',
         description: 'Choose the lease for the move-in condition report.',
-        fields: [{ id: 'lease_id', label: 'Lease', type: 'select', required: true }],
-        render: ({ workflowData, updateField, errors }) => (
-          <LeaseSelectionPicker
-            value={workflowData.lease_id || null}
-            error={errors?.lease_id}
-            statuses={['active', 'pending']}
-            showRent
-            emptyMessage="No active or pending leases found."
-            onChange={(leaseId, selected) => {
-              stampLeaseSelection(updateField, leaseId, selected);
-              if (
-                !Array.isArray(workflowData.checklist) ||
-                workflowData.checklist.length === 0
-              ) {
-                updateField('checklist', defaultMoveInChecklistRows());
-              }
-              if (leaseId) fetchLeaseDetails(leaseId);
-              else setLease(null);
-            }}
-          />
-        ),
+        fields: [
+          {
+            id: 'lease_id',
+            label: 'Lease',
+            type: 'lease',
+            required: true,
+            statuses: ['active', 'pending'],
+            showRent: true,
+            emptyMessage: 'No active or pending leases found.',
+          },
+        ],
+        onLeaseSelected: (leaseId, _selected, updateField, workflowData = {}) => {
+          if (
+            leaseId &&
+            (!Array.isArray(workflowData.checklist) ||
+              workflowData.checklist.length === 0)
+          ) {
+            updateField('checklist', defaultMoveInChecklistRows());
+          }
+          if (leaseId) fetchLeaseDetails(leaseId);
+          else setLease(null);
+        },
       },
       {
         title: 'Condition Report',

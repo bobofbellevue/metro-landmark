@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { CheckCircle, Circle, ArrowRight, ArrowLeft, AlertCircle, Shield } from 'lucide-react';
 import { Card } from './ui';
-import DateInput from './DateInput';
-import WorkflowTimeInput from './WorkflowTimeInput';
-import WorkflowFileField from './WorkflowFileField';
 import { AuthContext } from '../contexts';
+import WorkflowField from './WorkflowField';
 import {
   buildWorkflowSavePayload,
   hasMeaningfulWorkflowProgress,
@@ -39,6 +37,8 @@ import {
  * @param {Function} onCancel - Callback when workflow is cancelled
  * @param {Function} onWorkflowCreated - Callback when a new workflow row is created
  * @param {Function} onWorkflowLoaded - Callback after an existing workflow row is loaded
+ * @param {object[]} [openWorkflows] - In-progress rows of this type (generate-then-serve resume)
+ * @param {Function} [onResumeWorkflow] - Open an existing row instead of starting a blank session
  */
 export default function ComplianceWorkflow({
   workflowType,
@@ -49,6 +49,8 @@ export default function ComplianceWorkflow({
   onCancel,
   onWorkflowCreated,
   onWorkflowLoaded,
+  openWorkflows = [],
+  onResumeWorkflow,
 }) {
   const { user } = useContext(AuthContext);
   const [currentStep, setCurrentStep] = useState(() => {
@@ -653,98 +655,20 @@ export default function ComplianceWorkflow({
           })
         ) : (
           <div className="space-y-4">
-            {currentStepData.fields?.map(field => (
-              <div key={field.id}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {field.label}
-                  {field.required && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                {field.type === 'text' && (
-                  <input
-                    type="text"
-                    value={workflowData[field.id] || ''}
-                    onChange={(e) => updateField(field.id, e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      stepErrors[field.id] ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder={field.placeholder}
-                  />
-                )}
-                {field.type === 'number' && (
-                  <input
-                    type="number"
-                    value={workflowData[field.id] || ''}
-                    onChange={(e) => updateField(field.id, parseFloat(e.target.value))}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      stepErrors[field.id] ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder={field.placeholder}
-                  />
-                )}
-                {field.type === 'date' && (
-                  <DateInput
-                    label=""
-                    value={workflowData[field.id] || ''}
-                    onChange={(e) => updateField(field.id, e.target.value || null)}
-                    className={stepErrors[field.id] ? 'border-red-300' : ''}
-                  />
-                )}
-                {field.type === 'time' && (
-                  <WorkflowTimeInput
-                    value={workflowData[field.id] || ''}
-                    onChange={(next) => updateField(field.id, next)}
-                    error={stepErrors[field.id] || ''}
-                  />
-                )}
-                {field.type === 'select' && (
-                  <select
-                    value={workflowData[field.id] || ''}
-                    onChange={(e) => updateField(field.id, e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      stepErrors[field.id] ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Select...</option>
-                    {field.options?.map(option => (
-                      <option key={option.value || option} value={option.value || option}>
-                        {option.label || option}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {field.type === 'textarea' && (
-                  <textarea
-                    value={workflowData[field.id] || ''}
-                    onChange={(e) => updateField(field.id, e.target.value)}
-                    rows={4}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      stepErrors[field.id] ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder={field.placeholder}
-                  />
-                )}
-                {field.type === 'file' && (
-                  <WorkflowFileField
-                    value={workflowData[field.id] || null}
-                    onChange={(fileMeta) => updateField(field.id, fileMeta)}
-                    error={stepErrors[field.id]}
-                    leaseId={workflowData.lease_id}
-                    propertyId={workflowData.property_id}
-                    unitId={workflowData.unit_id}
-                    workflowId={workflowId || workflowRecord?.workflow_id}
-                    userId={user?.user_id}
-                    documentType={field.documentType}
-                    acceptedTypes={field.acceptedTypes}
-                    description={field.description}
-                  />
-                )}
-                {stepErrors[field.id] && field.type !== 'file' && (
-                  <p className="mt-1 text-sm text-red-600">{stepErrors[field.id]}</p>
-                )}
-                {field.description && field.type !== 'file' && (
-                  <p className="mt-1 text-xs text-gray-500">{field.description}</p>
-                )}
-              </div>
+            {currentStepData.fields?.map((field) => (
+              <WorkflowField
+                key={field.id}
+                field={field}
+                workflowData={workflowData}
+                updateField={updateField}
+                error={stepErrors[field.id] || ''}
+                workflowId={workflowId || workflowRecord?.workflow_id}
+                userId={user?.user_id}
+                openWorkflows={openWorkflows}
+                onResumeWorkflow={onResumeWorkflow}
+                workflowType={workflowType}
+                onLeaseSelected={currentStepData.onLeaseSelected}
+              />
             ))}
           </div>
         )}
