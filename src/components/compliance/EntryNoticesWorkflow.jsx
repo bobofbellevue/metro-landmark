@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
 import NoticePeriodCalculator from '../NoticePeriodCalculator';
-import LeaseSelectionPicker from '../LeaseSelectionPicker';
-import WorkflowDateInput from '../WorkflowDateInput';
-import WorkflowTimeInput from '../WorkflowTimeInput';
+import WorkflowField from '../WorkflowField';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import { DEFAULT_JURISDICTION_PACK_ID, getNoticeServiceMethods } from '../../jurisdictions/index.js';
@@ -21,7 +19,6 @@ import {
   tenantEmailsFromLeaseClients,
   validateNoticeService,
 } from '../../utils/notice-service-workflow.js';
-import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 import { unitNumberText } from '../../utils/unit-display.js';
 import { formatWorkflowTimeForLocale } from '../../utils/workflow-time.js';
 
@@ -48,6 +45,8 @@ export default function EntryNoticesWorkflow({
   onComplete,
   onCancel,
   onWorkflowCreated,
+  onResumeWorkflow,
+  openWorkflows = [],
 }) {
   const [lease, setLease] = useState(null);
   const [noticeCalculation, setNoticeCalculation] = useState(null);
@@ -159,22 +158,23 @@ export default function EntryNoticesWorkflow({
     return [
       {
         title: 'Select Lease',
-        description: 'Choose the occupied lease that will receive the entry notice.',
-        fields: [{ id: 'lease_id', label: 'Lease', type: 'select', required: true }],
-        render: ({ workflowData, updateField, errors }) => (
-          <LeaseSelectionPicker
-            value={workflowData.lease_id || null}
-            error={errors.lease_id}
-            statuses={['active']}
-            showRent
-            emptyMessage="No active leases found."
-            onChange={(leaseId, selected) => {
-              stampLeaseSelection(updateField, leaseId, selected);
-              if (leaseId) fetchLeaseDetails(leaseId);
-              else setLease(null);
-            }}
-          />
-        ),
+        description:
+          'Leases with a generated notice still waiting to be served are listed first. Pick one of those to record service, or pick another lease to generate a notice.',
+        fields: [
+          {
+            id: 'lease_id',
+            label: 'Lease',
+            type: 'lease',
+            required: true,
+            statuses: ['active'],
+            showRent: true,
+            emptyMessage: 'No active leases found.',
+          },
+        ],
+        onLeaseSelected: (leaseId) => {
+          if (leaseId) fetchLeaseDetails(leaseId);
+          else setLease(null);
+        },
       },
       {
         title: 'Entry Details',
@@ -196,47 +196,42 @@ export default function EntryNoticesWorkflow({
         },
         render: ({ workflowData, updateField, errors }) => {
           const options = entryNoticeOptionsFromReason(workflowData.entry_reason);
+          const fieldProps = { workflowData, updateField };
           return (
             <div className="space-y-4">
               <div className="flex flex-wrap items-start gap-3">
-                <div className="w-64 max-w-full">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Reason for Entry <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={workflowData.entry_reason || ''}
-                    onChange={(e) => updateField('entry_reason', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md ${
-                      errors.entry_reason ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Select...</option>
-                    {ENTRY_REASON_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.entry_reason ? (
-                    <p className="mt-1 text-sm text-red-600">{errors.entry_reason}</p>
-                  ) : null}
-                </div>
-                <div className="w-44">
-                  <WorkflowDateInput
-                    label="Planned Entry Date"
-                    required
-                    value={workflowData.entry_date || ''}
-                    onChange={(next) => updateField('entry_date', next)}
-                    error={errors.entry_date || ''}
-                  />
-                </div>
-                <div className="w-36">
-                  <WorkflowTimeInput
-                    label="Planned Entry Time"
-                    value={workflowData.entry_time || ''}
-                    onChange={(next) => updateField('entry_time', next)}
-                  />
-                </div>
+                <WorkflowField
+                  field={{
+                    id: 'entry_reason',
+                    label: 'Reason for Entry',
+                    type: 'select',
+                    required: true,
+                    width: 'md',
+                    options: ENTRY_REASON_OPTIONS,
+                  }}
+                  {...fieldProps}
+                  error={errors.entry_reason || ''}
+                />
+                <WorkflowField
+                  field={{
+                    id: 'entry_date',
+                    label: 'Planned Entry Date',
+                    type: 'date',
+                    required: true,
+                    width: 'sm',
+                  }}
+                  {...fieldProps}
+                  error={errors.entry_date || ''}
+                />
+                <WorkflowField
+                  field={{
+                    id: 'entry_time',
+                    label: 'Planned Entry Time',
+                    type: 'time',
+                    width: 'sm',
+                  }}
+                  {...fieldProps}
+                />
               </div>
 
               {!options.isEmergency ? null : (
@@ -419,6 +414,8 @@ export default function EntryNoticesWorkflow({
           : initialData.jurisdiction || DEFAULT_JURISDICTION_PACK_ID,
       }}
       workflowId={workflowId}
+      openWorkflows={openWorkflows}
+      onResumeWorkflow={onResumeWorkflow}
       getSteps={getWorkflowSteps}
       onComplete={async (data, meta = {}) => {
         if (!onComplete) return;

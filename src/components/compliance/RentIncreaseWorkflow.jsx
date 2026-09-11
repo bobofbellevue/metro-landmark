@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
 import NoticePeriodCalculator from '../NoticePeriodCalculator';
 import CurrencyInput from '../CurrencyInput';
-import LeaseSelectionPicker from '../LeaseSelectionPicker';
 import WorkflowDateInput from '../WorkflowDateInput';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
@@ -23,15 +22,10 @@ import { resolveNoticeQuestionsContact } from '../../utils/notice-questions-cont
 import NoticeServiceStep from './NoticeServiceStep.jsx';
 import { readResponseJson } from '../../utils/read-response-json.js';
 import {
-  NOTICE_PICKER_GROUP_GENERATE,
-  NOTICE_PICKER_GROUP_RECORD_SERVICE,
-  noticePickerAnnotation,
-  openWorkflowsByLeaseId,
   rentIncreaseNoticeFingerprint,
   tenantEmailsFromLeaseClients,
   validateNoticeService,
 } from '../../utils/notice-service-workflow.js';
-import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 import { unitNumberText } from '../../utils/unit-display.js';
 
 /**
@@ -48,12 +42,6 @@ export default function RentIncreaseWorkflow({
 }) {
   const [lease, setLease] = useState(null);
   const [noticeCalculation, setNoticeCalculation] = useState(null);
-  const workflowsByLease = openWorkflowsByLeaseId(openWorkflows);
-  const leaseAnnotations = {};
-  for (const [leaseId, openWorkflow] of workflowsByLease) {
-    const annotation = noticePickerAnnotation(openWorkflow);
-    if (annotation) leaseAnnotations[leaseId] = annotation;
-  }
 
   useEffect(() => {
     if (initialData.lease_id) {
@@ -189,62 +177,27 @@ export default function RentIncreaseWorkflow({
           {
             id: 'lease_id',
             label: 'Lease',
-            type: 'select',
+            type: 'lease',
             required: true,
-          }
+            statuses: ['active', 'pending', 'future'],
+            showRent: true,
+            emptyMessage: 'No active, pending, or future leases found.',
+          },
         ],
-        render: ({ workflowData, updateField, errors }) => (
-          <LeaseSelectionPicker
-            value={workflowData.lease_id || null}
-            error={errors.lease_id}
-            statuses={['active', 'pending', 'future']}
-            showRent
-            emptyMessage="No active, pending, or future leases found."
-            groups={[
-              {
-                id: NOTICE_PICKER_GROUP_RECORD_SERVICE,
-                title: 'Record service',
-                description:
-                  'These leases already have a rent-increase notice. Open one to print, email, or record how it was served.',
-                emptyLabel: 'No notices are waiting for service.',
-                beforeSearch: true,
-              },
-              {
-                id: NOTICE_PICKER_GROUP_GENERATE,
-                title: 'Generate a notice',
-                description:
-                  'Choose a lease to calculate the notice period and create a worksheet, or continue an in-progress draft.',
-                emptyLabel: 'No other leases are available.',
-              },
-            ]}
-            leaseAnnotations={leaseAnnotations}
-            onChange={(leaseId, selected) => {
-              if (leaseId == null) {
-                stampLeaseSelection(updateField, null, null);
-                setLease(null);
-                return;
-              }
-              const existing = workflowsByLease.get(String(leaseId));
-              if (
-                existing &&
-                typeof onResumeWorkflow === 'function' &&
-                String(existing.workflow_id) !== String(workflowId || '')
-              ) {
-                onResumeWorkflow(existing.workflow_id);
-                return;
-              }
-              stampLeaseSelection(updateField, leaseId, selected);
-              updateField(
-                'current_rent',
-                selected?.monthly_rent_amount != null
-                  ? Number(selected.monthly_rent_amount)
-                  : null
-              );
-              updateField('new_rent', null);
-              fetchLeaseDetails(leaseId, selected);
-            }}
-          />
-        )
+        onLeaseSelected: (leaseId, selected, updateField) => {
+          if (leaseId == null) {
+            setLease(null);
+            return;
+          }
+          updateField(
+            'current_rent',
+            selected?.monthly_rent_amount != null
+              ? Number(selected.monthly_rent_amount)
+              : null
+          );
+          updateField('new_rent', null);
+          fetchLeaseDetails(leaseId, selected);
+        },
       },
       {
         title: 'Rent Details',
@@ -608,6 +561,8 @@ export default function RentIncreaseWorkflow({
           : initialData.jurisdiction || DEFAULT_JURISDICTION_PACK_ID
       }}
       workflowId={workflowId}
+      openWorkflows={openWorkflows}
+      onResumeWorkflow={onResumeWorkflow}
       getSteps={getWorkflowSteps}
       onComplete={async (data, meta = {}) => {
         if (!onComplete) return;

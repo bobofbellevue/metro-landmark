@@ -13,6 +13,7 @@ export default function CurrencyInput({
   label = 'Amount',
   required = false,
   readOnly = false,
+  inline = false,
   className = '',
   localeContext,
 }) {
@@ -120,14 +121,18 @@ export default function CurrencyInput({
   };
 
   return (
-    <div className={`space-y-1 ${className}`}>
+    <div className={`${inline ? 'flex items-center gap-2' : 'space-y-1'} ${className}`}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label
+          className={`text-sm font-medium text-gray-700 ${
+            inline ? 'whitespace-nowrap shrink-0' : 'block'
+          }`}
+        >
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
-      <div className="relative">
+      <div className={inline ? 'relative w-28 shrink-0' : 'relative'}>
         <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none">
           {currencySymbol}
         </span>

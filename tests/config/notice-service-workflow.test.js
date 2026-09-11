@@ -8,6 +8,9 @@ import {
   isAwaitingNoticeService,
   NOTICE_PICKER_GROUP_GENERATE,
   NOTICE_PICKER_GROUP_RECORD_SERVICE,
+  leaseAnnotationsFromOpenWorkflows,
+  maybeResumeOpenWorkflow,
+  noticeLeasePickerGroups,
   noticePickerAnnotation,
   openWorkflowsByLeaseId,
   partitionLeasePickerSections,
@@ -300,6 +303,63 @@ describe('notice picker lease grouping', () => {
       NOTICE_PICKER_GROUP_GENERATE
     );
     expect(noticePickerAnnotation(null)).toBeNull();
+  });
+
+  test('leaseAnnotationsFromOpenWorkflows keys rows for the picker', () => {
+    const draft = {
+      workflow_id: 4,
+      lease_id: 20,
+      status: 'in_progress',
+      workflow_type: 'eviction',
+      workflow_data: { notice_type: '10_day_compliance' },
+    };
+    const { workflowsByLease, leaseAnnotations } = leaseAnnotationsFromOpenWorkflows([
+      draft,
+    ]);
+    expect(workflowsByLease.get('20').workflow_id).toBe(4);
+    expect(leaseAnnotations['20'].group).toBe(NOTICE_PICKER_GROUP_GENERATE);
+  });
+
+  test('maybeResumeOpenWorkflow resumes a different open row', () => {
+    const resumed = [];
+    expect(
+      maybeResumeOpenWorkflow({
+        existing: { workflow_id: 9 },
+        workflowId: null,
+        onResumeWorkflow: (id) => resumed.push(id),
+      })
+    ).toBe(true);
+    expect(resumed).toEqual([9]);
+    expect(
+      maybeResumeOpenWorkflow({
+        existing: { workflow_id: 9 },
+        workflowId: 9,
+        onResumeWorkflow: (id) => resumed.push(id),
+      })
+    ).toBe(false);
+    expect(
+      maybeResumeOpenWorkflow({
+        existing: { workflow_id: 9 },
+        workflowId: null,
+      })
+    ).toBe(false);
+  });
+
+  test('noticeLeasePickerGroups covers every generate-then-serve type', () => {
+    for (const type of [
+      'rent_increase',
+      'eviction',
+      'lease_termination',
+      'entry_notice',
+      'lease_violation',
+    ]) {
+      const groups = noticeLeasePickerGroups(type);
+      expect(groups.map((g) => g.id)).toEqual([
+        NOTICE_PICKER_GROUP_RECORD_SERVICE,
+        NOTICE_PICKER_GROUP_GENERATE,
+      ]);
+      expect(groups[0].description).toMatch(/notice/);
+    }
   });
 });
 

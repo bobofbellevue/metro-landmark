@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
 import NoticePeriodCalculator from '../NoticePeriodCalculator';
-import LeaseSelectionPicker from '../LeaseSelectionPicker';
 import WorkflowDateInput from '../WorkflowDateInput';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
@@ -14,7 +13,13 @@ import {
   tenantEmailsFromLeaseClients,
   validateNoticeService,
 } from '../../utils/notice-service-workflow.js';
-import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
+
+const EVICTION_NOTICE_TYPE_OPTIONS = [
+  { value: '3_day_pay_or_vacate', label: '3-Day Pay or Vacate (Non-payment of rent)' },
+  { value: '10_day_compliance', label: '10-Day Compliance Notice (Lease violation)' },
+  { value: '14_day_unconditional', label: '14-Day Unconditional Quit (Serious violation)' },
+  { value: '20_day_violation', label: '20-Day Notice (Other lease violations)' },
+];
 
 /**
  * EvictionWorkflow - Multi-step guided workflow for eviction process
@@ -25,6 +30,8 @@ export default function EvictionWorkflow({
   onComplete, 
   onCancel,
   onWorkflowCreated,
+  onResumeWorkflow,
+  openWorkflows = [],
 }) {
   const [lease, setLease] = useState(null);
   const [noticeCalculation, setNoticeCalculation] = useState(null);
@@ -126,29 +133,23 @@ export default function EvictionWorkflow({
     return [
       {
         title: 'Select Lease',
-        description: 'Choose the lease for the eviction process.',
+        description:
+          'Leases with a generated notice still waiting to be served are listed first. Pick one of those to record service, or pick another lease to generate a notice.',
         fields: [
           {
             id: 'lease_id',
             label: 'Lease',
-            type: 'select',
-            required: true
-          }
+            type: 'lease',
+            required: true,
+            statuses: ['active', 'pending'],
+            showRent: true,
+            emptyMessage: 'No active or pending leases found.',
+          },
         ],
-        render: ({ workflowData, updateField, errors }) => (
-          <LeaseSelectionPicker
-            value={workflowData.lease_id || null}
-            error={errors.lease_id}
-            statuses={['active', 'pending']}
-            showRent
-            emptyMessage="No active or pending leases found."
-            onChange={(leaseId, selected) => {
-              stampLeaseSelection(updateField, leaseId, selected);
-              if (leaseId) fetchLeaseDetails(leaseId);
-              else setLease(null);
-            }}
-          />
-        )
+        onLeaseSelected: (leaseId) => {
+          if (leaseId) fetchLeaseDetails(leaseId);
+          else setLease(null);
+        },
       },
       {
         title: 'Notice Type',
@@ -159,26 +160,24 @@ export default function EvictionWorkflow({
             label: 'Notice Type',
             type: 'select',
             required: true,
-            options: [
-              { value: '3_day_pay_or_vacate', label: '3-Day Pay or Vacate (Non-payment of rent)' },
-              { value: '10_day_compliance', label: '10-Day Compliance Notice (Lease violation)' },
-              { value: '14_day_unconditional', label: '14-Day Unconditional Quit (Serious violation)' },
-              { value: '20_day_violation', label: '20-Day Notice (Other lease violations)' }
-            ]
+            layout: 'inline',
+            width: 'lg',
+            options: EVICTION_NOTICE_TYPE_OPTIONS,
+          },
+          {
+            id: 'amount_owed',
+            label: 'Amount Owed (if applicable)',
+            type: 'currency',
+            required: false,
+            layout: 'inline',
           },
           {
             id: 'violation_reason',
             label: 'Reason for Eviction',
             type: 'textarea',
-            required: true
+            required: true,
           },
-          {
-            id: 'amount_owed',
-            label: 'Amount Owed (if applicable)',
-            type: 'number',
-            required: false
-          }
-        ]
+        ],
       },
       {
         title: 'Notice Period',
@@ -349,6 +348,8 @@ export default function EvictionWorkflow({
           : initialData.jurisdiction || DEFAULT_JURISDICTION_PACK_ID
       }}
       workflowId={workflowId}
+      openWorkflows={openWorkflows}
+      onResumeWorkflow={onResumeWorkflow}
       getSteps={getWorkflowSteps}
       onComplete={async (data, meta = {}) => {
         if (!onComplete) return;

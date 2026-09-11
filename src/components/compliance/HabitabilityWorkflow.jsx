@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ComplianceWorkflow from '../ComplianceWorkflow';
-import LeaseSelectionPicker from '../LeaseSelectionPicker';
 import WorkflowDateInput from '../WorkflowDateInput';
 import { supabase } from '../../lib/supabase';
 import { detectJurisdiction } from '../../utils/jurisdiction-detector';
 import { DEFAULT_JURISDICTION_PACK_ID } from '../../jurisdictions/index.js';
-import { stampLeaseSelection } from '../../utils/workflow-lease-context.js';
 import { unitNumberText } from '../../utils/unit-display.js';
 import {
   formatWorkflowDateForLocale,
@@ -147,25 +145,25 @@ export default function HabitabilityWorkflow({
       {
         title: 'Select Lease',
         description: 'Choose the occupied lease for the habitability issue.',
-        fields: [{ id: 'lease_id', label: 'Lease', type: 'select', required: true }],
-        render: ({ workflowData, updateField, errors }) => (
-          <LeaseSelectionPicker
-            value={workflowData.lease_id || null}
-            error={errors?.lease_id}
-            statuses={['active']}
-            showRent
-            emptyMessage="No active leases found."
-            onChange={(leaseId, selected) => {
-              stampLeaseSelection(updateField, leaseId, selected);
-              updateField('maintenance_request_id', null);
-              if (leaseId) fetchLeaseDetails(leaseId);
-              else {
-                setLease(null);
-                setMaintenanceRequests([]);
-              }
-            }}
-          />
-        ),
+        fields: [
+          {
+            id: 'lease_id',
+            label: 'Lease',
+            type: 'lease',
+            required: true,
+            statuses: ['active'],
+            showRent: true,
+            emptyMessage: 'No active leases found.',
+          },
+        ],
+        onLeaseSelected: (leaseId, _selected, updateField) => {
+          updateField?.('maintenance_request_id', null);
+          if (leaseId) fetchLeaseDetails(leaseId);
+          else {
+            setLease(null);
+            setMaintenanceRequests([]);
+          }
+        },
       },
       {
         title: 'Issue Details',

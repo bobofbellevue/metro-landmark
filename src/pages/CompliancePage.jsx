@@ -209,6 +209,7 @@ export default function CompliancePage() {
   };
 
   const renderWorkflowComponent = () => {
+    const generateThenServe = GENERATE_THEN_SERVE_WORKFLOW_TYPES.has(selectedProcess);
     const workflowProps = {
       initialData: selectedWorkflowRecord
         ? hydrateWorkflowData(selectedWorkflowRecord)
@@ -222,24 +223,22 @@ export default function CompliancePage() {
         }
       },
     };
+    if (generateThenServe) {
+      workflowProps.openWorkflows = activeWorkflows.filter(
+        (workflow) => workflow.workflow_type === selectedProcess
+      );
+      workflowProps.onResumeWorkflow = (id) => {
+        const row = activeWorkflows.find(
+          (workflow) => String(workflow.workflow_id) === String(id)
+        );
+        setSelectedWorkflowRecord(row || null);
+        setSelectedWorkflowId(id);
+      };
+    }
 
     switch (selectedProcess) {
       case 'rent_increase':
-        return (
-          <RentIncreaseWorkflow
-            {...workflowProps}
-            openWorkflows={activeWorkflows.filter(
-              (workflow) => workflow.workflow_type === 'rent_increase'
-            )}
-            onResumeWorkflow={(id) => {
-              const row = activeWorkflows.find(
-                (workflow) => String(workflow.workflow_id) === String(id)
-              );
-              setSelectedWorkflowRecord(row || null);
-              setSelectedWorkflowId(id);
-            }}
-          />
-        );
+        return <RentIncreaseWorkflow {...workflowProps} />;
       case 'lease_renewal':
         return <LeaseRenewalWorkflow {...workflowProps} />;
       case 'move_in':

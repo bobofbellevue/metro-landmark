@@ -298,8 +298,75 @@ export function openWorkflowsByLeaseId(workflows) {
   return map;
 }
 
+/**
+ * Annotations (and the lease→row map) for a generate-then-serve Select Lease picker.
+ * @param {object[]|null|undefined} openWorkflows
+ * @returns {{ workflowsByLease: Map<string, object>, leaseAnnotations: Record<string, object> }}
+ */
+export function leaseAnnotationsFromOpenWorkflows(openWorkflows) {
+  const workflowsByLease = openWorkflowsByLeaseId(openWorkflows);
+  const leaseAnnotations = {};
+  for (const [leaseId, openWorkflow] of workflowsByLease) {
+    const annotation = noticePickerAnnotation(openWorkflow);
+    if (annotation) leaseAnnotations[leaseId] = annotation;
+  }
+  return { workflowsByLease, leaseAnnotations };
+}
+
+/**
+ * Resume an in-progress row for the picked lease instead of starting a blank session.
+ * @returns {boolean} true when resume was triggered
+ */
+export function maybeResumeOpenWorkflow({
+  existing,
+  workflowId,
+  onResumeWorkflow,
+} = {}) {
+  if (
+    existing &&
+    typeof onResumeWorkflow === 'function' &&
+    String(existing.workflow_id) !== String(workflowId || '')
+  ) {
+    onResumeWorkflow(existing.workflow_id);
+    return true;
+  }
+  return false;
+}
+
 export const NOTICE_PICKER_GROUP_RECORD_SERVICE = 'record_service';
 export const NOTICE_PICKER_GROUP_GENERATE = 'generate';
+
+const NOTICE_LEASE_PICKER_NOUN = Object.freeze({
+  rent_increase: 'rent-increase',
+  eviction: 'eviction',
+  lease_termination: 'lease-termination',
+  entry_notice: 'entry',
+  lease_violation: 'lease-violation',
+});
+
+/**
+ * Record-service vs generate groups for generate-then-serve lease pickers.
+ * @param {string} [workflowType]
+ */
+export function noticeLeasePickerGroups(workflowType) {
+  const noun = NOTICE_LEASE_PICKER_NOUN[workflowType] || 'notice';
+  return [
+    {
+      id: NOTICE_PICKER_GROUP_RECORD_SERVICE,
+      title: 'Record service',
+      description: `These leases already have a ${noun} notice. Open one to print, email, or record how it was served.`,
+      emptyLabel: 'No notices are waiting for service.',
+      beforeSearch: true,
+    },
+    {
+      id: NOTICE_PICKER_GROUP_GENERATE,
+      title: 'Generate a notice',
+      description:
+        'Choose a lease to calculate the notice period and create a worksheet, or continue an in-progress draft.',
+      emptyLabel: 'No other leases are available.',
+    },
+  ];
+}
 
 function leasesForPickerGroup(leaseList, groupId, leaseAnnotations) {
   return (leaseList || []).filter((lease) => {
